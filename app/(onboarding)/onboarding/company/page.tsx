@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import Button from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -45,11 +46,17 @@ export default function OnboardingCompanyPage() {
           <p className="text-gray-500 text-sm mt-1">Configurez votre profil professionnel</p>
         </div>
 
-        {/* Progress */}
-        <div className="flex gap-1 mb-6">
-          {[1, 2, 3, 4].map((step) => (
-            <div key={step} className={`h-1.5 flex-1 rounded-full ${step <= 1 ? 'bg-primary' : 'bg-gray-200'}`} />
+        {/* Animated progress dots */}
+        <div className="flex items-center gap-4 mb-6 relative">
+          {[1, 2, 3, 4].map((dot) => (
+            <div key={dot} className={`w-2 h-2 rounded-full z-10 ${dot <= 1 ? 'bg-white ring-2 ring-primary' : 'bg-gray-300'}`} />
           ))}
+          <motion.div
+            initial={{ width: 24 }}
+            animate={{ width: 24 }}
+            className="absolute -left-2 -top-2 h-6 bg-primary/20 rounded-full border border-primary/30"
+            style={{ width: 24 }}
+          />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
