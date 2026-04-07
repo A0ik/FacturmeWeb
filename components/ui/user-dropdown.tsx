@@ -1,7 +1,6 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/Badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,34 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Icon } from "@iconify/react";
-
-const MENU_ITEMS = {
-  status: [
-    { value: "focus", icon: "solar:emoji-funny-circle-line-duotone", label: "Focus" },
-    { value: "offline", icon: "solar:moon-sleep-line-duotone", label: "Apparaître hors ligne" },
-  ],
-  profile: [
-    { icon: "solar:user-circle-line-duotone", label: "Mon profil", action: "profile" },
-    { icon: "solar:settings-line-duotone", label: "Paramètres", action: "settings" },
-    { icon: "solar:bell-line-duotone", label: "Notifications", action: "notifications" },
-  ],
-  premium: [
-    {
-      icon: "solar:star-bold",
-      label: "Passer à Pro",
-      action: "upgrade",
-      iconClass: "text-amber-500",
-      badge: { text: "–50%", className: "bg-amber-500 text-white text-[10px] px-1.5 py-0 rounded-full font-bold" },
-    },
-  ],
-  support: [
-    { icon: "solar:question-circle-line-duotone", label: "Aide", action: "help", rightIcon: "solar:square-top-down-line-duotone" },
-  ],
-  account: [
-    { icon: "solar:logout-2-bold-duotone", label: "Se déconnecter", action: "logout" },
-  ],
-};
+import {
+  User, Settings, Bell, Smile, Moon, Zap, Gift,
+  HelpCircle, ExternalLink, LogOut, ChevronDown,
+} from "lucide-react";
 
 export interface UserDropdownUser {
   name: string;
@@ -61,122 +36,155 @@ export interface UserDropdownProps {
   selectedStatus?: string;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  online: "En ligne",
+  offline: "Hors ligne",
+  busy: "Occupé",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  online: "bg-green-400",
+  offline: "bg-gray-400",
+  busy: "bg-red-400",
+};
+
 export const UserDropdown = ({
-  user = {
-    name: "Mon compte",
-    username: "@factu.me",
-    initials: "FC",
-    status: "online",
-  },
+  user = { name: "Mon compte", username: "@factu.me", initials: "FC", status: "online" },
   onAction = () => {},
   onStatusChange = () => {},
   selectedStatus = "online",
 }: UserDropdownProps) => {
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      online: "bg-green-100 text-green-700 border-green-300",
-      offline: "bg-gray-100 text-gray-500 border-gray-300",
-      busy: "bg-red-100 text-red-600 border-red-300",
-    };
-    return colors[status.toLowerCase()] || colors.online;
-  };
-
-  const renderMenuItem = (item: any, index: number) => (
-    <DropdownMenuItem
-      key={index}
-      className={cn(
-        "p-2 rounded-lg cursor-pointer",
-        item.badge || item.rightIcon ? "justify-between" : "",
-      )}
-      onClick={() => onAction(item.action)}
-    >
-      <span className="flex items-center gap-1.5 font-medium text-sm">
-        <Icon
-          icon={item.icon}
-          className={`size-4 ${item.iconClass || "text-gray-500"}`}
-        />
-        {item.label}
-      </span>
-      {item.badge && (
-        <span className={item.badge.className}>{item.badge.text}</span>
-      )}
-      {item.rightIcon && (
-        <Icon icon={item.rightIcon} className="size-3.5 text-gray-400" />
-      )}
-    </DropdownMenuItem>
-  );
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="focus:outline-none">
-          <Avatar className="cursor-pointer size-9 border-2 border-white shadow-sm hover:ring-2 hover:ring-primary/30 transition-all">
+        <button className="focus:outline-none relative group">
+          <Avatar className="size-9 border-2 border-white/20 shadow-md transition-transform group-hover:scale-105">
             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
             <AvatarFallback className="bg-primary text-white text-xs font-bold">
               {user.initials}
             </AvatarFallback>
           </Avatar>
+          {/* Online indicator */}
+          <span className={cn(
+            "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900",
+            STATUS_COLORS[user.status]
+          )} />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-[280px] rounded-2xl bg-gray-50 border border-gray-200 p-0 shadow-xl"
+        className="w-72 rounded-2xl bg-white border border-gray-100 p-0 shadow-2xl shadow-black/10"
         align="end"
-        sideOffset={8}
+        sideOffset={12}
       >
-        {/* User header */}
-        <section className="bg-white rounded-2xl p-1 shadow-sm border border-gray-100 m-1">
-          <div className="flex items-center p-2 gap-3">
-            <Avatar className="size-10 border border-gray-200">
-              {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-              <AvatarFallback className="bg-primary text-white text-xs font-bold">
-                {user.initials}
-              </AvatarFallback>
-            </Avatar>
+        {/* Header */}
+        <div className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-t-2xl border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="size-11 border-2 border-white shadow-sm">
+                {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+                <AvatarFallback className="bg-primary text-white text-sm font-bold">
+                  {user.initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className={cn(
+                "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
+                STATUS_COLORS[user.status]
+              )} />
+            </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 truncate">{user.name}</h3>
+              <p className="font-semibold text-sm text-gray-900 truncate">{user.name}</p>
               <p className="text-xs text-gray-500 truncate">{user.username}</p>
             </div>
-            <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", getStatusColor(user.status))}>
-              {user.status === "online" ? "En ligne" : user.status === "busy" ? "Occupé" : "Hors ligne"}
+            <span className={cn(
+              "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+              user.status === "online" ? "bg-green-100 text-green-700" :
+              user.status === "busy" ? "bg-red-100 text-red-600" :
+              "bg-gray-100 text-gray-500"
+            )}>
+              {STATUS_LABELS[user.status]}
             </span>
           </div>
+        </div>
 
+        {/* Status submenu */}
+        <div className="p-1.5">
           <DropdownMenuGroup>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer p-2 rounded-lg text-sm text-gray-500">
-                <Icon icon="solar:smile-circle-line-duotone" className="size-4 mr-1.5 text-gray-400" />
-                Changer le statut
+              <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
+                <Smile size={15} className="text-gray-400" />
+                <span className="font-medium">Changer le statut</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
-                <DropdownMenuSubContent className="bg-white border border-gray-200 rounded-xl shadow-lg">
+                <DropdownMenuSubContent className="bg-white border border-gray-100 rounded-xl shadow-xl p-1.5">
                   <DropdownMenuRadioGroup value={selectedStatus} onValueChange={onStatusChange}>
-                    {MENU_ITEMS.status.map((s, i) => (
-                      <DropdownMenuRadioItem className="gap-2 text-sm" key={i} value={s.value}>
-                        <Icon icon={s.icon} className="size-4 text-gray-500" />
-                        {s.label}
-                      </DropdownMenuRadioItem>
-                    ))}
+                    <DropdownMenuRadioItem className="gap-2 text-sm rounded-lg" value="online">
+                      <span className="w-2 h-2 rounded-full bg-green-400" />
+                      En ligne
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem className="gap-2 text-sm rounded-lg" value="offline">
+                      <Moon size={14} className="text-gray-400" />
+                      Apparaître hors ligne
+                    </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="bg-gray-100" />
-          <DropdownMenuGroup>{MENU_ITEMS.profile.map(renderMenuItem)}</DropdownMenuGroup>
-          <DropdownMenuSeparator className="bg-gray-100" />
-          <DropdownMenuGroup>{MENU_ITEMS.premium.map(renderMenuItem)}</DropdownMenuGroup>
-          <DropdownMenuSeparator className="bg-gray-100" />
-          <DropdownMenuGroup>{MENU_ITEMS.support.map(renderMenuItem)}</DropdownMenuGroup>
-        </section>
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
 
-        {/* Logout */}
-        <section className="p-1">
           <DropdownMenuGroup>
-            {MENU_ITEMS.account.map(renderMenuItem)}
+            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('profile')}>
+              <User size={15} className="text-gray-400" />
+              <span className="text-sm font-medium">Mon profil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('settings')}>
+              <Settings size={15} className="text-gray-400" />
+              <span className="text-sm font-medium">Paramètres</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('notifications')}>
+              <Bell size={15} className="text-gray-400" />
+              <span className="text-sm font-medium">Notifications</span>
+            </DropdownMenuItem>
           </DropdownMenuGroup>
-        </section>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          {/* Upgrade */}
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100"
+              onClick={() => onAction('upgrade')}
+            >
+              <Zap size={15} className="text-amber-500" />
+              <span className="text-sm font-semibold text-amber-700 flex-1">Passer à Pro</span>
+              <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-bold">PRO</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('help')}>
+              <HelpCircle size={15} className="text-gray-400" />
+              <span className="text-sm font-medium flex-1">Aide</span>
+              <ExternalLink size={12} className="text-gray-300" />
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 hover:text-red-600"
+              onClick={() => onAction('logout')}
+            >
+              <LogOut size={15} />
+              <span className="text-sm font-medium">Se déconnecter</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

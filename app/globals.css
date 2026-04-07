@@ -45,7 +45,15 @@
   body {
     @apply bg-gray-50 text-gray-900;
     overscroll-behavior: none;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 }
 
 @layer utilities {

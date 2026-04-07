@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useDataStore } from '@/stores/dataStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { formatCurrency, formatDateShort, downloadCSV } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Input';
-import { Plus, Search, FileText, Download } from 'lucide-react';
+import { Plus, Search, FileText, Download, Zap, AlertTriangle } from 'lucide-react';
 import { InvoiceStatus } from '@/types';
 
 const STATUS_OPTS = [
@@ -26,6 +27,7 @@ const TYPE_OPTS = [
 
 export default function InvoicesPage() {
   const { invoices } = useDataStore();
+  const sub = useSubscription();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -61,6 +63,31 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-4">
+      {/* Paywall banner — free users near/at limit */}
+      {sub.isFree && sub.invoiceCount >= 2 && (
+        <Link
+          href="/paywall"
+          className="flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 hover:border-amber-300 transition-all group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            {sub.isAtLimit ? <AlertTriangle size={17} className="text-amber-600" /> : <Zap size={17} className="text-amber-500" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-amber-800 text-sm">
+              {sub.isAtLimit
+                ? 'Limite atteinte — passez à Pro pour continuer'
+                : `Plan gratuit — ${sub.invoiceCount}/3 factures utilisées`}
+            </p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              {sub.isAtLimit
+                ? 'Vous avez utilisé vos 3 factures gratuites.'
+                : `Il vous reste ${3 - sub.invoiceCount} facture${3 - sub.invoiceCount > 1 ? 's' : ''} gratuite${3 - sub.invoiceCount > 1 ? 's' : ''}.`}
+              {' '}Factures illimitées dès 9€/mois →
+            </p>
+          </div>
+        </Link>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black text-gray-900">Documents</h1>
         <div className="flex items-center gap-2">
