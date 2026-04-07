@@ -1,0 +1,315 @@
+'use client';
+import { use, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDataStore } from '@/stores/dataStore';
+import { useAuthStore } from '@/stores/authStore';
+import Header from '@/components/layout/Header';
+import Button from '@/components/ui/Button';
+import { StatusBadge } from '@/components/ui/Badge';
+import Modal from '@/components/ui/Modal';
+import { formatCurrency, formatDate, DOC_LABELS } from '@/lib/utils';
+import { downloadInvoicePdf } from '@/lib/pdf';
+import { InvoiceStatus } from '@/types';
+import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2 } from 'lucide-react';
+
+const STATUS_TRANSITIONS: Record<InvoiceStatus, { label: string; next: InvoiceStatus }[]> = {
+  draft: [{ label: 'Marquer comme envoyée', next: 'sent' }],
+  sent: [{ label: 'Marquer comme payée', next: 'paid' }],
+  paid: [],
+  overdue: [{ label: 'Marquer comme payée', next: 'paid' }],
+  accepted: [{ label: 'Convertir en facture', next: 'sent' }],
+  refused: [],
+};
+
+export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { invoices, updateInvoiceStatus, deleteInvoice, duplicateInvoice } = useDataStore();
+  const { profile } = useAuthStore();
+  const [sending, setSending] = useState(false);
+  const [payLinkLoading, setPayLinkLoading] = useState(false);
+  const [payLink, setPayLink] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [sendEmail, setSendEmail] = useState('');
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [reminderLoading, setReminderLoading] = useState(false);
+  const [reminderSent, setReminderSent] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const invoice = invoices.find((i) => i.id === id);
+  if (!invoice) return (
+    <div className="text-center py-20">
+      <p className="text-gray-500">Facture introuvable</p>
+      <button onClick={() => router.push('/invoices')} className="mt-3 text-primary font-semibold text-sm hover:underline">Retour</button>
+    </div>
+  );
+
+  const handleStatusChange = async (next: InvoiceStatus) => {
+    await updateInvoiceStatus(invoice.id, next);
+  };
+
+  const handleDownload = () => downloadInvoicePdf(invoice, profile || undefined);
+
+  const handlePreview = () => {
+    import('@/lib/pdf').then(({ generateInvoiceHtml }) => {
+      const html = generateInvoiceHtml(invoice, profile || undefined);
+      const win = window.open('', '_blank');
+      if (win) { win.document.write(html); win.document.close(); }
+    });
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      const dup = await duplicateInvoice(invoice.id, profile);
+      router.push(`/invoices/${dup.id}`);
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendLoading(true); setSendError('');
+    try {
+      const res = await fetch('/api/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id, email: sendEmail, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await handleStatusChange('sent');
+      setShowSendModal(false);
+    } catch (e: any) { setSendError(e.message); }
+    finally { setSendLoading(false); }
+  };
+
+  const handlePaymentLink = async () => {
+    setPayLinkLoading(true);
+    try {
+      const res = await fetch('/api/stripe/payment-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id, amount: invoice.total, description: invoice.number }),
+      });
+      const data = await res.json();
+      if (data.url) { setPayLink(data.url); navigator.clipboard.writeText(data.url).catch(() => {}); }
+    } catch {}
+    finally { setPayLinkLoading(false); }
+  };
+
+  const handleDelete = async () => {
+    await deleteInvoice(invoice.id);
+    router.push('/invoices');
+  };
+
+  const handleReminder = async () => {
+    const email = invoice.client?.email;
+    if (!email) return alert('Ce client n\'a pas d\'adresse email.');
+    setReminderLoading(true);
+    try {
+      const res = await fetch('/api/send-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id, email, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setReminderSent(true);
+      setTimeout(() => setReminderSent(false), 4000);
+    } catch (e: any) { alert(e.message); }
+    finally { setReminderLoading(false); }
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/share/${invoice.id}`;
+    setShareUrl(url);
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 3000);
+    });
+  };
+
+  const docLabel = DOC_LABELS[invoice.document_type as keyof typeof DOC_LABELS] || 'Facture';
+  const transitions = STATUS_TRANSITIONS[invoice.status] || [];
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <Header
+        title={`${docLabel} ${invoice.number}`}
+        back="/invoices"
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={handlePreview} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors" title="Aperçu">
+              <Eye size={18} />
+            </button>
+            <Button variant="secondary" size="sm" icon={<Download size={15} />} onClick={handleDownload}>Télécharger</Button>
+            <div className="relative">
+              <button onClick={() => setShowMenu(!showMenu)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
+                <MoreVertical size={18} />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 min-w-44 overflow-hidden">
+                  <button onClick={() => { handleDuplicate(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                    <Copy size={14} />Dupliquer
+                  </button>
+                  <button onClick={() => { setShowSendModal(true); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                    <Send size={14} />Envoyer par email
+                  </button>
+                  {invoice.status === 'sent' || invoice.status === 'overdue' ? (
+                    <button onClick={() => { handleReminder(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                      <Bell size={14} />Envoyer un rappel
+                    </button>
+                  ) : null}
+                  <button onClick={() => { handleShare(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                    <Share2 size={14} />Partager le lien
+                  </button>
+                  {invoice.document_type === 'invoice' && (
+                    <button onClick={() => { handlePaymentLink(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                      <Link2 size={14} />Lien de paiement
+                    </button>
+                  )}
+                  <div className="border-t border-gray-100" />
+                  <button onClick={() => { setShowDelete(true); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2">
+                    <Trash2 size={14} />Supprimer
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        }
+      />
+
+      {/* Status + transitions */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Statut</p>
+            <StatusBadge status={invoice.status} />
+          </div>
+          <div className="flex gap-2">
+            {transitions.map((t) => (
+              <Button key={t.next} size="sm" icon={<CheckCircle size={14} />} onClick={() => handleStatusChange(t.next)}>
+                {t.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        {payLink && (
+          <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+            <Link2 size={14} className="text-green-600 flex-shrink-0" />
+            <p className="text-xs text-green-700 truncate flex-1">{payLink}</p>
+            <button onClick={() => navigator.clipboard.writeText(payLink)} className="text-xs font-bold text-green-600 hover:underline">Copier</button>
+          </div>
+        )}
+        {reminderSent && (
+          <div className="mt-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+            <Bell size={14} className="text-blue-600 flex-shrink-0" />
+            <p className="text-xs text-blue-700 font-semibold">Rappel envoyé avec succès.</p>
+          </div>
+        )}
+        {shareCopied && (
+          <div className="mt-3 flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl px-3 py-2">
+            <Share2 size={14} className="text-purple-600 flex-shrink-0" />
+            <p className="text-xs text-purple-700 truncate flex-1">{shareUrl}</p>
+            <span className="text-xs font-bold text-purple-600">Copié !</span>
+          </div>
+        )}
+      </div>
+
+      {/* Client & dates */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+        <h3 className="font-bold text-gray-900">Informations</h3>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Client</p>
+            <p className="font-semibold text-gray-900">{invoice.client?.name || invoice.client_name_override || '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Date d'émission</p>
+            <p className="font-semibold text-gray-900">{formatDate(invoice.issue_date)}</p>
+          </div>
+          {invoice.due_date && (
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Échéance</p>
+              <p className="font-semibold text-gray-900">{formatDate(invoice.due_date)}</p>
+            </div>
+          )}
+          {invoice.paid_at && (
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Payée le</p>
+              <p className="font-semibold text-gray-900">{formatDate(invoice.paid_at)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Items */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <h3 className="font-bold text-gray-900 mb-3">Prestations</h3>
+        <div className="space-y-2">
+          {(invoice.items || []).map((item, idx) => (
+            <div key={item.id || idx} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">{item.description}</p>
+                <p className="text-xs text-gray-400">{item.quantity} × {formatCurrency(item.unit_price)} · TVA {item.vat_rate}%</p>
+              </div>
+              <p className="text-sm font-bold text-gray-900">{formatCurrency(item.total || item.quantity * item.unit_price * (1 + item.vat_rate / 100))}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-gray-200 mt-3 pt-3 space-y-1.5">
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Sous-total HT</span><span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>TVA</span><span className="font-semibold">{formatCurrency(invoice.vat_amount)}</span>
+          </div>
+          <div className="flex justify-between text-lg font-black text-gray-900">
+            <span>Total TTC</span><span>{formatCurrency(invoice.total)}</span>
+          </div>
+        </div>
+      </div>
+
+      {invoice.notes && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <p className="text-xs font-bold text-gray-400 mb-1">Notes</p>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+        </div>
+      )}
+
+      {/* Delete modal */}
+      <Modal open={showDelete} onClose={() => setShowDelete(false)} title="Supprimer ce document">
+        <p className="text-gray-600 mb-4">Cette action est irréversible. La facture {invoice.number} sera définitivement supprimée.</p>
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => setShowDelete(false)}>Annuler</Button>
+          <Button variant="danger" className="flex-1" onClick={handleDelete}>Supprimer</Button>
+        </div>
+      </Modal>
+
+      {/* Send email modal */}
+      <Modal open={showSendModal} onClose={() => setShowSendModal(false)} title="Envoyer par email">
+        <form onSubmit={handleSendEmail} className="space-y-4">
+          <p className="text-sm text-gray-500">La facture sera envoyée en PDF par email.</p>
+          <input
+            type="email"
+            placeholder="Email du client"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            defaultValue={invoice.client?.email || ''}
+            required
+            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          />
+          {sendError && <p className="text-sm text-red-500">{sendError}</p>}
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowSendModal(false)}>Annuler</Button>
+            <Button type="submit" className="flex-1" loading={sendLoading} icon={<Send size={14} />}>Envoyer</Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}
