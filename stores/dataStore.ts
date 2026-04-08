@@ -55,7 +55,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     const subtotal = items.reduce((s, i) => s + i.total, 0);
     const vatAmount = items.reduce((s, i) => s + i.total * (i.vat_rate / 100), 0);
     const docType = formData.document_type || 'invoice';
-    const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : (profile.invoice_prefix || 'FACT');
+    const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : docType === 'purchase_order' ? 'BC' : docType === 'delivery_note' ? 'BL' : (profile.invoice_prefix || 'FACT');
     const currentMonth = new Date().toISOString().slice(0, 7);
     const { data: counters, error: rpcError } = await getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
     let number: string;
@@ -95,7 +95,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     const today = new Date().toISOString().split('T')[0];
     const due = new Date(); due.setDate(due.getDate() + 30);
     const docType = original.document_type || 'invoice';
-    const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : (profile.invoice_prefix || 'FACT');
+    const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : docType === 'purchase_order' ? 'BC' : docType === 'delivery_note' ? 'BL' : (profile.invoice_prefix || 'FACT');
     const currentMonth = new Date().toISOString().slice(0, 7);
     const { data: counters } = await getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
     const number = counters?.invoice_count ? get().getNextInvoiceNumber(prefix, counters.invoice_count) : get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);

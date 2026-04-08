@@ -68,7 +68,7 @@ export interface InvoiceItem {
   total: number;
 }
 
-export type DocumentType = 'invoice' | 'quote' | 'credit_note';
+export type DocumentType = 'invoice' | 'quote' | 'credit_note' | 'purchase_order' | 'delivery_note';
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'accepted' | 'refused';
 
 export interface Invoice {

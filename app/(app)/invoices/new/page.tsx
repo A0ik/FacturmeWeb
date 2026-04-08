@@ -13,7 +13,7 @@ import {
   Mic, MicOff, Plus, Trash2, Zap, FileText, Clipboard,
   RefreshCw, ChevronUp, ChevronDown, Sparkles, Calendar,
   User, AlignLeft, Receipt, AlertCircle, CheckCircle2,
-  ArrowLeft,
+  ArrowLeft, ShoppingCart, Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -38,6 +38,26 @@ const DOC_TYPES = [
     bg: 'bg-blue-50',
     activeBg: 'bg-blue-600',
     border: 'border-blue-500',
+  },
+  {
+    value: 'purchase_order',
+    label: 'Bon de commande',
+    description: 'Commande d\'achat officielle',
+    icon: ShoppingCart,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    activeBg: 'bg-amber-600',
+    border: 'border-amber-500',
+  },
+  {
+    value: 'delivery_note',
+    label: 'Bon de livraison',
+    description: 'Confirmation de livraison',
+    icon: Truck,
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-50',
+    activeBg: 'bg-cyan-600',
+    border: 'border-cyan-500',
   },
   {
     value: 'credit_note',

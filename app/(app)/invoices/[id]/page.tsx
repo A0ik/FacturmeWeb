@@ -1,5 +1,5 @@
 'use client';
-import { use, useState } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDataStore } from '@/stores/dataStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,7 +10,8 @@ import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDate, DOC_LABELS } from '@/lib/utils';
 import { downloadInvoicePdf } from '@/lib/pdf';
 import { InvoiceStatus } from '@/types';
-import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2 } from 'lucide-react';
+import { getSupabaseClient } from '@/lib/supabase';
+import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2, Paperclip, Upload, File, X as XIcon } from 'lucide-react';
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { label: string; next: InvoiceStatus }[]> = {
   draft: [{ label: 'Marquer comme envoyée', next: 'sent' }],
@@ -39,8 +40,50 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [reminderSent, setReminderSent] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
+  const [attachments, setAttachments] = useState<{ name: string; url: string; size: number }[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const attachRef = useRef<HTMLInputElement>(null);
 
   const invoice = invoices.find((i) => i.id === id);
+
+  useEffect(() => {
+    const loadAttachments = async () => {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      if (!session?.user) return;
+      const prefix = `invoice-docs/${session.user.id}/${id}/`;
+      const { data } = await getSupabaseClient().storage.from('assets').list(`invoice-docs/${session.user.id}/${id}`);
+      if (!data) return;
+      const files = data.map((f) => ({
+        name: f.name,
+        size: f.metadata?.size || 0,
+        url: getSupabaseClient().storage.from('assets').getPublicUrl(`${prefix}${f.name}`).data.publicUrl,
+      }));
+      setAttachments(files);
+    };
+    loadAttachments();
+  }, [id]);
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploadingFile(true);
+    try {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      if (!session?.user) throw new Error('Non authentifié');
+      const path = `invoice-docs/${session.user.id}/${id}/${file.name}`;
+      await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
+      const url = getSupabaseClient().storage.from('assets').getPublicUrl(path).data.publicUrl;
+      setAttachments((prev) => [...prev.filter((a) => a.name !== file.name), { name: file.name, size: file.size, url }]);
+    } catch (e: any) { alert(e.message); }
+    finally { setUploadingFile(false); if (attachRef.current) attachRef.current.value = ''; }
+  };
+
+  const handleDeleteAttachment = async (name: string) => {
+    const { data: { session } } = await getSupabaseClient().auth.getSession();
+    if (!session?.user) return;
+    await getSupabaseClient().storage.from('assets').remove([`invoice-docs/${session.user.id}/${id}/${name}`]);
+    setAttachments((prev) => prev.filter((a) => a.name !== name));
+  };
+
   if (!invoice) return (
     <div className="text-center py-20">
       <p className="text-gray-500">Facture introuvable</p>
@@ -280,6 +323,72 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
         </div>
       )}
+
+      {/* Facture Cloud — attachments */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Paperclip size={15} className="text-gray-400" />
+            <h3 className="font-bold text-gray-900">Pièces jointes</h3>
+            {attachments.length > 0 && (
+              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-semibold">{attachments.length}</span>
+            )}
+          </div>
+          <button
+            onClick={() => attachRef.current?.click()}
+            disabled={uploadingFile}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
+          >
+            {uploadingFile ? (
+              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Upload size={13} />
+            )}
+            Ajouter
+          </button>
+          <input ref={attachRef} type="file" className="hidden" onChange={handleAttachFile} />
+        </div>
+
+        {attachments.length === 0 ? (
+          <button
+            onClick={() => attachRef.current?.click()}
+            className="w-full border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-primary/40 hover:bg-primary/3 transition-all group"
+          >
+            <Upload size={18} className="text-gray-300 group-hover:text-primary/50 mx-auto mb-1.5 transition-colors" />
+            <p className="text-xs text-gray-400 group-hover:text-gray-500">Déposez des fichiers ici</p>
+            <p className="text-[11px] text-gray-300 mt-0.5">PDF, images, documents...</p>
+          </button>
+        ) : (
+          <div className="space-y-1.5">
+            {attachments.map((file) => (
+              <div key={file.name} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-gray-50 group">
+                <div className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                  <File size={13} className="text-gray-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-900 truncate">{file.name}</p>
+                  {file.size > 0 && <p className="text-[11px] text-gray-400">{(file.size / 1024).toFixed(0)} Ko</p>}
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-gray-700 transition-colors">
+                    <Download size={12} />
+                  </a>
+                  <button onClick={() => handleDeleteAttachment(file.name)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+                    <XIcon size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => attachRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 px-2 py-1 transition-colors"
+            >
+              <Upload size={12} />
+              Ajouter un fichier
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Delete modal */}
       <Modal open={showDelete} onClose={() => setShowDelete(false)} title="Supprimer ce document">

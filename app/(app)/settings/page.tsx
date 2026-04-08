@@ -9,7 +9,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
@@ -21,7 +21,9 @@ export default function SettingsPage() {
   const { profile, updateProfile, signOut } = useAuthStore();
   const sub = useSubscription();
   const fileRef = useRef<HTMLInputElement>(null);
+  const sigFileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingSig, setUploadingSig] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -98,6 +100,27 @@ export default function SettingsPage() {
     } finally {
       setPortalLoading(false);
     }
+  };
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploadingSig(true);
+    try {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      const user = session?.user; if (!user) throw new Error('Non authentifié');
+      const ext = file.name.split('.').pop();
+      const path = `signatures/${user.id}.${ext}`;
+      await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
+      const { data } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
+      await updateProfile({ signature_url: data.publicUrl } as any);
+    } catch (e: any) { setError(e.message); }
+    finally { setUploadingSig(false); }
+  };
+
+  const handleRemoveSignature = async () => {
+    try {
+      await updateProfile({ signature_url: null } as any);
+    } catch (e: any) { setError(e.message); }
   };
 
   const handleDeleteAccount = async () => {
@@ -186,6 +209,44 @@ export default function SettingsPage() {
           <Input label="Banque" value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)} placeholder="BNP Paribas" />
           <Input label="IBAN" value={form.iban} onChange={(e) => set('iban', e.target.value)} placeholder="FR76 1234 5678 9012 3456 7890 123" />
           <Input label="BIC/SWIFT" value={form.bic} onChange={(e) => set('bic', e.target.value)} placeholder="BNPAFRPP" />
+        </div>
+      ),
+    },
+    {
+      title: 'Signature électronique',
+      fields: (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">Ajoutez votre signature manuscrite. Elle apparaîtra automatiquement en bas de vos factures et devis.</p>
+          <div className="flex items-start gap-4">
+            <div className="w-48 h-24 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {profile?.signature_url ? (
+                <img src={profile.signature_url} alt="Signature" className="max-w-full max-h-full object-contain p-2" />
+              ) : (
+                <div className="text-center">
+                  <PenTool size={20} className="text-gray-300 mx-auto mb-1" />
+                  <p className="text-xs text-gray-400">Aucune signature</p>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Button variant="secondary" size="sm" icon={<Camera size={14} />} onClick={() => sigFileRef.current?.click()} loading={uploadingSig}>
+                {profile?.signature_url ? 'Changer la signature' : 'Importer une signature'}
+              </Button>
+              {profile?.signature_url && (
+                <button type="button" onClick={handleRemoveSignature} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors">
+                  <X size={12} />
+                  Supprimer la signature
+                </button>
+              )}
+              <p className="text-xs text-gray-400">PNG transparent recommandé · max 1MB</p>
+              <input ref={sigFileRef} type="file" accept="image/*" className="hidden" onChange={handleSignatureUpload} />
+            </div>
+          </div>
+          <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+            <p className="text-xs text-blue-700">
+              <strong>Conseil :</strong> Signez sur une feuille blanche, prenez une photo, puis utilisez un outil en ligne pour supprimer le fond et exporter en PNG transparent.
+            </p>
+          </div>
         </div>
       ),
     },

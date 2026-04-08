@@ -63,6 +63,21 @@
 
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Mobile tap highlight removal */
+  .no-tap-highlight { -webkit-tap-highlight-color: transparent; }
+
+  /* Smooth momentum scrolling on iOS */
+  .scroll-smooth-ios { -webkit-overflow-scrolling: touch; }
+
+  /* Better focus styles */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 }
 
 /* ——— Mobile menu component styles ——— */

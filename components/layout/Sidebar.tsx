@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight,
-  Building2, Bell, HelpCircle, Package, Receipt,
+  Building2, Bell, HelpCircle, Package, Receipt, Calendar,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -23,6 +23,7 @@ const NAV_TOP = [
   { href: '/recurring',      icon: RefreshCw,        label: 'Récurrentes',     badge: null },
   { href: '/expenses',       icon: Receipt,          label: 'Notes de frais',  badge: null },
   { href: '/products',       icon: Package,          label: 'Catalogue',       badge: null },
+  { href: '/calendar',       icon: Calendar,         label: 'Agenda',          badge: null },
 ];
 
 const NAV_BOTTOM = [

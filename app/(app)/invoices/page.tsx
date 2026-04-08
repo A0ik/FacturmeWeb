@@ -11,7 +11,7 @@ import {
   Plus, Search, FileText, Download, Zap, AlertTriangle,
   TrendingUp, Clock, CheckCircle2, XCircle, Eye, Send,
   ChevronRight, Filter, SlidersHorizontal, ArrowUpRight,
-  ReceiptText, BadgeDollarSign, Hourglass,
+  ReceiptText, BadgeDollarSign, Hourglass, ShoppingCart, Truck,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -29,10 +29,13 @@ const TYPE_OPTS = [
   { value: 'invoice', label: 'Factures' },
   { value: 'quote', label: 'Devis' },
   { value: 'credit_note', label: 'Avoirs' },
+  { value: 'purchase_order', label: 'Bons de cde' },
+  { value: 'delivery_note', label: 'Bons de liv.' },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
   invoice: 'Facture', quote: 'Devis', credit_note: 'Avoir',
+  purchase_order: 'Bon de commande', delivery_note: 'Bon de livraison',
 };
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon', sent: 'Envoyée', paid: 'Payée', overdue: 'En retard', accepted: 'Accepté', refused: 'Refusé',
@@ -334,11 +337,11 @@ export default function InvoicesPage() {
                           <div className="flex items-center gap-2.5">
                             <div className={cn(
                               'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                              inv.document_type === 'quote' ? 'bg-blue-50' : inv.document_type === 'credit_note' ? 'bg-purple-50' : 'bg-primary-light',
+                              inv.document_type === 'quote' ? 'bg-blue-50' : inv.document_type === 'credit_note' ? 'bg-purple-50' : inv.document_type === 'purchase_order' ? 'bg-orange-50' : inv.document_type === 'delivery_note' ? 'bg-cyan-50' : 'bg-primary-light',
                             )}>
-                              <FileText size={14} className={cn(
+                              {inv.document_type === 'purchase_order' ? <ShoppingCart size={14} className="text-orange-500" /> : inv.document_type === 'delivery_note' ? <Truck size={14} className="text-cyan-500" /> : <FileText size={14} className={cn(
                                 inv.document_type === 'quote' ? 'text-blue-500' : inv.document_type === 'credit_note' ? 'text-purple-500' : 'text-primary',
-                              )} />
+                              )} />}
                             </div>
                             <div>
                               <p className="text-sm font-bold text-primary">{inv.number}</p>
@@ -399,9 +402,9 @@ export default function InvoicesPage() {
                 >
                   <div className={cn(
                     'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-                    inv.document_type === 'quote' ? 'bg-blue-50' : 'bg-primary-light',
+                    inv.document_type === 'quote' ? 'bg-blue-50' : inv.document_type === 'credit_note' ? 'bg-purple-50' : inv.document_type === 'purchase_order' ? 'bg-orange-50' : inv.document_type === 'delivery_note' ? 'bg-cyan-50' : 'bg-primary-light',
                   )}>
-                    <FileText size={17} className={inv.document_type === 'quote' ? 'text-blue-500' : 'text-primary'} />
+                    {inv.document_type === 'purchase_order' ? <ShoppingCart size={17} className="text-orange-500" /> : inv.document_type === 'delivery_note' ? <Truck size={17} className="text-cyan-500" /> : <FileText size={17} className={inv.document_type === 'quote' ? 'text-blue-500' : inv.document_type === 'credit_note' ? 'text-purple-500' : 'text-primary'} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">

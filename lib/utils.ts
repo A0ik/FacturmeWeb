@@ -60,6 +60,7 @@ export const ACCENT_COLORS = ['#1D9E75', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E
 
 export const DOC_LABELS: Record<string, string> = {
   invoice: 'Facture', quote: 'Devis', credit_note: 'Avoir',
+  purchase_order: 'Bon de commande', delivery_note: 'Bon de livraison',
 };
 
 export function downloadCSV(filename: string, headers: string[], rows: (string | number | undefined | null)[][]): void {

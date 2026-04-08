@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import {
   FileText, Clipboard, RefreshCw, Plus, TrendingUp,
-  ArrowUpRight, Clock, AlertTriangle, Zap,
+  ArrowUpRight, Clock, AlertTriangle, Zap, ShoppingCart, Truck,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -162,34 +162,25 @@ export default function DashboardPage() {
       {/* ── Quick actions ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Créer rapidement</p>
-        <div className="grid grid-cols-3 gap-2">
-          <Link
-            href="/invoices/new?type=invoice"
-            className="group flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-primary hover:text-white transition-all duration-200"
-          >
-            <div className="w-9 h-9 rounded-xl bg-primary/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">
-              <FileText size={17} className="text-primary group-hover:text-white transition-colors" />
-            </div>
-            <span className="text-xs font-bold text-gray-700 group-hover:text-white transition-colors">Facture</span>
-          </Link>
-          <Link
-            href="/invoices/new?type=quote"
-            className="group flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-blue-500 hover:text-white transition-all duration-200"
-          >
-            <div className="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-white/20 flex items-center justify-center transition-colors">
-              <Clipboard size={17} className="text-blue-500 group-hover:text-white transition-colors" />
-            </div>
-            <span className="text-xs font-bold text-gray-700 group-hover:text-white transition-colors">Devis</span>
-          </Link>
-          <Link
-            href="/invoices/new?type=credit_note"
-            className="group flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-purple-500 hover:text-white transition-all duration-200"
-          >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 group-hover:bg-white/20 flex items-center justify-center transition-colors">
-              <RefreshCw size={17} className="text-purple-500 group-hover:text-white transition-colors" />
-            </div>
-            <span className="text-xs font-bold text-gray-700 group-hover:text-white transition-colors">Avoir</span>
-          </Link>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+          {[
+            { href: '/invoices/new?type=invoice',        icon: FileText,     label: 'Facture',   hoverBg: 'hover:bg-primary',   iconBg: 'bg-primary/10',  iconColor: 'text-primary' },
+            { href: '/invoices/new?type=quote',          icon: Clipboard,    label: 'Devis',     hoverBg: 'hover:bg-blue-500',  iconBg: 'bg-blue-50',     iconColor: 'text-blue-500' },
+            { href: '/invoices/new?type=credit_note',    icon: RefreshCw,    label: 'Avoir',     hoverBg: 'hover:bg-purple-500', iconBg: 'bg-purple-50',  iconColor: 'text-purple-500' },
+            { href: '/invoices/new?type=purchase_order', icon: ShoppingCart, label: 'Bon cde',   hoverBg: 'hover:bg-orange-500', iconBg: 'bg-orange-50',  iconColor: 'text-orange-500' },
+            { href: '/invoices/new?type=delivery_note',  icon: Truck,        label: 'Bon liv.',  hoverBg: 'hover:bg-cyan-500',  iconBg: 'bg-cyan-50',     iconColor: 'text-cyan-500' },
+          ].map(({ href, icon: Icon, label, hoverBg, iconBg, iconColor }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`group flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-50 ${hoverBg} hover:text-white transition-all duration-200 flex-shrink-0 min-w-[72px]`}
+            >
+              <div className={`w-9 h-9 rounded-xl ${iconBg} group-hover:bg-white/20 flex items-center justify-center transition-colors`}>
+                <Icon size={17} className={`${iconColor} group-hover:text-white transition-colors`} />
+              </div>
+              <span className="text-xs font-bold text-gray-700 group-hover:text-white transition-colors whitespace-nowrap">{label}</span>
+            </Link>
+          ))}
         </div>
       </div>
 
