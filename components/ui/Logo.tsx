@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -9,10 +10,10 @@ interface LogoProps {
 }
 
 const SIZES = {
-  sm: { icon: 'w-7 h-7 rounded-lg', text: 'text-base', gap: 'gap-2' },
-  md: { icon: 'w-9 h-9 rounded-xl', text: 'text-lg', gap: 'gap-2.5' },
-  lg: { icon: 'w-11 h-11 rounded-xl', text: 'text-xl', gap: 'gap-3' },
-  xl: { icon: 'w-14 h-14 rounded-2xl', text: 'text-2xl', gap: 'gap-3' },
+  sm: { icon: 'w-7 h-7 rounded-lg', text: 'text-base', gap: 'gap-2', px: 28 },
+  md: { icon: 'w-9 h-9 rounded-xl', text: 'text-lg', gap: 'gap-2.5', px: 36 },
+  lg: { icon: 'w-11 h-11 rounded-xl', text: 'text-xl', gap: 'gap-3', px: 44 },
+  xl: { icon: 'w-14 h-14 rounded-2xl', text: 'text-2xl', gap: 'gap-3', px: 56 },
 };
 
 export function Logo({ size = 'md', variant = 'full', className, dark = false }: LogoProps) {
@@ -20,13 +21,18 @@ export function Logo({ size = 'md', variant = 'full', className, dark = false }:
 
   return (
     <div className={cn('flex items-center', s.gap, className)}>
-      {/* Icon mark */}
+      {/* Icon mark — uses company logo */}
       <div className={cn(
-        'flex items-center justify-center flex-shrink-0 shadow-lg',
-        'bg-gradient-to-br from-primary to-primary-dark',
+        'flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden',
         s.icon
       )}>
-        <LogoMark className="w-[55%] h-[55%] text-white" />
+        <Image
+          src="/icons/icon.svg"
+          alt="Factu.me"
+          width={s.px}
+          height={s.px}
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {variant === 'full' && (
@@ -40,23 +46,6 @@ export function Logo({ size = 'md', variant = 'full', className, dark = false }:
         </div>
       )}
     </div>
-  );
-}
-
-/* Clean "F" monogram with a lightning bolt accent */
-function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <path
-        d="M6 4h10a1 1 0 0 1 0 2H8v4h7a1 1 0 0 1 0 2H8v7a1 1 0 0 1-2 0V5a1 1 0 0 1 1-1z"
-        fill="currentColor"
-      />
-      <path
-        d="M15.5 11.5l-3 5h2.5l-1.5 4 5.5-7h-3l2-2h-2.5z"
-        fill="currentColor"
-        opacity="0.7"
-      />
-    </svg>
   );
 }
 

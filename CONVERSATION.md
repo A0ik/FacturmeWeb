@@ -1,6 +1,6 @@
 # FacturmeWeb — Résumé de la conversation de développement
 
-> Généré le 2026-04-08. Couvre 8 sessions de travail.
+> Généré le 2026-04-08. Couvre 9 sessions de travail.
 
 ---
 
@@ -93,46 +93,19 @@ export function validateVatNumber(vat: string): boolean {
   return /^[A-Z]{2}[A-Z0-9]{2}[0-9]{9}$/.test(vat.replace(/\s/g, ''));
 }
 ```
-Appliquées dans `app/(app)/clients/page.tsx` lors de la création d'un client.
 
 ### 8. Onboarding complet (4 étapes)
 | Étape | Fichier | Contenu |
 |-------|---------|---------|
 | 1 | `onboarding/language/page.tsx` | Choix de la langue |
-| 2 | `onboarding/company/page.tsx` | Infos entreprise (→ redirige vers address) |
-| 3 | `onboarding/address/page.tsx` | Adresse + coordonnées bancaires *(nouveau)* |
+| 2 | `onboarding/company/page.tsx` | Infos entreprise |
+| 3 | `onboarding/address/page.tsx` | Adresse + coordonnées bancaires |
 | 4 | `onboarding/template/page.tsx` | Choix du modèle de facture |
 | ✓ | `onboarding/done/page.tsx` | Marque `onboarding_done: true` en BDD |
-
-Barre de progression ajoutée sur chaque étape.
-
-### Clés API nécessaires sur Vercel
-| Variable | Source |
-|----------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
-| `BREVO_SMTP_KEY` | Brevo → SMTP & API |
-| `BREVO_SENDER_EMAIL` | Ton email vérifié Brevo |
-| `BREVO_SENDER_NAME` | Ex: "Facturme" |
-| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys |
-| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe → Developers → API keys |
-| `STRIPE_SOLO_PRICE_ID` | Stripe → Products (Solo €9/mo) |
-| `STRIPE_PRO_PRICE_ID` | Stripe → Products (Pro €19/mo) |
-| `GROQ_API_KEY` | console.groq.com |
-| `OPENROUTER_API_KEY` | openrouter.ai |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Générer avec `web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | Idem |
 
 ---
 
 ## Session 3 — Push sur GitHub
-
-### Problèmes rencontrés
-1. **Mauvais nom de dépôt** : utilisé `facturemeweb` au lieu de `facturmeweb`
-2. **Push rejeté** : le remote avait déjà un commit (README)
-3. **Pas d'upstream défini**
 
 ### Solution finale
 ```bash
@@ -142,46 +115,28 @@ git push --set-upstream origin main --force
 
 ---
 
-## Session 4 — Correction de la faille de sécurité Next.js
+## Session 4 — Correction faille sécurité Next.js (CVE-2025-66478)
 
-### Problème
-Vercel signalait une vulnérabilité de sécurité sur Next.js 15.3.2 (`CVE-2025-66478`).
-
-### Solution
-Mise à jour vers la dernière version stable identifiée via `npm show next versions` :
-```json
-"next": "15.5.14"
-```
-Puis `npm install` + commit + push.
+Mise à jour vers `next: "15.5.14"` (dernière version stable).
 
 ---
 
-## Session 5 — Erreur runtime sur Vercel
-
-### Symptôme
-```
-Application error: a server-side exception has occurred
-Digest: 795089848
-```
-L'app buildait correctement (31/31 pages) mais affichait une erreur en visitant l'URL.
+## Session 5 — Erreur runtime Vercel
 
 ### Cause
-`app/page.tsx` appelle `createServerSupabaseClient()` à l'exécution. Les variables d'environnement Supabase n'étaient **pas configurées sur Vercel**.
+Variables d'environnement Supabase non configurées sur Vercel.
 
 ### Solution
-Dans Vercel → Project → **Settings** → **Environment Variables**, ajouter :
+Dans Vercel → Project → Settings → Environment Variables, ajouter :
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Puis **Redeploy**.
+Puis Redeploy.
 
 ---
 
-## Session 6 — Intégration de composants UI modernes
-
-### Objectif
-Intégrer plusieurs composants UI fournis (modern-mobile-menu, user-dropdown, auth-page, progress-indicator).
+## Session 6 — Intégration composants UI modernes
 
 ### Packages installés
 ```bash
@@ -193,127 +148,206 @@ npm install framer-motion @iconify/react @radix-ui/react-dropdown-menu @radix-ui
 |---------|-------------|
 | `avatar.tsx` | Avatar Radix UI avec fallback initiales |
 | `dropdown-menu.tsx` | DropdownMenu Radix UI complet |
-| `modern-mobile-menu.tsx` | Menu mobile animé — `InteractiveMenu` avec routing Next.js |
-| `user-dropdown.tsx` | Dropdown utilisateur complet (statut, profil, upgrade, logout) |
-| `auth-page.tsx` | Page auth full-page avec animation SVG floatante |
+| `modern-mobile-menu.tsx` | Menu mobile animé avec routing Next.js |
+| `user-dropdown.tsx` | Dropdown utilisateur (statut, profil, upgrade, logout) |
+| `auth-page.tsx` | Page auth full-page avec animation SVG |
 | `progress-indicator.tsx` | Indicateur de progression animé (framer-motion) |
 
-### Fichiers modifiés
-| Fichier | Changement |
-|---------|------------|
-| `app/globals.css` | Variables CSS shadcn + styles `.menu` + keyframe `iconBounce` |
-| `tailwind.config.ts` | Tokens `muted`, `card`, `popover`, `secondary`, `border`, `ring` |
-| `components/layout/BottomNav.tsx` | Utilise `InteractiveMenu` avec routing Next.js |
-| `components/layout/Sidebar.tsx` | `UserDropdown` intégré dans la section profil |
-| `app/(auth)/layout.tsx` | Simplifié (plus de card wrapper, géré par AuthPage) |
-| `app/(auth)/login/page.tsx` | Utilise `AuthPage` avec logique Supabase existante |
-| `app/(auth)/register/page.tsx` | Utilise `AuthPage` mode register |
-
-### Correction TypeScript
-Les callbacks `ref={(el) => ...}` devaient retourner `void`. Fix :
-```typescript
-// Avant
-ref={(el) => (itemRefs.current[index] = el)}
-// Après
-ref={(el) => { itemRefs.current[index] = el; }}
-```
+> Note : `@iconify/react` installé puis abandonné — remplacé par Lucide car les icônes Solar nécessitent un CDN externe non disponible en SSR.
 
 ---
 
-## Session 7 — Correction bugs + Redesign premium complet
+## Session 7 — Correction bugs + Redesign premium
 
-### Problèmes identifiés
-1. **UserDropdown cassé** — `@iconify/react` nécessite le pack d'icônes "solar" chargé via CDN, qui n'était pas disponible
-2. **Paywall jamais visible** — pas de déclenchement proactif, aucun banner d'alerte
-3. **Design insuffisant** — pas assez premium pour un SaaS payant
-4. **Logo inexistant** — juste une lettre "F" en fond vert
+### Problèmes corrigés
+1. **UserDropdown cassé** — `@iconify/react` remplacé intégralement par Lucide
+2. **Paywall jamais visible** — banner proactif ajouté sur factures et dashboard
+3. **Design insuffisant** — redesign premium complet
+4. **Logo inexistant** — nouveau composant `Logo.tsx`
 
-### Fix UserDropdown
-Remplacement complet de `@iconify/react` par Lucide (déjà installé) :
-- Toutes les icônes Solar remplacées par leurs équivalents Lucide
-- `User`, `Settings`, `Bell`, `Smile`, `Moon`, `Zap`, `HelpCircle`, `ExternalLink`, `LogOut`
-- Fichier : `components/ui/user-dropdown.tsx`
-
-### Nouveau : Composant Logo (`components/ui/Logo.tsx`)
+### Nouveau composant Logo (`components/ui/Logo.tsx`)
 ```tsx
 <Logo size="md" variant="full" dark />   // → "Factu.me" avec icon
 <Logo size="sm" variant="icon" />        // → icon seul
 ```
-- Monogramme SVG "F" + accent éclair
-- Dégradé `from-primary to-primary-dark`
-- Props : `size` (sm/md/lg/xl), `variant` (full/icon), `dark`
 
-### Redesign Sidebar (`components/layout/Sidebar.tsx`)
-- Fond `gray-950` (plus profond)
-- Logo `Factu.me` avec `.me` en vert primaire
-- Indicateur de statut (point vert) sur l'avatar dans le UserDropdown
-- Upgrade banner glassmorphism avec bordure verte translucide
-- Navigation : `strokeWidth` adaptatif (2.5 actif / 1.8 inactif)
+### Redesigns effectués
+- **Sidebar** : fond gray-950, logo Factu.me, upgrade banner glassmorphism
+- **Paywall** : toggle mensuel/annuel, carte Pro dark, trust signals Stripe
+- **Dashboard** : dégradé CA, icônes colorées, chart amélioré
+- **Layout mobile** : barre sticky top avec logo
 
-### Redesign Paywall (`app/(app)/paywall/page.tsx`)
-- Toggle mensuel / annuel (-20%) animé
-- Carte "Pro" en dark (`gray-950`) avec `scale-[1.02]`
-- Badge "⭐ Recommandé" en bandeau vert
-- Jauge de progression pour le plan gratuit
-- Prix annuels avec calcul des économies
-- Trust signals : Stripe, résiliation, sans engagement
-- CTA dynamique : état chargement, plan actuel
+---
 
-### Banner paywall proactif (`app/(app)/invoices/page.tsx`)
-Affiché dès que l'utilisateur free utilise ≥ 2/3 factures :
+## Session 8 — Redesign complet UI/UX premium
+
+### Sidebar (`components/layout/Sidebar.tsx`)
+- `h-screen sticky top-0` — profil **toujours visible en bas**, jamais scrollable
+- Widget "Aperçu rapide" dans la nav : payées / en attente / en retard en live
+- Badge rouge sur "Factures" si factures en retard
+- Icône active avec fond coloré + barre gauche verte animée
+- Indicateur plan (Gratuit / Solo / Pro) sous le nom
+
+### Page Factures (`app/(app)/invoices/page.tsx`)
+- **4 cartes stats** : total documents, revenus encaissés, en attente, en retard
+- Panneau filtres dépliant avec pills de statut colorés + filtre type
+- Tableau enrichi : icône type doc, HT en sous-titre, flèche hover, footer total sélection
+- Raccourci "+ Devis" dans la barre d'action
+
+### Page Clients (`app/(app)/clients/page.tsx`)
+- **3 cartes stats** : total clients, CA encaissé, moyenne factures/client
+- **Toggle Grille / Liste** — vue tableau complète
+- Cartes enrichies : revenus, montant en attente, factures, badge "Client actif"
+- Carte "+ Ajouter un client" dans la grille
+- Avatars avec dégradés uniques
+
+### Page Pipeline CRM (`app/(app)/crm/page.tsx`)
+- **4 cartes stats** : pipeline pondéré, deals gagnés, taux de conversion, négociation
+- **Barre de probabilité animée** sur chaque carte kanban
+- Actions rapides : Modifier / ✓ Gagné / Supprimer
+- Drop zone avec highlight visuel
+- Modal enrichie avec barre live + valeur attendue calculée
+
+### Page Création facture (`app/(app)/invoices/new/page.tsx`)
+- **Layout 2 colonnes** : formulaire gauche, récapitulatif sticky droite
+- **Panneau récap dark** : total TTC, détail HT/TVA, liste lignes
+- Sélecteur type redesigné avec description
+- Boutons délai rapide (J+15, J+30, J+45, J+60)
+- Réorganisation lignes (flèches ↑↓)
+- Suggestions clients avec avatar
+- État succès animé sur le bouton CTA
+
+---
+
+## Session 9 — Workspace équipe, Notifications, Aide, Compte
+
+### Base de données (Supabase — projet `ggrwyfhptxwpahwkeoyj`)
+4 nouvelles tables créées via migration MCP :
+
+```sql
+-- workspaces : id, name, slug, owner_id, description, logo_url, plan, settings
+-- workspace_members : workspace_id, user_id, email, role, status, invited_by, joined_at
+-- workspace_invitations : workspace_id, email, role, token (unique), expires_at, accepted_at
+-- notifications : user_id, type, title, body, link, read, data
 ```
-⚡ Plan gratuit · 2/3 factures utilisées — Factures illimitées dès 9€/mois →
-```
-Devient alerte rouge quand la limite est atteinte.
-Même logique ajoutée sur le dashboard.
 
-### Redesign Dashboard (`app/(app)/dashboard/page.tsx`)
-- Carte "CA ce mois" : dégradé `from-primary to-primary-dark` avec cercles décoratifs
-- Icônes colorées + ombres subtiles sur chaque card
-- Quick actions : hover coloré animé (vert/bleu/violet selon type)
-- Chart : `barCategoryGap="30%"` + tooltips avec box-shadow
-- Empty state avec CTA illustré
-- Lien "Tout voir" avec flèche `ArrowUpRight`
+RLS activé sur toutes les tables. Index sur les colonnes critiques.
 
-### Mobile top bar (`app/(app)/layout.tsx`)
-Nouvelle barre sticky sur mobile (cachée sur desktop) :
-```tsx
-<div className="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
-  <Logo size="sm" variant="full" />
-</div>
-```
+### `stores/workspaceStore.ts` (nouveau)
+Store Zustand complet avec :
+- `fetchWorkspace(userId)` — charge workspace + membres + invitations
+- `createWorkspace(name, description)` — crée le workspace
+- `inviteMember(email, role)` — crée invitation + membre pending + envoie email Brevo
+- `updateMemberRole(memberId, role)` — change le rôle
+- `removeMember(memberId)` — retire le membre + supprime invitation pending
+- `fetchNotifications(userId)` — charge les 50 dernières notifs
+- `markRead(id)` / `markAllRead()` — marque comme lu
+- `createNotification(...)` — crée une notif
 
-### Styles globaux (`app/globals.css`)
-- Scrollbar fine stylée (5px, grise, arrondie)
-- `font-feature-settings: 'cv11', 'ss01'` pour Inter
-- `overscroll-behavior: none`
+### Page Workspace (`app/(app)/workspace/page.tsx`)
+**État sans workspace :**
+- Hero sombre avec 3 feature cards (Rôles, Invitations, Données partagées)
+- Bouton "Créer mon workspace" → modal
+
+**État avec workspace :**
+- Onglets Membres / Paramètres
+- Ligne propriétaire avec badge Crown
+- Liste membres avec avatar coloré, badge statut, sélecteur rôle inline (si owner)
+- Invitations en attente (bloc doré) avec bouton "Copier le lien"
+- Guide des rôles (4 cards)
+- Tableau des permissions par rôle (8 actions × 4 rôles)
+- Zone de danger : suppression workspace
+
+### Page Accepter invitation (`app/workspace/join/page.tsx`)
+- Page publique (whitelistée dans le middleware)
+- Vérifie le token en base, affiche infos workspace + rôle
+- Bouton Accepter → met à jour `workspace_members.status = 'active'`
+- Gère les cas : expiré, déjà accepté, token invalide
+- **Fix Vercel build** : `useSearchParams()` isolé dans `<JoinContent>` enveloppé par `<Suspense>`
+
+### API workspace (`app/api/workspace/invite/route.ts`)
+- Authentification session obligatoire
+- Récupère le profil de l'inviteur
+- Envoie email HTML responsive via Brevo (avec lien d'invitation + rôle)
+
+### Page Aide (`app/(app)/help/page.tsx`)
+- Barre de recherche full-text dans les FAQs
+- **10 catégories** avec icône colorée : Démarrage, Facturation, Clients, Dictée IA, Récurrentes, Pipeline, Comptabilité, Abonnements, Workspace, Sécurité & RGPD
+- **56 questions/réponses** rédigées
+- Filtres par catégorie (pills cliquables)
+- FAQ accordion animé (open/close)
+- Bloc contact : email support, GitHub Issues, version actuelle
+
+### Page Notifications (`app/(app)/notifications/page.tsx`)
+- Liste groupée Aujourd'hui / Plus ancien
+- Icône + couleur par type (paiement, retard, invitation, système)
+- Point bleu sur les non lues
+- Bouton "Tout marquer comme lu"
+- Auto-génération de notifs pour les factures en retard au chargement
+- Bloc tips notifications push
+
+### Sidebar mise à jour (`components/layout/Sidebar.tsx`)
+- Section "Outils" : Workspace, Notifications (badge bleu), Aide, Paramètres
+- Badge rouge sur Factures (overdue) + badge bleu sur Notifications (unread)
+- `fetchNotifications` appelé au mount pour le badge live
+
+### Settings — Suppression de compte sécurisée (`app/(app)/settings/page.tsx`)
+- **Modal de confirmation** avec :
+  - Liste des données qui seront supprimées
+  - Champ texte : l'utilisateur doit taper `SUPPRIMER` exactement
+  - Bouton désactivé (`disabled`) tant que la confirmation est incorrecte
+  - État de chargement (spinner) pendant la suppression
+- Bouton déconnexion séparé, plus visible
+
+### Middleware (`middleware.ts`)
+- Routes protégées étendues : `/workspace`, `/notifications`, `/help`
+- `/workspace/join` ajouté en liste blanche (page publique)
+
+---
+
+## Variables d'environnement nécessaires sur Vercel
+
+| Variable | Source |
+|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
+| `BREVO_SMTP_KEY` | Brevo → SMTP & API |
+| `BREVO_SENDER_EMAIL` | Ton email vérifié Brevo |
+| `BREVO_SENDER_NAME` | Ex: "Factu.me" |
+| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys |
+| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe → Developers → API keys |
+| `STRIPE_SOLO_PRICE_ID` | Stripe → Products (Solo €9/mo) |
+| `STRIPE_PRO_PRICE_ID` | Stripe → Products (Pro €19/mo) |
+| `GROQ_API_KEY` | console.groq.com |
+| `OPENROUTER_API_KEY` | openrouter.ai |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | idem |
+| `NEXT_PUBLIC_APP_URL` | Ex: `https://facturme.app` (utilisé pour les liens d'invitation workspace) |
 
 ---
 
 ## État actuel du projet
 
 ### Ce qui fonctionne
-- Build Vercel : 31/31 pages statiques ✓
+- Build Vercel : 36/36 pages statiques ✓
 - Version Next.js : 15.5.14 (sans vulnérabilités connues) ✓
 - Code pushé sur GitHub : `A0ik/FacturmeWeb` ✓
-- Toutes les fonctionnalités implémentées ✓
-- Design premium ✓
-- Logo Factu.me ✓
-- UserDropdown fonctionnel (Lucide) ✓
-- Paywall proactif ✓
-- Menu mobile animé ✓
-- Page auth moderne (framer-motion) ✓
+- Toutes les fonctionnalités de facturation ✓
+- Design premium dark sidebar ✓
+- Profil toujours visible en bas du menu ✓
+- Workspace équipe avec rôles et invitations ✓
+- Notifications avec badge live ✓
+- Page d'aide avec 56 Q/R ✓
+- Suppression de compte sécurisée (confirmation textuelle) ✓
+- Page d'acceptation d'invitation publique ✓
 
-### Ce qu'il reste à faire
-1. **Configurer les variables d'environnement** sur Vercel (notamment les 3 clés Supabase minimum)
-2. **Créer le projet Supabase** sur [supabase.com](https://supabase.com) si pas encore fait
-3. **Créer les tables en base de données** — schéma SQL à exécuter dans Supabase SQL Editor :
-   - `profiles`
-   - `clients`
-   - `invoices`
-   - `recurring_invoices`
-   - `opportunities`
-4. **Configurer Stripe** — créer les produits Solo (9€) et Pro (19€) et renseigner les Price IDs
+### Ce qu'il reste à configurer (hors code)
+1. **Variables d'environnement Vercel** (voir tableau ci-dessus)
+2. **Projet Supabase** déjà créé : `ggrwyfhptxwpahwkeoyj` (eu-west-3, Paris)
+3. **Tables SQL déjà créées** via migration MCP : profiles, clients, invoices, recurring_invoices, opportunities, workspaces, workspace_members, workspace_invitations, notifications
+4. **Stripe** : créer produits Solo (9€) et Pro (19€), renseigner les Price IDs
 
 ---
 
@@ -322,20 +356,25 @@ Nouvelle barre sticky sur mobile (cachée sur desktop) :
 ```
 FacturmeWeb/
 ├── app/
-│   ├── (app)/              # Routes protégées (auth requise)
-│   │   ├── layout.tsx      # Sidebar + BottomNav + mobile top bar
-│   │   ├── dashboard/      # Dashboard redesigné premium
-│   │   ├── invoices/       # Banner paywall proactif
-│   │   │   ├── [id]/       # Détail facture (reminder, share)
-│   │   │   └── new/        # Création avec voix IA
-│   │   ├── clients/
-│   │   ├── crm/
-│   │   ├── recurring/
-│   │   ├── settings/       # Paramètres + export FEC
-│   │   └── paywall/        # Redesign premium toggle mensuel/annuel
-│   ├── (auth)/             # Login/Register avec AuthPage
-│   ├── (onboarding)/       # 4 étapes + ProgressIndicator
-│   ├── share/[invoiceId]/  # Page publique de partage
+│   ├── (app)/
+│   │   ├── layout.tsx          # Sidebar + BottomNav + mobile top bar
+│   │   ├── dashboard/          # Dashboard premium avec stats
+│   │   ├── invoices/           # 4 stats cards + filtres + table enrichie
+│   │   │   ├── [id]/           # Détail facture (relance, partage, PDF)
+│   │   │   └── new/            # Création 2 colonnes + récap sticky
+│   │   ├── clients/            # Grille/liste + stats + CA par client
+│   │   ├── crm/                # Kanban + probability bars + win rate
+│   │   ├── recurring/          # Factures récurrentes
+│   │   ├── workspace/          # ← NOUVEAU membres + rôles + invitations
+│   │   ├── notifications/      # ← NOUVEAU centre de notifications
+│   │   ├── help/               # ← NOUVEAU 56 Q/R + recherche
+│   │   ├── settings/           # Paramètres + suppression sécurisée
+│   │   └── paywall/            # Plans tarifaires
+│   ├── (auth)/                 # Login/Register (AuthPage framer-motion)
+│   ├── (onboarding)/           # 4 étapes + ProgressIndicator
+│   ├── share/[invoiceId]/      # Page publique de partage facture
+│   ├── workspace/
+│   │   └── join/               # ← NOUVEAU accepter une invitation (public)
 │   └── api/
 │       ├── send-invoice/
 │       ├── send-reminder/
@@ -343,36 +382,35 @@ FacturmeWeb/
 │       ├── export/fec/
 │       ├── stripe/
 │       ├── process-voice/
-│       └── account/delete/
+│       ├── account/delete/     # Suppression compte + données
+│       └── workspace/
+│           └── invite/         # ← NOUVEAU envoi email invitation Brevo
 ├── components/
 │   ├── layout/
-│   │   ├── Sidebar.tsx     # Dark premium + Logo + UserDropdown
-│   │   ├── BottomNav.tsx   # InteractiveMenu animé
+│   │   ├── Sidebar.tsx         # Dark premium + profil fixe en bas + badges live
+│   │   ├── BottomNav.tsx       # Menu mobile animé
 │   │   └── Header.tsx
 │   └── ui/
-│       ├── Logo.tsx        # ← NOUVEAU composant Logo SVG
-│       ├── avatar.tsx      # ← NOUVEAU Radix Avatar
-│       ├── dropdown-menu.tsx # ← NOUVEAU Radix DropdownMenu
-│       ├── modern-mobile-menu.tsx # ← NOUVEAU menu animé
-│       ├── user-dropdown.tsx # ← Reécrit avec Lucide
-│       ├── auth-page.tsx   # ← NOUVEAU page auth framer-motion
-│       ├── progress-indicator.tsx # ← NOUVEAU progress animé
+│       ├── Logo.tsx
+│       ├── avatar.tsx
+│       ├── dropdown-menu.tsx
+│       ├── modern-mobile-menu.tsx
+│       ├── user-dropdown.tsx
+│       ├── auth-page.tsx
+│       ├── progress-indicator.tsx
 │       ├── Button.tsx
 │       ├── Input.tsx
 │       ├── Badge.tsx
 │       └── Modal.tsx
-├── lib/
-│   ├── supabase.ts         # Client browser (lazy init)
-│   ├── supabase-server.ts  # Client server + admin
-│   ├── pdf.ts              # Générateur HTML facture multi-devises
-│   └── utils.ts            # downloadCSV, validateSiret, validateVatNumber, cn
 ├── stores/
 │   ├── authStore.ts
 │   ├── dataStore.ts
-│   └── crmStore.ts
+│   ├── crmStore.ts
+│   └── workspaceStore.ts       # ← NOUVEAU workspace + notifications
 ├── hooks/
-│   └── useSubscription.ts  # isFree, isSolo, isPro, isAtLimit, maxInvoices
-└── middleware.ts            # Protection routes + whitelist /share/
+│   └── useSubscription.ts
+└── middleware.ts               # Routes protégées + whitelist /share/ /workspace/join
+
 ```
 
 ---
@@ -383,18 +421,23 @@ FacturmeWeb/
 |------|-------------|-------------|---------|
 | Free | 0€ | — | 3 factures, pas de voix, pas de récurrentes |
 | Solo | 9€/mois | 7€/mois (84€/an) | Illimité, voix IA, récurrentes |
-| Pro | 19€/mois | 15€/mois (180€/an) | Solo + templates premium + Stripe Connect |
+| Pro | 19€/mois | 15€/mois (180€/an) | Solo + templates premium + Workspace équipe |
 
 ---
 
-## Packages npm installés (session 6)
+## Schéma base de données Supabase
 
-```bash
-framer-motion              # Animations (AuthPage, ProgressIndicator)
-@radix-ui/react-dropdown-menu  # Dropdown accessible
-@radix-ui/react-avatar     # Avatar accessible
-@radix-ui/react-slot       # Polymorphisme composants
-class-variance-authority   # CVA pour variants
+```sql
+-- Tables existantes
+profiles            -- id, email, company_name, subscription_tier, invoice_count...
+clients             -- id, user_id, name, email, phone, siret, vat_number...
+invoices            -- id, user_id, client_id, number, document_type, status, items...
+recurring_invoices  -- id, user_id, frequency, next_run_date, is_active...
+opportunities       -- id, user_id, client_name, title, value, stage, probability...
+
+-- Tables ajoutées en session 9
+workspaces              -- id, name, slug, owner_id, description, plan
+workspace_members       -- id, workspace_id, user_id, email, role, status, joined_at
+workspace_invitations   -- id, workspace_id, email, role, token (unique), expires_at
+notifications           -- id, user_id, type, title, body, link, read, data
 ```
-
-> Note : `@iconify/react` a été installé puis **abandonné** (remplacé par Lucide) car les icônes Solar nécessitent un CDN externe non disponible en SSR.

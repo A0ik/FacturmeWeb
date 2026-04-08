@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight,
-  Building2, Bell, HelpCircle,
+  Building2, Bell, HelpCircle, Package, Receipt,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -21,6 +21,8 @@ const NAV_TOP = [
   { href: '/clients',        icon: Users,            label: 'Clients',         badge: null },
   { href: '/crm',            icon: Kanban,           label: 'Pipeline',        badge: null },
   { href: '/recurring',      icon: RefreshCw,        label: 'Récurrentes',     badge: null },
+  { href: '/expenses',       icon: Receipt,          label: 'Notes de frais',  badge: null },
+  { href: '/products',       icon: Package,          label: 'Catalogue',       badge: null },
 ];
 
 const NAV_BOTTOM = [
@@ -181,6 +183,10 @@ export default function Sidebar() {
               if (action === 'settings') router.push('/settings');
               if (action === 'upgrade') router.push('/paywall');
               if (action === 'profile') router.push('/settings');
+              if (action === 'notifications') router.push('/notifications');
+              if (action === 'help') router.push('/help');
+              if (action === 'add-account') { signOut(); router.push('/login'); }
+              if (action.startsWith('switch:')) { signOut(); router.push('/login'); }
             }}
           />
           <div className="flex-1 min-w-0">

@@ -1,13 +1,13 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, FileText, Users, Kanban, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Receipt, Settings } from 'lucide-react';
 import { InteractiveMenu, InteractiveMenuItem } from '@/components/ui/modern-mobile-menu';
 
 const NAV: (InteractiveMenuItem & { href: string })[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/invoices', icon: FileText, label: 'Factures' },
   { href: '/clients', icon: Users, label: 'Clients' },
-  { href: '/crm', icon: Kanban, label: 'Pipeline' },
+  { href: '/expenses', icon: Receipt, label: 'Dépenses' },
   { href: '/settings', icon: Settings, label: 'Réglages' },
 ];
 

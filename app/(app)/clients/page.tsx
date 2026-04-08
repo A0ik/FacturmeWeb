@@ -5,13 +5,14 @@ import { useDataStore } from '@/stores/dataStore';
 import { Input } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import { ImportClientsModal } from '@/components/ui/ImportClientsModal';
 import {
   getInitials, downloadCSV, validateSiret, validateVatNumber, formatCurrency,
 } from '@/lib/utils';
 import {
   Plus, Search, Users, Trash2, Phone, Mail, Download,
   Building2, Globe, MapPin, FileText, TrendingUp, ChevronRight,
-  Star, Clock, ArrowUpRight,
+  Star, Clock, ArrowUpRight, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ export default function ClientsPage() {
   const { clients, invoices, createClient, deleteClient } = useDataStore();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -102,6 +104,13 @@ export default function ClientsPage() {
               <span className="hidden sm:inline">Export</span>
             </button>
           )}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-95"
+          >
+            <Sparkles size={14} />
+            <span className="hidden sm:inline">Import IA</span>
+          </button>
           <Button icon={<Plus size={16} />} onClick={() => setShowModal(true)}>
             Nouveau client
           </Button>
@@ -373,6 +382,27 @@ export default function ClientsPage() {
           </div>
         </form>
       </Modal>
+
+      <ImportClientsModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={async (companies) => {
+          for (const c of companies) {
+            await createClient({
+              name: c.name,
+              email: c.email || '',
+              phone: c.phone || '',
+              address: c.address || '',
+              city: c.city || '',
+              postal_code: c.postal_code || '',
+              country: c.country || 'France',
+              siret: c.siret || '',
+              vat_number: c.vat_number || '',
+              website: c.website || '',
+            } as any);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -1,13 +1,119 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { AtSignIcon, ChevronLeftIcon, Lock } from 'lucide-react';
+import { AtSignIcon, ChevronLeftIcon, Lock, Star } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+
+/* ——— Testimonials data ——— */
+const TESTIMONIALS = [
+  {
+    text: "Factu.me m'a permis de gagner un temps considérable sur ma facturation et d'offrir un meilleur service à mes clients.",
+    author: "Ali Hassan",
+    role: "Développeur freelance",
+    initials: "AH",
+    color: "from-blue-500 to-indigo-600",
+  },
+  {
+    text: "L'interface est incroyablement intuitive. Je crée une facture en moins de 2 minutes. Indispensable !",
+    author: "Sophie Martin",
+    role: "Designer UX",
+    initials: "SM",
+    color: "from-pink-500 to-rose-600",
+  },
+  {
+    text: "La dictée vocale IA est une révolution. J'enregistre mes prestations depuis mon téléphone pendant mes déplacements.",
+    author: "Karim Benali",
+    role: "Consultant RH",
+    initials: "KB",
+    color: "from-emerald-500 to-teal-600",
+  },
+  {
+    text: "Enfin un outil de facturation moderne qui comprend les besoins des indépendants. Les relances automatiques me sauvent la mise !",
+    author: "Laura Dupont",
+    role: "Chef de projet",
+    initials: "LD",
+    color: "from-violet-500 to-purple-600",
+  },
+  {
+    text: "L'export FEC pour mon comptable est parfait. Je n'ai plus besoin de ressaisir quoi que ce soit.",
+    author: "Pierre Moreau",
+    role: "Architecte",
+    initials: "PM",
+    color: "from-amber-500 to-orange-600",
+  },
+  {
+    text: "Le pipeline CRM intégré est une vraie plus-value. Je suis mes prospects et mes factures au même endroit.",
+    author: "Nadia El Khatib",
+    role: "Chargée de compte",
+    initials: "NK",
+    color: "from-cyan-500 to-sky-600",
+  },
+];
+
+function TestimonialCard({ text, author, role, initials, color }: typeof TESTIMONIALS[0]) {
+  return (
+    <div className="flex-shrink-0 w-72 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-5 space-y-4">
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
+        ))}
+      </div>
+      <p className="text-sm text-white/90 leading-relaxed">&ldquo;{text}&rdquo;</p>
+      <div className="flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${color} flex items-center justify-center flex-shrink-0`}>
+          <span className="text-xs font-bold text-white">{initials}</span>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-white">{author}</p>
+          <p className="text-[11px] text-white/50">{role}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScrollingTestimonials() {
+  const rowRef1 = useRef<HTMLDivElement>(null);
+  const rowRef2 = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="relative overflow-hidden mt-auto space-y-3 pb-2">
+      {/* Fade edges */}
+      <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-950 to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-gray-950 to-transparent z-10 pointer-events-none" />
+
+      {/* Row 1 — scrolls left */}
+      <motion.div
+        ref={rowRef1}
+        className="flex gap-3"
+        animate={{ x: ['0%', '-50%'] }}
+        transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+      >
+        {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
+          <TestimonialCard key={i} {...t} />
+        ))}
+      </motion.div>
+
+      {/* Row 2 — scrolls right */}
+      <motion.div
+        ref={rowRef2}
+        className="flex gap-3"
+        animate={{ x: ['-50%', '0%'] }}
+        transition={{ duration: 35, repeat: Infinity, ease: 'linear' }}
+      >
+        {[...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3), ...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3)].map((t, i) => (
+          <TestimonialCard key={i} {...t} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
 
 /* ——— Animated background paths ——— */
 function FloatingPaths({ position }: { position: number }) {
-  const paths = Array.from({ length: 36 }, (_, i) => ({
+  const paths = Array.from({ length: 20 }, (_, i) => ({
     id: i,
     d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${380 - i * 5 * position} -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${152 - i * 5 * position} ${343 - i * 6}C${616 - i * 5 * position} ${470 - i * 6} ${684 - i * 5 * position} ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
     width: 0.5 + i * 0.03,
@@ -15,15 +121,15 @@ function FloatingPaths({ position }: { position: number }) {
 
   return (
     <div className="pointer-events-none absolute inset-0">
-      <svg className="h-full w-full text-slate-800" viewBox="0 0 696 316" fill="none">
-        <title>Background Paths</title>
+      <svg className="h-full w-full text-slate-700" viewBox="0 0 696 316" fill="none">
+        <title>Background</title>
         {paths.map((path) => (
           <motion.path
             key={path.id}
             d={path.d}
             stroke="currentColor"
             strokeWidth={path.width}
-            strokeOpacity={0.08 + path.id * 0.02}
+            strokeOpacity={0.05 + path.id * 0.01}
             initial={{ pathLength: 0.3, opacity: 0.6 }}
             animate={{ pathLength: 1, opacity: [0.3, 0.6, 0.3], pathOffset: [0, 1, 0] }}
             transition={{ duration: 20 + Math.random() * 10, repeat: Infinity, ease: 'linear' }}
@@ -51,15 +157,11 @@ const AuthSeparator = () => (
 
 /* ——— Props ——— */
 export interface AuthPageProps {
-  /** Called when user submits email/password form */
   onEmailLogin?: (email: string, password: string) => Promise<void>;
-  /** Called when user clicks Google button */
   onGoogleLogin?: () => Promise<void>;
   loading?: boolean;
   error?: string;
-  /** 'login' | 'register' — controls button labels */
   mode?: 'login' | 'register';
-  /** Link href for bottom toggle (register/login) */
   toggleHref?: string;
 }
 
@@ -84,25 +186,54 @@ export function AuthPage({
   return (
     <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
       {/* ——— Left panel (desktop only) ——— */}
-      <div className="relative hidden h-full flex-col border-r border-gray-200 bg-gradient-to-br from-primary-light via-white to-blue-50 p-10 lg:flex">
-        <div className="from-white absolute inset-0 z-10 bg-gradient-to-t to-transparent" />
-        <div className="z-10 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-lg">
-            <span className="text-lg font-black text-white">F</span>
+      <div className="relative hidden h-full flex-col bg-gray-950 p-10 lg:flex overflow-hidden">
+        <FloatingPaths position={1} />
+        <FloatingPaths position={-1} />
+
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg flex-shrink-0">
+            <Image src="/icons/icon.svg" alt="Factu.me" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <p className="text-xl font-bold text-gray-900">Factu.me</p>
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-xl font-black text-white">Factu</span>
+            <span className="text-xl font-black text-primary">.me</span>
+          </div>
         </div>
-        <div className="z-10 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-lg text-gray-700">
-              &ldquo;Factu.me m&apos;a permis de gagner un temps considérable sur ma facturation et d&apos;offrir un meilleur service à mes clients.&rdquo;
+
+        {/* Central message */}
+        <div className="relative z-10 mt-12 flex-1">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-3xl font-black text-white leading-tight mb-4">
+              La facturation<br />
+              <span className="text-primary">intelligente</span> pour<br />
+              les pros.
+            </h2>
+            <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
+              Créez des factures professionnelles, suivez vos paiements et gérez votre comptabilité — le tout en quelques secondes.
             </p>
-            <footer className="font-mono text-sm font-semibold text-gray-500">~ Ali Hassan</footer>
-          </blockquote>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              {[
+                { label: '10k+ utilisateurs', color: 'bg-primary/20 text-primary border-primary/20' },
+                { label: 'Export FEC', color: 'bg-white/8 text-white/60 border-white/10' },
+                { label: 'Dictée IA', color: 'bg-white/8 text-white/60 border-white/10' },
+              ].map((badge) => (
+                <span key={badge.label} className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${badge.color}`}>
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          </motion.div>
         </div>
-        <div className="absolute inset-0">
-          <FloatingPaths position={1} />
-          <FloatingPaths position={-1} />
+
+        {/* Scrolling testimonials at bottom */}
+        <div className="relative z-10 -mx-10">
+          <ScrollingTestimonials />
         </div>
       </div>
 
@@ -120,10 +251,13 @@ export function AuthPage({
         <div className="mx-auto w-full max-w-sm space-y-5">
           {/* Logo (mobile only) */}
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-lg">
-              <span className="text-lg font-black text-white">F</span>
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg flex-shrink-0">
+              <Image src="/icons/icon.svg" alt="Factu.me" width={36} height={36} className="w-full h-full object-cover" />
             </div>
-            <p className="text-xl font-bold text-gray-900">Factu.me</p>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-xl font-black text-gray-900">Factu</span>
+              <span className="text-xl font-black text-primary">.me</span>
+            </div>
           </div>
 
           {/* Heading */}

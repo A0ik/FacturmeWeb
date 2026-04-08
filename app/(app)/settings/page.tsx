@@ -9,7 +9,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const [form, setForm] = useState({
     company_name: profile?.company_name || '',
@@ -83,6 +84,20 @@ export default function SettingsPage() {
       await updateProfile({ logo_url: data.publicUrl } as any);
     } catch (e: any) { setError(e.message); }
     finally { setUploading(false); }
+  };
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert(data.error || 'Impossible d\'accéder au portail');
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -245,6 +260,81 @@ export default function SettingsPage() {
             </a>
           ))}
         </div>
+      </div>
+
+      {/* Subscription management */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-gray-900">Mon abonnement</h3>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+            sub.tier === 'pro' ? 'bg-amber-50 text-amber-600' :
+            sub.tier === 'solo' ? 'bg-primary/10 text-primary' :
+            'bg-gray-100 text-gray-500'
+          }`}>
+            {sub.tier === 'pro' ? <Crown size={11} /> : sub.tier === 'solo' ? <Zap size={11} /> : null}
+            {sub.tier === 'free' ? 'Plan Gratuit' : sub.tier === 'solo' ? 'Plan Solo' : 'Plan Pro'}
+          </div>
+        </div>
+
+        {sub.isFree ? (
+          <div className="p-4 bg-gradient-to-r from-primary/8 to-primary/4 rounded-xl border border-primary/15">
+            <p className="text-sm font-semibold text-gray-800 mb-1">Passez à Solo ou Pro</p>
+            <p className="text-xs text-gray-500 mb-3">Factures illimitées, dictée vocale IA, templates premium et bien plus.</p>
+            <button onClick={() => router.push('/paywall')} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-dark transition-all">
+              <Zap size={14} />
+              Voir les offres
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CreditCard size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Abonnement actif</p>
+                  <p className="text-xs text-gray-400">Gérez votre facturation et vos méthodes de paiement</p>
+                </div>
+              </div>
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary transition-all flex-shrink-0 disabled:opacity-50"
+              >
+                {portalLoading ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <ArrowUpRight size={14} />}
+                Gérer
+              </button>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 p-3.5 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
+                  <XCircle size={16} className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Résilier l&apos;abonnement</p>
+                  <p className="text-xs text-gray-400">Accédez au portail Stripe pour résilier</p>
+                </div>
+              </div>
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all flex-shrink-0 disabled:opacity-50"
+              >
+                Résilier
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <ArrowUpRight size={14} className="text-blue-500 flex-shrink-0" />
+              <p className="text-xs text-blue-700">
+                Pour changer de plan, <button onClick={() => router.push('/paywall')} className="font-semibold underline underline-offset-2">consultez les offres</button> ou gérez directement depuis le portail Stripe.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Account actions */}

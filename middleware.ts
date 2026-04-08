@@ -33,7 +33,7 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help'];
+  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help', '/expenses', '/products'];
   if (!session && PROTECTED.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', req.url));
   }

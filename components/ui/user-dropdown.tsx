@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  User, Settings, Bell, Smile, Moon, Zap, Gift,
-  HelpCircle, ExternalLink, LogOut, ChevronDown,
+  User, Settings, Bell, Smile, Moon, Zap, HelpCircle,
+  LogOut, RefreshCw, UserCircle2, Plus,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export interface UserDropdownUser {
   name: string;
@@ -48,12 +49,45 @@ const STATUS_COLORS: Record<string, string> = {
   busy: "bg-red-400",
 };
 
+interface SavedAccount {
+  email: string;
+  name: string;
+  initials: string;
+  lastUsed: string;
+}
+
+function getSavedAccounts(): SavedAccount[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem('savedAccounts') || '[]');
+  } catch { return []; }
+}
+
+export function saveCurrentAccount(email: string, name: string, initials: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const accounts = getSavedAccounts();
+    const filtered = accounts.filter((a) => a.email !== email);
+    const updated: SavedAccount[] = [
+      { email, name, initials, lastUsed: new Date().toISOString() },
+      ...filtered,
+    ].slice(0, 5);
+    localStorage.setItem('savedAccounts', JSON.stringify(updated));
+  } catch {}
+}
+
 export const UserDropdown = ({
   user = { name: "Mon compte", username: "@factu.me", initials: "FC", status: "online" },
   onAction = () => {},
   onStatusChange = () => {},
   selectedStatus = "online",
 }: UserDropdownProps) => {
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
+
+  useEffect(() => {
+    setSavedAccounts(getSavedAccounts().filter((a) => a.email !== user.username.replace('@', '')));
+  }, [user.username]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -107,8 +141,8 @@ export const UserDropdown = ({
           </div>
         </div>
 
-        {/* Status submenu */}
         <div className="p-1.5">
+          {/* Status submenu */}
           <DropdownMenuGroup>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
@@ -147,6 +181,56 @@ export const UserDropdown = ({
               <Bell size={15} className="text-gray-400" />
               <span className="text-sm font-medium">Notifications</span>
             </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('help')}>
+              <HelpCircle size={15} className="text-gray-400" />
+              <span className="text-sm font-medium">Aide</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          {/* Switch account */}
+          <DropdownMenuGroup>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
+                <RefreshCw size={15} className="text-gray-400" />
+                <span className="font-medium">Changer de compte</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 min-w-[220px]">
+                  {savedAccounts.length > 0 ? (
+                    <>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-1">Comptes récents</p>
+                      {savedAccounts.map((acc) => (
+                        <DropdownMenuItem
+                          key={acc.email}
+                          className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer"
+                          onClick={() => onAction(`switch:${acc.email}`)}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-primary">{acc.initials}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{acc.name}</p>
+                            <p className="text-xs text-gray-400 truncate">{acc.email}</p>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator className="my-1 bg-gray-100" />
+                    </>
+                  ) : null}
+                  <DropdownMenuItem
+                    className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer"
+                    onClick={() => onAction('add-account')}
+                  >
+                    <div className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                      <Plus size={12} className="text-gray-400" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Ajouter un compte</span>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
           </DropdownMenuGroup>
 
           <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
@@ -160,16 +244,6 @@ export const UserDropdown = ({
               <Zap size={15} className="text-amber-500" />
               <span className="text-sm font-semibold text-amber-700 flex-1">Passer à Pro</span>
               <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-bold">PRO</span>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-
-          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
-
-          <DropdownMenuGroup>
-            <DropdownMenuItem className="gap-2.5 px-3 py-2 rounded-xl cursor-pointer" onClick={() => onAction('help')}>
-              <HelpCircle size={15} className="text-gray-400" />
-              <span className="text-sm font-medium flex-1">Aide</span>
-              <ExternalLink size={12} className="text-gray-300" />
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
