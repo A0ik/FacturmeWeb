@@ -7,8 +7,9 @@ import Button from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { getSupabaseClient } from '@/lib/supabase';
 import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils';
+import Modal from '@/components/ui/Modal';
 
-import { Camera, Crown, LogOut, Trash2, Download } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
@@ -24,6 +25,10 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [form, setForm] = useState({
     company_name: profile?.company_name || '',
@@ -81,11 +86,19 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) return;
+    if (deleteConfirmText !== 'SUPPRIMER') return;
+    setDeleting(true);
     try {
-      await fetch('/api/account/delete', { method: 'DELETE' });
+      const res = await fetch('/api/account/delete', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
       await signOut();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) {
+      alert(e.message);
+      setDeleting(false);
+    }
   };
 
   const SECTIONS = [
@@ -234,14 +247,102 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Danger zone */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
-        <h3 className="font-bold text-gray-900">Compte</h3>
-        <div className="flex gap-2">
-          <Button variant="secondary" className="flex-1" icon={<LogOut size={16} />} onClick={signOut}>Se déconnecter</Button>
-          <Button variant="danger" className="flex-1" icon={<Trash2 size={16} />} onClick={handleDeleteAccount}>Supprimer le compte</Button>
+      {/* Account actions */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <h3 className="font-bold text-gray-900">Gestion du compte</h3>
+
+        {/* Logout */}
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-gray-100">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Se déconnecter</p>
+            <p className="text-xs text-gray-400 mt-0.5">Vous serez redirigé vers la page de connexion</p>
+          </div>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all flex-shrink-0"
+          >
+            <LogOut size={14} />
+            Déconnexion
+          </button>
+        </div>
+
+        {/* Delete account */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-red-700">Supprimer le compte</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Supprime définitivement votre compte, vos factures et vos clients. Irréversible.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all flex-shrink-0"
+          >
+            <Trash2 size={14} />
+            Supprimer
+          </button>
         </div>
       </div>
+
+      {/* Delete account confirmation modal */}
+      <Modal
+        open={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+        title="Supprimer le compte"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+            <ShieldAlert size={20} className="text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700 font-medium">
+              Cette action est <strong>irréversible</strong>. Toutes vos données seront supprimées définitivement.
+            </p>
+          </div>
+
+          <ul className="text-sm text-gray-600 space-y-1 pl-4">
+            <li className="list-disc">Toutes vos factures et devis</li>
+            <li className="list-disc">Tous vos clients</li>
+            <li className="list-disc">Vos factures récurrentes</li>
+            <li className="list-disc">Votre profil et paramètres</li>
+          </ul>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-2">
+              Tapez <span className="font-black text-red-600">SUPPRIMER</span> pour confirmer
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="SUPPRIMER"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+            >
+              Annuler
+            </Button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== 'SUPPRIMER' || deleting}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Trash2 size={14} />
+              )}
+              Supprimer définitivement
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -12,6 +12,7 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith('/api/stripe/webhook')) return res;
   if (pathname.startsWith('/api/share/')) return res;
   if (pathname.startsWith('/share/')) return res;
+  if (pathname.startsWith('/workspace/join')) return res;
   if (pathname === '/') return res;
 
   const supabase = createServerClient(
@@ -32,7 +33,8 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  if (!session && pathname.startsWith('/dashboard') || !session && pathname.startsWith('/invoices') || !session && pathname.startsWith('/clients') || !session && pathname.startsWith('/crm') || !session && pathname.startsWith('/settings') || !session && pathname.startsWith('/recurring') || !session && pathname.startsWith('/paywall')) {
+  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help'];
+  if (!session && PROTECTED.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
