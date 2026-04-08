@@ -1,13 +1,13 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { useWorkspaceStore, Notification } from '@/stores/workspaceStore';
+import { useWorkspaceStore, type Notification } from '@/stores/workspaceStore';
 import { useDataStore } from '@/stores/dataStore';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import {
   Bell, CheckCheck, FileText, AlertTriangle, Users,
-  Info, Zap, Check, ChevronRight, Clock,
+  Info, Zap, Check, ChevronRight, Clock, BellRing,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -88,18 +88,78 @@ function NotifItem({ notif, onRead }: { notif: Notification; onRead: (id: string
   );
 }
 
+type PushStatus = 'unknown' | 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed' | 'subscribing';
+
 export default function NotificationsPage() {
   const { user } = useAuthStore();
   const { invoices } = useDataStore();
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead, createNotification } = useWorkspaceStore();
 
+  const [pushStatus, setPushStatus] = useState<PushStatus>('unknown');
+  const [pushError, setPushError] = useState('');
+
   useEffect(() => {
     if (user) {
       fetchNotifications(user.id);
-      // Auto-generate notifications from invoice state
       generateInvoiceNotifications();
     }
+    checkPushStatus();
   }, [user]);
+
+  const checkPushStatus = async () => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('unsupported');
+      return;
+    }
+    const permission = Notification.permission;
+    if (permission === 'denied') { setPushStatus('denied'); return; }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      setPushStatus(existing ? 'subscribed' : 'unsubscribed');
+    } catch {
+      setPushStatus('unsubscribed');
+    }
+  };
+
+  const handleSubscribePush = async () => {
+    setPushStatus('subscribing');
+    setPushError('');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus('denied');
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) throw new Error('Clé VAPID non configurée');
+
+      // Convert base64 VAPID key to Uint8Array
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+      };
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+
+      setPushStatus('subscribed');
+    } catch (e: any) {
+      setPushError(e.message);
+      setPushStatus('unsubscribed');
+    }
+  };
 
   const generateInvoiceNotifications = async () => {
     if (!user) return;
@@ -135,6 +195,59 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-5 max-w-2xl">
+      {/* Push notification banner */}
+      {pushStatus !== 'unknown' && pushStatus !== 'unsupported' && (
+        <div className={cn(
+          'rounded-2xl p-4 flex items-start gap-3 border',
+          pushStatus === 'subscribed'
+            ? 'bg-green-50 border-green-200'
+            : pushStatus === 'denied'
+            ? 'bg-red-50 border-red-200'
+            : pushStatus === 'subscribing'
+            ? 'bg-blue-50 border-blue-200'
+            : 'bg-primary/5 border-primary/15'
+        )}>
+          <div className={cn(
+            'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
+            pushStatus === 'subscribed' ? 'bg-green-100' : pushStatus === 'denied' ? 'bg-red-100' : 'bg-primary/15'
+          )}>
+            <BellRing size={16} className={
+              pushStatus === 'subscribed' ? 'text-green-600' : pushStatus === 'denied' ? 'text-red-600' : 'text-primary'
+            } />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900">Notifications push</p>
+            {pushStatus === 'subscribed' && (
+              <p className="text-xs text-green-700 mt-0.5 font-semibold">Notifications activées ✓</p>
+            )}
+            {pushStatus === 'denied' && (
+              <p className="text-xs text-red-600 mt-0.5">
+                L'accès aux notifications a été refusé. Modifiez les permissions dans les réglages de votre navigateur.
+              </p>
+            )}
+            {pushStatus === 'unsubscribed' && (
+              <>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Activez les notifications push pour recevoir des alertes en temps réel sur vos factures.
+                </p>
+                {pushError && <p className="text-xs text-red-500 mt-1">{pushError}</p>}
+              </>
+            )}
+            {pushStatus === 'subscribing' && (
+              <p className="text-xs text-blue-700 mt-0.5">Activation en cours...</p>
+            )}
+          </div>
+          {pushStatus === 'unsubscribed' && (
+            <button
+              onClick={handleSubscribePush}
+              className="flex-shrink-0 text-xs font-bold text-primary border border-primary/30 px-3 py-1.5 rounded-xl hover:bg-primary hover:text-white transition-all"
+            >
+              Activer
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -191,17 +304,19 @@ export default function NotificationsPage() {
       )}
 
       {/* Tips */}
-      <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-          <Zap size={14} className="text-primary" />
+      {pushStatus === 'unsupported' && (
+        <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <Zap size={14} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900">Notifications push non disponibles</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Votre navigateur ne supporte pas les notifications push. Utilisez Chrome, Firefox ou Edge pour cette fonctionnalité.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-bold text-gray-900">Notifications push</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Activez les notifications push dans les paramètres de votre navigateur pour recevoir des alertes en temps réel sur vos factures.
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -55,8 +55,37 @@ export interface Client {
   country: string;
   vat_number?: string;
   notes?: string;
+  tags?: string[];
+  website?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ClientNote {
+  id: string;
+  client_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface PartialPayment {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  paid_at: string;
+  method?: string;
+  note?: string;
+}
+
+export interface WebhookEndpoint {
+  id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  secret: string;
+  active: boolean;
+  created_at: string;
 }
 
 export interface InvoiceItem {
@@ -68,7 +97,7 @@ export interface InvoiceItem {
   total: number;
 }
 
-export type DocumentType = 'invoice' | 'quote' | 'credit_note' | 'purchase_order' | 'delivery_note';
+export type DocumentType = 'invoice' | 'quote' | 'credit_note' | 'purchase_order' | 'delivery_note' | 'deposit';
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'accepted' | 'refused';
 
 export interface Invoice {
@@ -91,6 +120,8 @@ export interface Invoice {
   payment_link?: string;
   payment_method?: string;
   stripe_payment_url?: string;
+  partial_payments?: PartialPayment[];
+  amount_paid?: number;
   voice_transcript?: string;
   linked_invoice_id?: string;
   sent_at?: string;

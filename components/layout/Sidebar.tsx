@@ -6,6 +6,7 @@ import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar,
+  Calculator, Activity,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -14,6 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { cn, getInitials } from '@/lib/utils';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { Logo } from '@/components/ui/Logo';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const NAV_TOP = [
   { href: '/dashboard',      icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
@@ -24,6 +26,8 @@ const NAV_TOP = [
   { href: '/expenses',       icon: Receipt,          label: 'Notes de frais',  badge: null },
   { href: '/products',       icon: Package,          label: 'Catalogue',       badge: null },
   { href: '/calendar',       icon: Calendar,         label: 'Agenda',          badge: null },
+  { href: '/accounting',     icon: Calculator,       label: 'Comptabilité',    badge: null },
+  { href: '/activity',       icon: Activity,         label: 'Activité',        badge: null },
 ];
 
 const NAV_BOTTOM = [
@@ -204,6 +208,7 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
+          <ThemeToggle />
         </div>
       </div>
     </aside>

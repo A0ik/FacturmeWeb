@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import {
   FileText, Clipboard, RefreshCw, Plus, TrendingUp,
   ArrowUpRight, Clock, AlertTriangle, Zap, ShoppingCart, Truck,
+  TrendingDown, Users,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -54,7 +55,7 @@ export default function DashboardPage() {
     clientMap[id].paid += inv.total;
     clientMap[id].count += 1;
   });
-  const topClients = Object.values(clientMap).sort((a, b) => b.paid - a.paid).slice(0, 3);
+  const topClients = Object.values(clientMap).sort((a, b) => b.paid - a.paid).slice(0, 5);
   const maxPaid = topClients[0]?.paid || 1;
 
   // Recovery rate
@@ -62,7 +63,62 @@ export default function DashboardPage() {
   const totalOverdue = invoices.filter((i) => i.status === 'sent' && i.due_date && new Date(i.due_date) < new Date()).reduce((s, i) => s + i.total, 0);
   const recoveryRate = totalPaid + totalOverdue > 0 ? Math.round((totalPaid / (totalPaid + totalOverdue)) * 100) : 100;
 
-  const COLORS = ['#1D9E75', '#3B82F6', '#8B5CF6'];
+  const COLORS = ['#1D9E75', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899'];
+
+  // ── Cash flow forecast (90 days) ──
+  const today = new Date();
+  const in90 = new Date(today); in90.setDate(in90.getDate() + 90);
+
+  // Build month buckets for next 3 months
+  const cashFlowMonths: { key: string; label: string; toCollect: number; recurring: number; cumulative: number }[] = [];
+  for (let m = 0; m < 3; m++) {
+    const d = new Date(today);
+    d.setMonth(d.getMonth() + m);
+    const key = d.toISOString().slice(0, 7);
+    cashFlowMonths.push({
+      key,
+      label: d.toLocaleString('fr-FR', { month: 'long', year: 'numeric' }),
+      toCollect: 0,
+      recurring: 0,
+      cumulative: 0,
+    });
+  }
+
+  // Pending invoices (sent/overdue) — À encaisser
+  invoices
+    .filter((inv) => inv.document_type === 'invoice' && (inv.status === 'sent' || inv.status === 'overdue'))
+    .forEach((inv) => {
+      const refDate = inv.due_date || inv.issue_date || '';
+      if (!refDate) return;
+      const key = refDate.slice(0, 7);
+      const bucket = cashFlowMonths.find((b) => b.key === key);
+      if (bucket) bucket.toCollect += inv.total;
+    });
+
+  // Recurring invoices — project upcoming occurrences in next 90 days
+  invoices
+    .filter((inv) => inv.document_type === 'invoice' && (inv as any).is_recurring)
+    .forEach((inv) => {
+      const freq: string = (inv as any).recurring_frequency || 'monthly';
+      const lastDate = new Date(inv.issue_date || inv.created_at);
+      let next = new Date(lastDate);
+      const freqDays = freq === 'weekly' ? 7 : freq === 'quarterly' ? 90 : 30;
+      while (next <= in90) {
+        next = new Date(next); next.setDate(next.getDate() + freqDays);
+        if (next >= today && next <= in90) {
+          const key = next.toISOString().slice(0, 7);
+          const bucket = cashFlowMonths.find((b) => b.key === key);
+          if (bucket) bucket.recurring += inv.total;
+        }
+      }
+    });
+
+  // Compute cumulative
+  let cumul = 0;
+  cashFlowMonths.forEach((b) => {
+    cumul += b.toCollect + b.recurring;
+    b.cumulative = cumul;
+  });
 
   return (
     <div className="space-y-6">
@@ -252,11 +308,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Top clients */}
+          {/* Top clients (compact) */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-4">Top clients</h3>
-            <div className="space-y-3.5">
-              {topClients.map((c, i) => (
+            <div className="space-y-3">
+              {topClients.slice(0, 3).map((c, i) => (
                 <div key={c.id || c.name} className="flex items-center gap-3">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0"
@@ -280,6 +336,125 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cash Flow Forecast (90 days) ── */}
+      {cashFlowMonths.some((b) => b.toCollect > 0 || b.recurring > 0) && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={16} className="text-primary" />
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Trésorerie prévisionnelle</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Projections sur 90 jours</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] text-gray-400 uppercase tracking-wide border-b border-gray-50">
+                  <th className="text-left pb-2 font-semibold">Mois</th>
+                  <th className="text-right pb-2 font-semibold">À encaisser</th>
+                  <th className="text-right pb-2 font-semibold">Récurrents prévus</th>
+                  <th className="text-right pb-2 font-semibold">Total mois</th>
+                  <th className="text-right pb-2 font-semibold">Cumulatif</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {cashFlowMonths.map((b) => {
+                  const monthTotal = b.toCollect + b.recurring;
+                  return (
+                    <tr key={b.key} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="py-3 font-semibold text-gray-900 capitalize">{b.label}</td>
+                      <td className="py-3 text-right">
+                        {b.toCollect > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full text-xs">
+                            +{formatCurrency(b.toCollect)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right">
+                        {b.recurring > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded-full text-xs">
+                            +{formatCurrency(b.recurring)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right font-bold text-gray-900">
+                        {monthTotal > 0 ? formatCurrency(monthTotal) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="py-3 text-right">
+                        <span className={`font-bold ${b.cumulative > 0 ? 'text-primary' : 'text-gray-400'}`}>
+                          {formatCurrency(b.cumulative)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-50 text-[11px] text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0" />
+              À encaisser (envoyées / en retard)
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0" />
+              Récurrents prévus
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Top 5 Clients (detailed) ── */}
+      {topClients.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Users size={16} className="text-primary" />
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Top 5 clients</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Par chiffre d'affaires encaissé</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {topClients.map((c, i) => {
+              const initials = c.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+              const pct = Math.round((c.paid / maxPaid) * 100);
+              return (
+                <div key={c.id || c.name} className="flex items-center gap-3">
+                  {/* Rank */}
+                  <span className="text-xs font-black text-gray-300 w-4 text-center flex-shrink-0">#{i + 1}</span>
+                  {/* Avatar */}
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black flex-shrink-0"
+                    style={{ backgroundColor: COLORS[i % COLORS.length] + '20', color: COLORS[i % COLORS.length] }}
+                  >
+                    {initials}
+                  </div>
+                  {/* Name + bar */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{c.name}</p>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] }}
+                      />
+                    </div>
+                  </div>
+                  {/* Revenue */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-gray-900">{formatCurrency(c.paid)}</p>
+                    <p className="text-[11px] text-gray-400">{c.count} facture{c.count !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

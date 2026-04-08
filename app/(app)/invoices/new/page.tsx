@@ -13,7 +13,7 @@ import {
   Mic, MicOff, Plus, Trash2, Zap, FileText, Clipboard,
   RefreshCw, ChevronUp, ChevronDown, Sparkles, Calendar,
   User, AlignLeft, Receipt, AlertCircle, CheckCircle2,
-  ArrowLeft, ShoppingCart, Truck,
+  ArrowLeft, ShoppingCart, Truck, Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -68,6 +68,16 @@ const DOC_TYPES = [
     bg: 'bg-purple-50',
     activeBg: 'bg-purple-600',
     border: 'border-purple-500',
+  },
+  {
+    value: 'deposit',
+    label: 'Acompte',
+    description: 'Facture d\'acompte partielle',
+    icon: Banknote,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    activeBg: 'bg-emerald-600',
+    border: 'border-emerald-500',
   },
 ];
 

@@ -11,7 +11,17 @@ import { formatCurrency, formatDate, DOC_LABELS } from '@/lib/utils';
 import { downloadInvoicePdf } from '@/lib/pdf';
 import { InvoiceStatus } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2, Paperclip, Upload, File, X as XIcon } from 'lucide-react';
+import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2, Paperclip, Upload, File, X as XIcon, Plus, CreditCard } from 'lucide-react';
+
+interface PartialPayment {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  paid_at: string;
+  method: string | null;
+  note: string | null;
+  created_at: string;
+}
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { label: string; next: InvoiceStatus }[]> = {
   draft: [{ label: 'Marquer comme envoyée', next: 'sent' }],
@@ -44,6 +54,17 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [uploadingFile, setUploadingFile] = useState(false);
   const attachRef = useRef<HTMLInputElement>(null);
 
+  // Partial payments state
+  const [partialPayments, setPartialPayments] = useState<PartialPayment[]>([]);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    paid_at: new Date().toISOString().slice(0, 10),
+    method: '',
+    note: '',
+  });
+  const [paymentSaving, setPaymentSaving] = useState(false);
+
   const invoice = invoices.find((i) => i.id === id);
 
   useEffect(() => {
@@ -61,6 +82,17 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       setAttachments(files);
     };
     loadAttachments();
+
+    // Load partial payments
+    const loadPartialPayments = async () => {
+      const { data } = await getSupabaseClient()
+        .from('partial_payments')
+        .select('*')
+        .eq('invoice_id', id)
+        .order('paid_at', { ascending: false });
+      if (data) setPartialPayments(data);
+    };
+    loadPartialPayments();
   }, [id]);
 
   const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,6 +114,43 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     if (!session?.user) return;
     await getSupabaseClient().storage.from('assets').remove([`invoice-docs/${session.user.id}/${id}/${name}`]);
     setAttachments((prev) => prev.filter((a) => a.name !== name));
+  };
+
+  const handleAddPartialPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoice) return;
+    setPaymentSaving(true);
+    try {
+      const amount = parseFloat(paymentForm.amount);
+      if (isNaN(amount) || amount <= 0) throw new Error('Montant invalide');
+      const { data, error } = await getSupabaseClient()
+        .from('partial_payments')
+        .insert({
+          invoice_id: invoice.id,
+          amount,
+          paid_at: paymentForm.paid_at,
+          method: paymentForm.method || null,
+          note: paymentForm.note || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      const newPayments = [data, ...partialPayments];
+      setPartialPayments(newPayments);
+      setPaymentForm({ amount: '', paid_at: new Date().toISOString().slice(0, 10), method: '', note: '' });
+      setShowPaymentForm(false);
+      // Auto-mark as paid if total reached
+      const totalPaid = newPayments.reduce((s, p) => s + p.amount, 0);
+      if (totalPaid >= invoice.total && invoice.status !== 'paid') {
+        await updateInvoiceStatus(invoice.id, 'paid');
+      }
+    } catch (e: any) { alert(e.message); }
+    finally { setPaymentSaving(false); }
+  };
+
+  const handleDeletePartialPayment = async (paymentId: string) => {
+    await getSupabaseClient().from('partial_payments').delete().eq('id', paymentId);
+    setPartialPayments((prev) => prev.filter((p) => p.id !== paymentId));
   };
 
   if (!invoice) return (
@@ -339,6 +408,155 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
         </div>
       )}
+
+      {/* Partial Payments */}
+      {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (() => {
+        const totalPaid = partialPayments.reduce((s, p) => s + p.amount, 0);
+        const pct = Math.min(100, invoice.total > 0 ? Math.round((totalPaid / invoice.total) * 100) : 0);
+        const METHOD_LABELS: Record<string, string> = {
+          virement: 'Virement', carte: 'Carte', cheque: 'Chèque', especes: 'Espèces', autre: 'Autre',
+        };
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard size={15} className="text-gray-400" />
+                <h3 className="font-bold text-gray-900">Paiements partiels</h3>
+                {partialPayments.length > 0 && (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-semibold">{partialPayments.length}</span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowPaymentForm((v) => !v)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark transition-colors"
+              >
+                <Plus size={13} />
+                Ajouter
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-gray-500 font-medium">Payé: <span className="font-bold text-gray-900">{formatCurrency(totalPaid)}</span></span>
+                <span className="text-gray-400">Total: {formatCurrency(invoice.total)}</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-right text-[11px] text-gray-400 mt-1">{pct}%</p>
+            </div>
+
+            {/* Payment list */}
+            {partialPayments.length > 0 && (
+              <div className="space-y-2">
+                {partialPayments.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 group">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">{formatCurrency(p.amount)}</span>
+                        {p.method && (
+                          <span className="text-[11px] font-semibold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">{METHOD_LABELS[p.method] || p.method}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-gray-400">{formatDate(p.paid_at)}</span>
+                        {p.note && <span className="text-[11px] text-gray-500 truncate">· {p.note}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeletePartialPayment(p.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+                    >
+                      <XIcon size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {partialPayments.length === 0 && !showPaymentForm && (
+              <p className="text-xs text-gray-400 text-center py-2">Aucun paiement enregistré</p>
+            )}
+
+            {/* Add payment form */}
+            {showPaymentForm && (
+              <form onSubmit={handleAddPartialPayment} className="border border-dashed border-gray-200 rounded-xl p-3 space-y-2.5">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Nouveau paiement</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-gray-400 font-medium block mb-1">Montant (€) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="0.00"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))}
+                      required
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-gray-400 font-medium block mb-1">Date *</label>
+                    <input
+                      type="date"
+                      value={paymentForm.paid_at}
+                      onChange={(e) => setPaymentForm((f) => ({ ...f, paid_at: e.target.value }))}
+                      required
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-400 font-medium block mb-1">Mode de paiement</label>
+                  <select
+                    value={paymentForm.method}
+                    onChange={(e) => setPaymentForm((f) => ({ ...f, method: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+                  >
+                    <option value="">— Choisir —</option>
+                    <option value="virement">Virement</option>
+                    <option value="carte">Carte</option>
+                    <option value="cheque">Chèque</option>
+                    <option value="especes">Espèces</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-400 font-medium block mb-1">Note (optionnel)</label>
+                  <input
+                    type="text"
+                    placeholder="Référence, commentaire..."
+                    value={paymentForm.note}
+                    onChange={(e) => setPaymentForm((f) => ({ ...f, note: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentForm(false)}
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={paymentSaving}
+                    className="flex-1 px-3 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  >
+                    {paymentSaving ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Facture Cloud — attachments */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4">

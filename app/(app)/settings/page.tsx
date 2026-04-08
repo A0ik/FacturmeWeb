@@ -10,12 +10,28 @@ import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils'
 import Modal from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
 const LANG_OPTS = [{ value: 'fr', label: '🇫🇷 Français' }, { value: 'en', label: '🇬🇧 English' }];
 const TEMPLATE_OPTS = [{ value: '1', label: 'Minimaliste' }, { value: '2', label: 'Classique' }, { value: '3', label: 'Moderne' }];
+
+const WEBHOOK_EVENTS = [
+  { value: 'invoice.created', label: 'Facture créée' },
+  { value: 'invoice.sent', label: 'Facture envoyée' },
+  { value: 'invoice.paid', label: 'Facture payée' },
+  { value: 'invoice.overdue', label: 'Facture en retard' },
+];
+
+interface WebhookEndpoint {
+  id: string;
+  user_id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  created_at: string;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -35,6 +51,13 @@ export default function SettingsPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<'connected' | 'error' | null>(null);
+
+  // Webhook state
+  const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [webhookForm, setWebhookForm] = useState<{ url: string; events: string[] }>({ url: '', events: [] });
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [deletingWebhookId, setDeletingWebhookId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     company_name: profile?.company_name || '',
@@ -74,6 +97,20 @@ export default function SettingsPage() {
       setStripeStatus('error');
     }
   }, []);
+
+  // Fetch webhooks on mount
+  useEffect(() => {
+    if (!profile?.id) return;
+    const fetchWebhooks = async () => {
+      const { data, error } = await getSupabaseClient()
+        .from('webhook_endpoints')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) setWebhooks(data);
+    };
+    fetchWebhooks();
+  }, [profile?.id]);
 
   const handleConnectStripe = async () => {
     setStripeConnectLoading(true);
@@ -178,6 +215,56 @@ export default function SettingsPage() {
       alert(e.message);
       setDeleting(false);
     }
+  };
+
+  // Webhook handlers
+  const handleToggleWebhookEvent = (eventValue: string) => {
+    setWebhookForm((prev) => ({
+      ...prev,
+      events: prev.events.includes(eventValue)
+        ? prev.events.filter((e) => e !== eventValue)
+        : [...prev.events, eventValue],
+    }));
+  };
+
+  const handleSaveWebhook = async () => {
+    if (!webhookForm.url.trim() || webhookForm.events.length === 0 || !profile?.id) return;
+    setSavingWebhook(true);
+    try {
+      const { data, error } = await getSupabaseClient()
+        .from('webhook_endpoints')
+        .insert({ user_id: profile.id, url: webhookForm.url.trim(), events: webhookForm.events, active: true })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      setWebhooks((prev) => [data, ...prev]);
+      setShowWebhookModal(false);
+      setWebhookForm({ url: '', events: [] });
+    } catch (e: any) { alert(e.message); }
+    finally { setSavingWebhook(false); }
+  };
+
+  const handleToggleWebhookActive = async (webhook: WebhookEndpoint) => {
+    const { error } = await getSupabaseClient()
+      .from('webhook_endpoints')
+      .update({ active: !webhook.active })
+      .eq('id', webhook.id);
+    if (!error) {
+      setWebhooks((prev) => prev.map((w) => w.id === webhook.id ? { ...w, active: !w.active } : w));
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    setDeletingWebhookId(id);
+    try {
+      const { error } = await getSupabaseClient()
+        .from('webhook_endpoints')
+        .delete()
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+      setWebhooks((prev) => prev.filter((w) => w.id !== id));
+    } catch (e: any) { alert(e.message); }
+    finally { setDeletingWebhookId(null); }
   };
 
   const SECTIONS = [
@@ -532,6 +619,72 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {/* Webhooks */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe size={16} className="text-gray-400" />
+            <h3 className="font-bold text-gray-900">Webhooks sortants</h3>
+          </div>
+          <button
+            onClick={() => { setWebhookForm({ url: '', events: [] }); setShowWebhookModal(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark transition-colors"
+          >
+            <Plus size={13} />
+            Ajouter
+          </button>
+        </div>
+        <p className="text-sm text-gray-500">
+          Recevez des notifications HTTP POST sur votre URL quand une facture est créée, envoyée ou payée.
+        </p>
+
+        {webhooks.length === 0 ? (
+          <div className="text-center py-5 rounded-xl border border-dashed border-gray-200">
+            <Globe size={22} className="text-gray-200 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Aucun webhook configuré</p>
+            <p className="text-xs text-gray-300 mt-1">Ajoutez une URL pour recevoir des notifications</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {webhooks.map((wh) => (
+              <div key={wh.id} className="flex items-start gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-100 group">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{wh.url}</p>
+                    <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${wh.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {wh.active ? 'Actif' : 'Inactif'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {wh.events.map((ev) => (
+                      <span key={ev} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-medium">
+                        {ev}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => handleToggleWebhookActive(wh)}
+                    className="text-xs text-gray-500 hover:text-primary transition-colors font-medium"
+                    title={wh.active ? 'Désactiver' : 'Activer'}
+                  >
+                    {wh.active ? 'Désactiver' : 'Activer'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWebhook(wh.id)}
+                    disabled={deletingWebhookId === wh.id}
+                    className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Account actions */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <h3 className="font-bold text-gray-900">Gestion du compte</h3>
@@ -568,6 +721,62 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Webhook modal */}
+      <Modal
+        open={showWebhookModal}
+        onClose={() => setShowWebhookModal(false)}
+        title="Ajouter un webhook"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">URL de destination</label>
+            <input
+              type="url"
+              value={webhookForm.url}
+              onChange={(e) => setWebhookForm((p) => ({ ...p, url: e.target.value }))}
+              placeholder="https://votre-serveur.com/webhook"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-2">Événements à écouter</label>
+            <div className="space-y-2">
+              {WEBHOOK_EVENTS.map((ev) => (
+                <label key={ev.value} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={webhookForm.events.includes(ev.value)}
+                    onChange={() => handleToggleWebhookEvent(ev.value)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{ev.label}</span>
+                  <span className="text-[11px] text-gray-400 font-mono">{ev.value}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+            <p className="text-xs text-amber-700">
+              Votre URL recevra un POST avec <code className="font-mono bg-amber-100 px-1 rounded">{"{ event, data, timestamp }"}</code>. Assurez-vous qu&apos;elle est accessible publiquement.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowWebhookModal(false)}>
+              Annuler
+            </Button>
+            <Button
+              className="flex-1"
+              loading={savingWebhook}
+              disabled={!webhookForm.url.trim() || webhookForm.events.length === 0}
+              onClick={handleSaveWebhook}
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete account confirmation modal */}
       <Modal

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useCrmStore, Opportunity, OpportunityInput, OpportunityStage } from '@/stores/crmStore';
 import { useDataStore } from '@/stores/dataStore';
 import { useAuthStore } from '@/stores/authStore';
+import { getSupabaseClient } from '@/lib/supabase';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
@@ -10,7 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 import {
   Plus, Trash2, GripVertical, TrendingUp, Target,
   Trophy, Users, ChevronRight, Sparkles, ArrowUpRight,
-  Percent, BarChart3, Flame,
+  Percent, BarChart3, Flame, CheckSquare, Square, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,16 @@ const STAGES: {
 const PROB_BY_STAGE: Record<OpportunityStage, number> = {
   prospect: 10, qualified: 25, proposal: 50, negotiation: 75, won: 100, lost: 0,
 };
+
+interface CrmTask {
+  id: string;
+  opportunity_id: string;
+  user_id: string;
+  title: string;
+  done: boolean;
+  due_date?: string;
+  created_at: string;
+}
 
 function ProbabilityBar({ value, color }: { value: number; color: string }) {
   return (
@@ -61,7 +72,35 @@ export default function CrmPage() {
     client_name: '', title: '', value: 0, stage: 'prospect', probability: 10, notes: '',
   });
 
+  // Tasks state
+  const [tasks, setTasks] = useState<Record<string, CrmTask[]>>({});
+  const [tasksPanelOppId, setTasksPanelOppId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [addingTask, setAddingTask] = useState(false);
+
   useEffect(() => { if (user) fetchOpportunities(); }, [user]);
+
+  // Fetch tasks for all opportunities
+  useEffect(() => {
+    if (!user || opportunities.length === 0) return;
+    const fetchTasks = async () => {
+      const oppIds = opportunities.map((o) => o.id);
+      const { data, error } = await getSupabaseClient()
+        .from('crm_tasks')
+        .select('*')
+        .in('opportunity_id', oppIds)
+        .order('created_at', { ascending: true });
+      if (!error && data) {
+        const grouped: Record<string, CrmTask[]> = {};
+        for (const task of data) {
+          if (!grouped[task.opportunity_id]) grouped[task.opportunity_id] = [];
+          grouped[task.opportunity_id].push(task);
+        }
+        setTasks(grouped);
+      }
+    };
+    fetchTasks();
+  }, [user, opportunities]);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -96,6 +135,59 @@ export default function CrmPage() {
     e.stopPropagation();
     await updateOpportunity(opp.id, { stage: 'won', probability: 100 });
   };
+
+  // Task handlers
+  const handleAddTask = async (oppId: string) => {
+    const title = newTaskTitle.trim();
+    if (!title || !user) return;
+    setAddingTask(true);
+    try {
+      const { data, error } = await getSupabaseClient()
+        .from('crm_tasks')
+        .insert({ opportunity_id: oppId, user_id: user.id, title, done: false })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      setTasks((prev) => ({
+        ...prev,
+        [oppId]: [...(prev[oppId] || []), data],
+      }));
+      setNewTaskTitle('');
+    } catch (e: any) { alert(e.message); }
+    finally { setAddingTask(false); }
+  };
+
+  const handleToggleTask = async (task: CrmTask) => {
+    const updated = { ...task, done: !task.done };
+    const { error } = await getSupabaseClient()
+      .from('crm_tasks')
+      .update({ done: updated.done })
+      .eq('id', task.id);
+    if (!error) {
+      setTasks((prev) => ({
+        ...prev,
+        [task.opportunity_id]: (prev[task.opportunity_id] || []).map((t) =>
+          t.id === task.id ? updated : t
+        ),
+      }));
+    }
+  };
+
+  const handleDeleteTask = async (task: CrmTask) => {
+    const { error } = await getSupabaseClient()
+      .from('crm_tasks')
+      .delete()
+      .eq('id', task.id);
+    if (!error) {
+      setTasks((prev) => ({
+        ...prev,
+        [task.opportunity_id]: (prev[task.opportunity_id] || []).filter((t) => t.id !== task.id),
+      }));
+    }
+  };
+
+  const panelOpp = tasksPanelOppId ? opportunities.find((o) => o.id === tasksPanelOppId) : null;
+  const panelTasks = tasksPanelOppId ? (tasks[tasksPanelOppId] || []) : [];
 
   // Stats
   const totalPipeline = opportunities
@@ -220,6 +312,9 @@ export default function CrmPage() {
                   )}>
                     {stageOpps.map((opp) => {
                       const stageConfig = STAGES.find((s) => s.key === opp.stage)!;
+                      const oppTasks = tasks[opp.id] || [];
+                      const doneTasks = oppTasks.filter((t) => t.done).length;
+                      const totalTasks = oppTasks.length;
                       return (
                         <div
                           key={opp.id}
@@ -243,6 +338,24 @@ export default function CrmPage() {
 
                           {/* Probability bar */}
                           <ProbabilityBar value={opp.probability} color={stageConfig.barColor} />
+
+                          {/* Tasks summary */}
+                          <div className="mt-2.5 pt-2.5 border-t border-gray-50">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTasksPanelOppId(opp.id); setNewTaskTitle(''); }}
+                              className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 hover:text-primary transition-colors w-full"
+                            >
+                              <CheckSquare size={12} className={totalTasks > 0 && doneTasks === totalTasks ? 'text-green-500' : 'text-gray-400'} />
+                              {totalTasks === 0 ? (
+                                <span className="text-gray-400">Tâches</span>
+                              ) : (
+                                <span className={doneTasks === totalTasks ? 'text-green-600' : ''}>
+                                  {doneTasks} / {totalTasks} tâche{totalTasks !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              <Plus size={11} className="ml-auto opacity-0 group-hover:opacity-100" />
+                            </button>
+                          </div>
 
                           {/* Actions */}
                           <div className="flex gap-2 mt-2.5 pt-2.5 border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -285,7 +398,82 @@ export default function CrmPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Tasks panel modal */}
+      <Modal
+        open={!!tasksPanelOppId}
+        onClose={() => { setTasksPanelOppId(null); setNewTaskTitle(''); }}
+        title={panelOpp ? `Tâches — ${panelOpp.client_name}` : 'Tâches'}
+        size="sm"
+      >
+        <div className="space-y-3">
+          {/* Task list */}
+          {panelTasks.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-3">Aucune tâche pour ce deal</p>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {panelTasks.map((task) => (
+                <div key={task.id} className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-gray-50 group transition-colors">
+                  <button
+                    onClick={() => handleToggleTask(task)}
+                    className="flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
+                  >
+                    {task.done ? (
+                      <CheckSquare size={16} className="text-green-500" />
+                    ) : (
+                      <Square size={16} />
+                    )}
+                  </button>
+                  <span className={cn('flex-1 text-sm', task.done && 'line-through text-gray-400')}>
+                    {task.title}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteTask(task)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all flex-shrink-0"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add task input */}
+          <div className="flex gap-2 pt-1 border-t border-gray-100">
+            <input
+              type="text"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && tasksPanelOppId) { e.preventDefault(); handleAddTask(tasksPanelOppId); } }}
+              placeholder="Nouvelle tâche... (Entrée)"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+            />
+            <button
+              onClick={() => tasksPanelOppId && handleAddTask(tasksPanelOppId)}
+              disabled={!newTaskTitle.trim() || addingTask}
+              className="px-3 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-40"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {/* Task progress */}
+          {panelTasks.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all"
+                  style={{ width: `${panelTasks.length > 0 ? (panelTasks.filter((t) => t.done).length / panelTasks.length) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-gray-500">
+                {panelTasks.filter((t) => t.done).length}/{panelTasks.length}
+              </span>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Opp Modal */}
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
