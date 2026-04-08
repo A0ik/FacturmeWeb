@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+// Lazy init — avoids module-level crash during build (env vars not available)
+let _openrouter: OpenAI | null = null;
+function getOpenRouter() {
+  if (!_openrouter) {
+    _openrouter = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY!,
+    });
+  }
+  return _openrouter;
+}
 
 const EXTRACTION_PROMPT = `Tu es un expert en extraction de données d'entreprises françaises.
 Analyse le contenu fourni et extrais TOUTES les entreprises/sociétés/clients/fournisseurs présents.
@@ -47,7 +54,7 @@ Retourne UNIQUEMENT du JSON valide :
 }`;
 
 async function analyzeWithVision(base64: string, mimeType: string): Promise<any> {
-  const completion = await openrouter.chat.completions.create({
+  const completion = await getOpenRouter().chat.completions.create({
     model: 'openai/gpt-4o-mini',
     messages: [
       {
@@ -77,7 +84,7 @@ async function analyzeWithVision(base64: string, mimeType: string): Promise<any>
 }
 
 async function analyzeText(text: string): Promise<any> {
-  const completion = await openrouter.chat.completions.create({
+  const completion = await getOpenRouter().chat.completions.create({
     model: 'openai/gpt-4o-mini',
     messages: [
       { role: 'system', content: EXTRACTION_PROMPT },
