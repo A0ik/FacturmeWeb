@@ -9,6 +9,7 @@ import { ImportClientsModal } from '@/components/ui/ImportClientsModal';
 import {
   getInitials, downloadCSV, validateSiret, validateVatNumber, formatCurrency,
 } from '@/lib/utils';
+import { CompanySearch } from '@/components/ui/CompanySearch';
 import {
   Plus, Search, Users, Trash2, Phone, Mail, Download,
   Building2, Globe, MapPin, FileText, TrendingUp, ChevronRight,
@@ -356,7 +357,21 @@ export default function ClientsPage() {
       {/* Create client modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nouveau client" size="lg">
         <form onSubmit={handleCreate} className="space-y-3">
-          <Input label="Nom *" placeholder="Entreprise ou nom complet" value={form.name} onChange={(e) => set('name', e.target.value)} required />
+          <CompanySearch
+            label="Nom *"
+            value={form.name}
+            onChange={(v) => set('name', v)}
+            onSelect={(company) => {
+              set('name', company.name);
+              if (company.siret) set('siret', company.siret);
+              if (company.address) set('address', company.address);
+              if (company.postal_code) set('postal_code', company.postal_code);
+              if (company.city) set('city', company.city);
+              if (company.vat_number) set('vat_number', company.vat_number);
+            }}
+            placeholder="Rechercher par nom ou SIRET..."
+            required
+          />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Email" type="email" placeholder="contact@exemple.com" value={form.email} onChange={(e) => set('email', e.target.value)} />
             <Input label="Téléphone" placeholder="+33 6 12 34 56 78" value={form.phone} onChange={(e) => set('phone', e.target.value)} />

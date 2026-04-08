@@ -37,7 +37,7 @@ export default function WorkspacePage() {
   const {
     workspace, members, invitations, loading,
     fetchWorkspace, createWorkspace, updateWorkspace, deleteWorkspace,
-    inviteMember, updateMemberRole, removeMember,
+    inviteMember, createInviteLink, updateMemberRole, removeMember,
   } = useWorkspaceStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +54,10 @@ export default function WorkspacePage() {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [copied, setCopied] = useState(false);
+  const [linkRole, setLinkRole] = useState<WorkspaceRole>('member');
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (user) fetchWorkspace(user.id);
@@ -100,6 +104,23 @@ export default function WorkspacePage() {
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleGenerateLink = async () => {
+    setGeneratingLink(true);
+    setGeneratedLink('');
+    try {
+      const token = await createInviteLink(linkRole);
+      const link = `${window.location.origin}/workspace/join?token=${token}`;
+      setGeneratedLink(link);
+      navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setGeneratingLink(false);
+    }
   };
 
   const isOwner = workspace?.owner_id === user?.id;
@@ -348,9 +369,15 @@ export default function WorkspacePage() {
               <div className="divide-y divide-amber-100">
                 {invitations.map((inv) => (
                   <div key={inv.id} className="flex items-center gap-3 px-5 py-3">
-                    <Clock size={15} className="text-amber-500 flex-shrink-0" />
+                    {inv.email ? (
+                      <Clock size={15} className="text-amber-500 flex-shrink-0" />
+                    ) : (
+                      <Globe size={15} className="text-amber-500 flex-shrink-0" />
+                    )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-amber-800 truncate">{inv.email}</p>
+                      <p className="text-sm font-semibold text-amber-800 truncate">
+                        {inv.email || 'Lien ouvert (sans email)'}
+                      </p>
                       <p className="text-xs text-amber-600">
                         Expire le {new Date(inv.expires_at).toLocaleDateString('fr-FR')}
                       </p>
@@ -498,8 +525,63 @@ export default function WorkspacePage() {
       )}
 
       {/* ── INVITE MODAL ── */}
-      <Modal open={showInviteModal} onClose={() => { setShowInviteModal(false); setInviteError(''); setInviteSuccess(''); }} title="Inviter un membre">
+      <Modal open={showInviteModal} onClose={() => { setShowInviteModal(false); setInviteError(''); setInviteSuccess(''); setGeneratedLink(''); }} title="Inviter un membre">
         <div className="space-y-4">
+
+          {/* — Invite link section — */}
+          <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Globe size={14} className="text-gray-500" />
+              <p className="text-sm font-bold text-gray-700">Lien d'invitation</p>
+            </div>
+            <p className="text-xs text-gray-400">
+              Générez un lien partageable — toute personne avec le lien peut rejoindre le workspace avec le rôle choisi.
+            </p>
+            <div className="flex gap-2 items-center">
+              <select
+                value={linkRole}
+                onChange={(e) => setLinkRole(e.target.value as WorkspaceRole)}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 text-gray-700"
+              >
+                {(['admin', 'member', 'viewer'] as WorkspaceRole[]).map((r) => (
+                  <option key={r} value={r}>{ROLE_CONFIG[r].label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleGenerateLink}
+                disabled={generatingLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {generatingLink ? (
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <RefreshCw size={12} />
+                )}
+                Générer
+              </button>
+            </div>
+            {generatedLink && (
+              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-gray-600 truncate flex-1">{generatedLink}</p>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(generatedLink); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+                  className="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark flex-shrink-0 transition-colors"
+                >
+                  {linkCopied ? <Check size={12} /> : <Copy size={12} />}
+                  {linkCopied ? 'Copié !' : 'Copier'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-xs text-gray-400 font-medium">ou inviter par email</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+
           <form onSubmit={handleInvite} className="space-y-3">
             <Input
               label="Adresse email *"

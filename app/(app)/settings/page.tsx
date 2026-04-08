@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -8,8 +8,9 @@ import { Input, Select, Textarea } from '@/components/ui/Input';
 import { getSupabaseClient } from '@/lib/supabase';
 import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
+import { CompanySearch } from '@/components/ui/CompanySearch';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
@@ -18,7 +19,7 @@ const TEMPLATE_OPTS = [{ value: '1', label: 'Minimaliste' }, { value: '2', label
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { profile, updateProfile, signOut } = useAuthStore();
+  const { profile, updateProfile, signOut, fetchProfile } = useAuthStore();
   const sub = useSubscription();
   const fileRef = useRef<HTMLInputElement>(null);
   const sigFileRef = useRef<HTMLInputElement>(null);
@@ -32,6 +33,8 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<'connected' | 'error' | null>(null);
 
   const [form, setForm] = useState({
     company_name: profile?.company_name || '',
@@ -60,6 +63,44 @@ export default function SettingsPage() {
   });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripe = params.get('stripe');
+    if (stripe === 'connected') {
+      setStripeStatus('connected');
+      fetchProfile(profile?.id ?? '');
+    } else if (stripe === 'error') {
+      setStripeStatus('error');
+    }
+  }, []);
+
+  const handleConnectStripe = async () => {
+    setStripeConnectLoading(true);
+    try {
+      const res = await fetch('/api/stripe/connect', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert(data.error || 'Impossible de lancer la connexion Stripe');
+    } catch (e: any) { alert(e.message); }
+    finally { setStripeConnectLoading(false); }
+  };
+
+  const handleDisconnectStripe = async () => {
+    if (!confirm('Déconnecter votre compte Stripe ? Les liens de paiement existants ne seront plus actifs.')) return;
+    setStripeConnectLoading(true);
+    try {
+      const res = await fetch('/api/stripe/connect', { method: 'DELETE' });
+      if (res.ok) {
+        await fetchProfile(profile?.id ?? '');
+        setStripeStatus(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erreur lors de la déconnexion');
+      }
+    } catch (e: any) { alert(e.message); }
+    finally { setStripeConnectLoading(false); }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,7 +204,20 @@ export default function SettingsPage() {
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             </div>
           </div>
-          <Input label="Nom de l'entreprise" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
+          <CompanySearch
+            label="Nom de l'entreprise"
+            value={form.company_name}
+            onChange={(v) => set('company_name', v)}
+            onSelect={(company) => {
+              set('company_name', company.name);
+              if (company.siret) set('siret', company.siret);
+              if (company.address) set('address', company.address);
+              if (company.postal_code) set('postal_code', company.postal_code);
+              if (company.city) set('city', company.city);
+              if (company.vat_number) set('vat_number', company.vat_number);
+            }}
+            placeholder="Rechercher votre entreprise..."
+          />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Prénom" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} />
             <Input label="Nom" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} />
@@ -209,6 +263,86 @@ export default function SettingsPage() {
           <Input label="Banque" value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)} placeholder="BNP Paribas" />
           <Input label="IBAN" value={form.iban} onChange={(e) => set('iban', e.target.value)} placeholder="FR76 1234 5678 9012 3456 7890 123" />
           <Input label="BIC/SWIFT" value={form.bic} onChange={(e) => set('bic', e.target.value)} placeholder="BNPAFRPP" />
+        </div>
+      ),
+    },
+    {
+      title: 'Paiement en ligne (Stripe Connect)',
+      fields: (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Connectez votre compte Stripe pour accepter des paiements en ligne directement sur vos factures. Les fonds arrivent directement sur votre compte Stripe.
+          </p>
+
+          {stripeStatus === 'connected' && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+              <CheckCircle2 size={15} className="text-green-600 flex-shrink-0" />
+              <p className="text-sm font-semibold text-green-700">Stripe connecté avec succès !</p>
+            </div>
+          )}
+          {stripeStatus === 'error' && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+              <XCircle size={15} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600">Erreur lors de la connexion. Réessayez.</p>
+            </div>
+          )}
+
+          {profile?.stripe_connect_id ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3.5 bg-green-50 rounded-xl border border-green-100">
+                <div className="w-9 h-9 rounded-lg bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 size={16} className="text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-green-800">Compte Stripe connecté</p>
+                  <p className="text-xs text-green-600 font-mono truncate">{profile.stripe_connect_id}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <Link2 size={14} className="text-blue-500 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  Un bouton <strong>Payer en ligne</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte Stripe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDisconnectStripe}
+                disabled={stripeConnectLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <Unlink size={14} />
+                Déconnecter Stripe
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[
+                  { label: 'Paiement par carte', desc: 'Visa, Mastercard, Amex' },
+                  { label: 'Virement direct', desc: 'Les fonds vont sur votre Stripe' },
+                  { label: 'Mise à jour auto', desc: 'Facture passée en "Payée"' },
+                ].map((f) => (
+                  <div key={f.label} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-700">{f.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleConnectStripe}
+                disabled={stripeConnectLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#635BFF] text-white text-sm font-bold hover:bg-[#4F46E5] transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {stripeConnectLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Link2 size={15} />
+                )}
+                Connecter avec Stripe
+              </button>
+            </div>
+          )}
         </div>
       ),
     },

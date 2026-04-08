@@ -1,6 +1,6 @@
 # FacturmeWeb — Résumé de la conversation de développement
 
-> Généré le 2026-04-08. Couvre 9 sessions de travail.
+> Généré le 2026-04-08. Couvre 10 sessions de travail.
 
 ---
 
@@ -331,7 +331,7 @@ Store Zustand complet avec :
 ## État actuel du projet
 
 ### Ce qui fonctionne
-- Build Vercel : 36/36 pages statiques ✓
+- Build Vercel : toutes les pages ✓ (exit code 0, 0 erreur TypeScript)
 - Version Next.js : 15.5.14 (sans vulnérabilités connues) ✓
 - Code pushé sur GitHub : `A0ik/FacturmeWeb` ✓
 - Toutes les fonctionnalités de facturation ✓
@@ -342,12 +342,24 @@ Store Zustand complet avec :
 - Page d'aide avec 56 Q/R ✓
 - Suppression de compte sécurisée (confirmation textuelle) ✓
 - Page d'acceptation d'invitation publique ✓
+- Notes de frais avec upload de reçus ✓
+- Catalogue produits CRUD ✓
+- Google Agenda (page de configuration) ✓
+- Signature électronique (upload + aperçu dans paramètres) ✓
+- Pièces jointes par facture (Facture Cloud) ✓
+- Bon de commande + Bon de livraison ✓
+- Import IA des clients (OpenRouter GPT-4o mini) ✓
+- Gestion abonnement Stripe Billing Portal ✓
+- Switch de compte utilisateur ✓
+- Avis clients défilants sur les pages d'auth ✓
 
 ### Ce qu'il reste à configurer (hors code)
 1. **Variables d'environnement Vercel** (voir tableau ci-dessus)
 2. **Projet Supabase** déjà créé : `ggrwyfhptxwpahwkeoyj` (eu-west-3, Paris)
-3. **Tables SQL déjà créées** via migration MCP : profiles, clients, invoices, recurring_invoices, opportunities, workspaces, workspace_members, workspace_invitations, notifications
-4. **Stripe** : créer produits Solo (9€) et Pro (19€), renseigner les Price IDs
+3. **Tables SQL à créer** : `expenses`, `products` (en plus des tables existantes)
+4. **Bucket Supabase Storage** : `assets` avec dossiers `logos/`, `signatures/`, `invoice-docs/`, `receipts/`
+5. **Stripe** : créer produits Solo (9€) et Pro (19€), renseigner les Price IDs
+6. **OPENROUTER_API_KEY** : nécessaire pour l'import IA des clients
 
 ---
 
@@ -358,45 +370,54 @@ FacturmeWeb/
 ├── app/
 │   ├── (app)/
 │   │   ├── layout.tsx          # Sidebar + BottomNav + mobile top bar
-│   │   ├── dashboard/          # Dashboard premium avec stats
-│   │   ├── invoices/           # 4 stats cards + filtres + table enrichie
-│   │   │   ├── [id]/           # Détail facture (relance, partage, PDF)
-│   │   │   └── new/            # Création 2 colonnes + récap sticky
-│   │   ├── clients/            # Grille/liste + stats + CA par client
+│   │   ├── dashboard/          # Dashboard + actions rapides 5 types docs
+│   │   ├── invoices/           # 4 stats + filtres + table + icônes par type
+│   │   │   ├── [id]/           # Détail + pièces jointes (Facture Cloud)
+│   │   │   └── new/            # Création 2 colonnes + récap sticky + 5 types
+│   │   ├── clients/            # Grille/liste + stats + import IA
 │   │   ├── crm/                # Kanban + probability bars + win rate
 │   │   ├── recurring/          # Factures récurrentes
-│   │   ├── workspace/          # ← NOUVEAU membres + rôles + invitations
-│   │   ├── notifications/      # ← NOUVEAU centre de notifications
-│   │   ├── help/               # ← NOUVEAU 56 Q/R + recherche
-│   │   ├── settings/           # Paramètres + suppression sécurisée
+│   │   ├── expenses/           # ← NOUVEAU notes de frais + upload reçus
+│   │   ├── products/           # ← NOUVEAU catalogue produits CRUD
+│   │   ├── calendar/           # ← NOUVEAU Google Agenda + guide OAuth
+│   │   ├── workspace/          # Membres + rôles + invitations
+│   │   ├── notifications/      # Centre de notifications
+│   │   ├── help/               # 56 Q/R + recherche
+│   │   ├── settings/           # Paramètres + signature + suppression sécurisée
 │   │   └── paywall/            # Plans tarifaires
-│   ├── (auth)/                 # Login/Register (AuthPage framer-motion)
+│   ├── (auth)/                 # Login/Register (AuthPage + témoignages défilants)
 │   ├── (onboarding)/           # 4 étapes + ProgressIndicator
 │   ├── share/[invoiceId]/      # Page publique de partage facture
 │   ├── workspace/
-│   │   └── join/               # ← NOUVEAU accepter une invitation (public)
+│   │   └── join/               # Accepter une invitation (public)
 │   └── api/
 │       ├── send-invoice/
 │       ├── send-reminder/
 │       ├── share/[invoiceId]/
 │       ├── export/fec/
 │       ├── stripe/
+│       │   ├── portal/         # ← NOUVEAU Stripe Billing Portal
+│       │   ├── payment-link/
+│       │   └── webhook/
+│       ├── import/
+│       │   └── clients/        # ← NOUVEAU import IA (OpenRouter GPT-4o)
 │       ├── process-voice/
-│       ├── account/delete/     # Suppression compte + données
+│       ├── account/delete/
 │       └── workspace/
-│           └── invite/         # ← NOUVEAU envoi email invitation Brevo
+│           └── invite/
 ├── components/
 │   ├── layout/
-│   │   ├── Sidebar.tsx         # Dark premium + profil fixe en bas + badges live
+│   │   ├── Sidebar.tsx         # Dark + expenses/products/calendar dans NAV_TOP
 │   │   ├── BottomNav.tsx       # Menu mobile animé
 │   │   └── Header.tsx
 │   └── ui/
 │       ├── Logo.tsx
+│       ├── ImportClientsModal.tsx  # ← NOUVEAU modal import IA 4 étapes
 │       ├── avatar.tsx
 │       ├── dropdown-menu.tsx
 │       ├── modern-mobile-menu.tsx
-│       ├── user-dropdown.tsx
-│       ├── auth-page.tsx
+│       ├── user-dropdown.tsx       # Switch de compte + sous-menu
+│       ├── auth-page.tsx           # Témoignages défilants framer-motion
 │       ├── progress-indicator.tsx
 │       ├── Button.tsx
 │       ├── Input.tsx
@@ -404,12 +425,16 @@ FacturmeWeb/
 │       └── Modal.tsx
 ├── stores/
 │   ├── authStore.ts
-│   ├── dataStore.ts
+│   ├── dataStore.ts            # purchase_order + delivery_note (BC/BL)
 │   ├── crmStore.ts
-│   └── workspaceStore.ts       # ← NOUVEAU workspace + notifications
+│   └── workspaceStore.ts
+├── lib/
+│   └── utils.ts                # DOC_LABELS étendu aux 5 types de documents
+├── types/
+│   └── index.ts                # DocumentType : + purchase_order + delivery_note
 ├── hooks/
 │   └── useSubscription.ts
-└── middleware.ts               # Routes protégées + whitelist /share/ /workspace/join
+└── middleware.ts               # + /calendar dans PROTECTED
 
 ```
 
@@ -425,11 +450,101 @@ FacturmeWeb/
 
 ---
 
+## Session 10 — Nouvelles fonctionnalités + design + mobile
+
+### Nouvelles pages et fonctionnalités
+
+#### 1. Notes de frais (`app/(app)/expenses/page.tsx`) ← NOUVEAU
+- 7 catégories : Transport, Repas, Hébergement, Matériel, Bureau, Achats, Autre
+- Upload de reçu vers Supabase Storage
+- Workflow validation/rejet
+- Vue groupée par mois
+- Ajouté dans la sidebar et le BottomNav mobile
+
+#### 2. Catalogue produits (`app/(app)/products/page.tsx`) ← NOUVEAU
+- 5 catégories : Service, Produit, Logiciel, Conseil, Autre
+- CRUD complet avec modal (prix, unité, TVA, référence, actif/inactif)
+- Stats : total produits, CA moyen, actifs
+- Supabase table `products`
+
+#### 3. Page Google Agenda (`app/(app)/calendar/page.tsx`) ← NOUVEAU
+- Guide de configuration OAuth 2.0 étape par étape
+- 4 feature cards (échéances, rappels, RDV clients, sync bidirectionnelle)
+- Sidebar des prochaines échéances en retard/urgentes
+- Ajouté dans `Sidebar.tsx` (icône Calendar) et `middleware.ts`
+
+#### 4. Signature électronique (`app/(app)/settings/page.tsx`)
+- Nouvelle section dans les paramètres
+- Upload PNG/JPG vers Supabase Storage : `signatures/{user_id}.{ext}`
+- Aperçu live de la signature
+- Bouton de suppression
+- Tip pour créer une signature PNG transparent
+
+#### 5. Facture Cloud — Pièces jointes (`app/(app)/invoices/[id]/page.tsx`)
+- Section "Pièces jointes" sur la page de détail de chaque facture
+- Upload de fichiers (PDF, images, documents...)
+- Stockage dans Supabase Storage : `invoice-docs/{user_id}/{invoice_id}/{filename}`
+- Liste des fichiers avec boutons télécharger / supprimer
+- Zone drag-and-drop quand aucune pièce jointe
+
+#### 6. Bon de commande + Bon de livraison
+- `DocumentType` mis à jour : `'purchase_order' | 'delivery_note'` dans `types/index.ts`
+- Préfixes : `BC` et `BL` dans `dataStore.ts`
+- Ajoutés dans le formulaire de création `invoices/new/page.tsx`
+- `DOC_LABELS` mis à jour dans `lib/utils.ts`
+- Icônes distinctes dans la liste des factures :
+  - Bon de commande : `ShoppingCart` orange
+  - Bon de livraison : `Truck` cyan
+- Filtre TYPE_OPTS dans la liste étendu à 5 types
+
+#### 7. Import IA des clients (`app/api/import/clients/route.ts` + `components/ui/ImportClientsModal.tsx`)
+- Upload de n'importe quel format (PDF, image, Excel, CSV, Word...)
+- OpenRouter (GPT-4o mini) analyse le fichier
+- Images/PDFs/Excel → vision base64
+- CSV/TXT/JSON → texte brut
+- Modal 4 étapes : upload → analyse → révision → importé
+- Extraction : nom, SIRET, TVA, email, téléphone, adresse...
+- Bouton "Import IA" violet sur la page clients
+
+#### 8. Gestion abonnement Stripe (`app/api/stripe/portal/route.ts`)
+- Nouveau endpoint : crée une session Stripe Billing Portal
+- Section dédiée dans les paramètres avec boutons Gérer / Résilier
+- CTA upgrade pour les utilisateurs gratuits
+
+### Améliorations design et mobile
+
+#### Dashboard
+- Actions rapides : 5 types de documents en ligne scrollable (mobile-friendly)
+- Icônes colorées par type (ShoppingCart, Truck, Clipboard...)
+
+#### Liste des factures
+- Icônes distinctes selon le type de document
+- Filtres étendus (5 types de documents)
+- Labels CSV mis à jour
+
+#### CSS global (`app/globals.css`)
+- `.scrollbar-none` — masque la scrollbar (utilisé dans la sidebar et les lignes scrollables)
+- `.no-tap-highlight` — supprime le highlight de tap sur iOS/Android
+- `.scroll-smooth-ios` — momentum scrolling sur iOS
+- `.focus-ring` — style de focus accessible
+
+#### Sidebar (`components/layout/Sidebar.tsx`)
+- Ajout de `/expenses` (Receipt), `/products` (Package), `/calendar` (Calendar) dans NAV_TOP
+
+#### Middleware (`middleware.ts`)
+- `/calendar` ajouté dans PROTECTED
+
+### Build final
+- ✓ `tsc --noEmit` : 0 erreur TypeScript
+- ✓ `next build` : exit code 0, toutes les pages compilées
+
+---
+
 ## Schéma base de données Supabase
 
 ```sql
 -- Tables existantes
-profiles            -- id, email, company_name, subscription_tier, invoice_count...
+profiles            -- id, email, company_name, subscription_tier, invoice_count, signature_url...
 clients             -- id, user_id, name, email, phone, siret, vat_number...
 invoices            -- id, user_id, client_id, number, document_type, status, items...
 recurring_invoices  -- id, user_id, frequency, next_run_date, is_active...
@@ -440,4 +555,14 @@ workspaces              -- id, name, slug, owner_id, description, plan
 workspace_members       -- id, workspace_id, user_id, email, role, status, joined_at
 workspace_invitations   -- id, workspace_id, email, role, token (unique), expires_at
 notifications           -- id, user_id, type, title, body, link, read, data
+
+-- Tables à créer pour les nouvelles fonctionnalités (session 10)
+expenses                -- id, user_id, vendor, amount, vat_amount, category, date, receipt_url, status
+products                -- id, user_id, name, description, unit_price, unit, vat_rate, category, reference, is_active
+
+-- Supabase Storage buckets utilisés
+assets/logos/           -- logos entreprise
+assets/signatures/      -- signatures électroniques
+assets/invoice-docs/    -- pièces jointes par facture
+assets/receipts/        -- reçus de notes de frais
 ```

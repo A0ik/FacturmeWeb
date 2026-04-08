@@ -63,15 +63,30 @@ function JoinContent() {
       .single();
 
     if (inv) {
-      await supabase
-        .from('workspace_members')
-        .update({
-          user_id: session.user.id,
-          status: 'active',
-          joined_at: new Date().toISOString(),
-        })
-        .eq('workspace_id', inv.workspace_id)
-        .eq('email', inv.email);
+      if (inv.email) {
+        // Email invitation: activate the pre-created pending member record
+        await supabase
+          .from('workspace_members')
+          .update({
+            user_id: session.user.id,
+            status: 'active',
+            joined_at: new Date().toISOString(),
+          })
+          .eq('workspace_id', inv.workspace_id)
+          .eq('email', inv.email);
+      } else {
+        // Open invitation (no email): create a new member record
+        await supabase
+          .from('workspace_members')
+          .insert({
+            workspace_id: inv.workspace_id,
+            user_id: session.user.id,
+            email: session.user.email ?? '',
+            role: inv.role,
+            status: 'active',
+            joined_at: new Date().toISOString(),
+          });
+      }
     }
 
     setState('accepted');

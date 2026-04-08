@@ -71,6 +71,7 @@ interface WorkspaceState {
 
   // Member actions
   inviteMember: (email: string, role: WorkspaceRole) => Promise<void>;
+  createInviteLink: (role: WorkspaceRole) => Promise<string>;
   updateMemberRole: (memberId: string, role: WorkspaceRole) => Promise<void>;
   removeMember: (memberId: string) => Promise<void>;
 
@@ -233,6 +234,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         workspaceName: workspace.name,
       }),
     });
+  },
+
+  createInviteLink: async (role) => {
+    const { workspace } = get();
+    if (!workspace) throw new Error('Aucun workspace actif');
+    const supabase = getSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const { data: inv, error } = await supabase
+      .from('workspace_invitations')
+      .insert({
+        workspace_id: workspace.id,
+        email: '', // open invitation — no specific email required
+        role,
+        invited_by: session?.user?.id ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    set((s) => ({ invitations: [inv, ...s.invitations] }));
+    return inv.token as string;
   },
 
   updateMemberRole: async (memberId, role) => {

@@ -135,7 +135,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       const res = await fetch('/api/stripe/payment-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id, amount: invoice.total, description: invoice.number }),
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          amount: invoice.total,
+          description: invoice.number,
+          stripeConnectId: profile?.stripe_connect_id ?? null,
+        }),
       });
       const data = await res.json();
       if (data.url) { setPayLink(data.url); navigator.clipboard.writeText(data.url).catch(() => {}); }
@@ -232,12 +237,23 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-xs text-gray-500 mb-1">Statut</p>
             <StatusBadge status={invoice.status} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
             {transitions.map((t) => (
               <Button key={t.next} size="sm" icon={<CheckCircle size={14} />} onClick={() => handleStatusChange(t.next)}>
                 {t.label}
               </Button>
             ))}
+            {invoice.document_type === 'invoice' && (invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'draft') && !payLink && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={payLinkLoading ? undefined : <Link2 size={14} />}
+                loading={payLinkLoading}
+                onClick={handlePaymentLink}
+              >
+                Payer en ligne
+              </Button>
+            )}
           </div>
         </div>
         {payLink && (

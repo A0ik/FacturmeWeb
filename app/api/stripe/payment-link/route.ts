@@ -5,9 +5,10 @@ const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
-    const { invoiceId, amount, description } = await req.json();
+    const { invoiceId, amount, description, stripeConnectId } = await req.json();
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{
@@ -21,8 +22,16 @@ export async function POST(req: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/invoices/${invoiceId}?paid=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/invoices/${invoiceId}`,
       metadata: { invoiceId },
-    });
+    };
 
+    // Route funds to the user's connected Stripe account
+    if (stripeConnectId) {
+      sessionParams.payment_intent_data = {
+        transfer_data: { destination: stripeConnectId },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
