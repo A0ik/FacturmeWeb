@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, FileText, Image, FileSpreadsheet, File,
@@ -75,12 +75,12 @@ const DOTS_MESSAGES = [
 function AnalyzingStep({ fileName }: { fileName: string }) {
   const [msgIdx, setMsgIdx] = useState(0);
 
-  useState(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
       setMsgIdx((i) => Math.min(i + 1, DOTS_MESSAGES.length - 1));
     }, 1800);
     return () => clearInterval(interval);
-  });
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
@@ -123,7 +123,7 @@ function AnalyzingStep({ fileName }: { fileName: string }) {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onImport: (companies: Omit<ExtractedCompany, never>[]) => Promise<void>;
+  onImport: (companies: ExtractedCompany[]) => Promise<void>;
 }
 
 export function ImportClientsModal({ open, onClose, onImport }: Props) {
@@ -297,15 +297,17 @@ export function ImportClientsModal({ open, onClose, onImport }: Props) {
 
           {/* Step indicator */}
           <div className="px-6 py-2.5 flex items-center gap-2 bg-gray-50 border-b border-gray-100 flex-shrink-0">
-            {(['upload', 'analyzing', 'review', 'done'] as const).map((s, i, arr) => (
+            {(['upload', 'analyzing', 'review', 'done'] as Step[]).map((s, i, arr) => {
+              const currentIdx = arr.indexOf(step === 'importing' ? 'done' : step);
+              return (
               <div key={s} className="flex items-center gap-2">
                 <div className={cn(
                   'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all',
-                  step === s ? 'bg-primary text-white scale-110' :
-                  (arr.indexOf(step) > i) ? 'bg-green-500 text-white' :
+                  step === s || (step === 'importing' && s === 'done') ? 'bg-primary text-white scale-110' :
+                  currentIdx > i ? 'bg-green-500 text-white' :
                   'bg-gray-200 text-gray-400'
                 )}>
-                  {arr.indexOf(step) > i ? <Check size={10} /> : i + 1}
+                  {currentIdx > i ? <Check size={10} /> : i + 1}
                 </div>
                 <span className={cn(
                   'text-xs font-medium capitalize hidden sm:inline',
@@ -315,7 +317,8 @@ export function ImportClientsModal({ open, onClose, onImport }: Props) {
                 </span>
                 {i < arr.length - 1 && <ChevronRight size={12} className="text-gray-300" />}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Content */}
