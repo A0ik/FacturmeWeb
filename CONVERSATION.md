@@ -1,6 +1,6 @@
 # FacturmeWeb — Résumé de la conversation de développement
 
-> Généré le 2026-04-07. Couvre 5 sessions de travail.
+> Généré le 2026-04-08. Couvre 8 sessions de travail.
 
 ---
 
@@ -166,16 +166,7 @@ Digest: 795089848
 L'app buildait correctement (31/31 pages) mais affichait une erreur en visitant l'URL.
 
 ### Cause
-`app/page.tsx` appelle `createServerSupabaseClient()` à l'exécution :
-```typescript
-export default async function RootPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) redirect('/dashboard');
-  else redirect('/login');
-}
-```
-Les variables d'environnement Supabase n'étaient **pas configurées sur Vercel**.
+`app/page.tsx` appelle `createServerSupabaseClient()` à l'exécution. Les variables d'environnement Supabase n'étaient **pas configurées sur Vercel**.
 
 ### Solution
 Dans Vercel → Project → **Settings** → **Environment Variables**, ajouter :
@@ -187,6 +178,118 @@ Puis **Redeploy**.
 
 ---
 
+## Session 6 — Intégration de composants UI modernes
+
+### Objectif
+Intégrer plusieurs composants UI fournis (modern-mobile-menu, user-dropdown, auth-page, progress-indicator).
+
+### Packages installés
+```bash
+npm install framer-motion @iconify/react @radix-ui/react-dropdown-menu @radix-ui/react-avatar @radix-ui/react-slot class-variance-authority
+```
+
+### Composants créés dans `components/ui/`
+| Fichier | Description |
+|---------|-------------|
+| `avatar.tsx` | Avatar Radix UI avec fallback initiales |
+| `dropdown-menu.tsx` | DropdownMenu Radix UI complet |
+| `modern-mobile-menu.tsx` | Menu mobile animé — `InteractiveMenu` avec routing Next.js |
+| `user-dropdown.tsx` | Dropdown utilisateur complet (statut, profil, upgrade, logout) |
+| `auth-page.tsx` | Page auth full-page avec animation SVG floatante |
+| `progress-indicator.tsx` | Indicateur de progression animé (framer-motion) |
+
+### Fichiers modifiés
+| Fichier | Changement |
+|---------|------------|
+| `app/globals.css` | Variables CSS shadcn + styles `.menu` + keyframe `iconBounce` |
+| `tailwind.config.ts` | Tokens `muted`, `card`, `popover`, `secondary`, `border`, `ring` |
+| `components/layout/BottomNav.tsx` | Utilise `InteractiveMenu` avec routing Next.js |
+| `components/layout/Sidebar.tsx` | `UserDropdown` intégré dans la section profil |
+| `app/(auth)/layout.tsx` | Simplifié (plus de card wrapper, géré par AuthPage) |
+| `app/(auth)/login/page.tsx` | Utilise `AuthPage` avec logique Supabase existante |
+| `app/(auth)/register/page.tsx` | Utilise `AuthPage` mode register |
+
+### Correction TypeScript
+Les callbacks `ref={(el) => ...}` devaient retourner `void`. Fix :
+```typescript
+// Avant
+ref={(el) => (itemRefs.current[index] = el)}
+// Après
+ref={(el) => { itemRefs.current[index] = el; }}
+```
+
+---
+
+## Session 7 — Correction bugs + Redesign premium complet
+
+### Problèmes identifiés
+1. **UserDropdown cassé** — `@iconify/react` nécessite le pack d'icônes "solar" chargé via CDN, qui n'était pas disponible
+2. **Paywall jamais visible** — pas de déclenchement proactif, aucun banner d'alerte
+3. **Design insuffisant** — pas assez premium pour un SaaS payant
+4. **Logo inexistant** — juste une lettre "F" en fond vert
+
+### Fix UserDropdown
+Remplacement complet de `@iconify/react` par Lucide (déjà installé) :
+- Toutes les icônes Solar remplacées par leurs équivalents Lucide
+- `User`, `Settings`, `Bell`, `Smile`, `Moon`, `Zap`, `HelpCircle`, `ExternalLink`, `LogOut`
+- Fichier : `components/ui/user-dropdown.tsx`
+
+### Nouveau : Composant Logo (`components/ui/Logo.tsx`)
+```tsx
+<Logo size="md" variant="full" dark />   // → "Factu.me" avec icon
+<Logo size="sm" variant="icon" />        // → icon seul
+```
+- Monogramme SVG "F" + accent éclair
+- Dégradé `from-primary to-primary-dark`
+- Props : `size` (sm/md/lg/xl), `variant` (full/icon), `dark`
+
+### Redesign Sidebar (`components/layout/Sidebar.tsx`)
+- Fond `gray-950` (plus profond)
+- Logo `Factu.me` avec `.me` en vert primaire
+- Indicateur de statut (point vert) sur l'avatar dans le UserDropdown
+- Upgrade banner glassmorphism avec bordure verte translucide
+- Navigation : `strokeWidth` adaptatif (2.5 actif / 1.8 inactif)
+
+### Redesign Paywall (`app/(app)/paywall/page.tsx`)
+- Toggle mensuel / annuel (-20%) animé
+- Carte "Pro" en dark (`gray-950`) avec `scale-[1.02]`
+- Badge "⭐ Recommandé" en bandeau vert
+- Jauge de progression pour le plan gratuit
+- Prix annuels avec calcul des économies
+- Trust signals : Stripe, résiliation, sans engagement
+- CTA dynamique : état chargement, plan actuel
+
+### Banner paywall proactif (`app/(app)/invoices/page.tsx`)
+Affiché dès que l'utilisateur free utilise ≥ 2/3 factures :
+```
+⚡ Plan gratuit · 2/3 factures utilisées — Factures illimitées dès 9€/mois →
+```
+Devient alerte rouge quand la limite est atteinte.
+Même logique ajoutée sur le dashboard.
+
+### Redesign Dashboard (`app/(app)/dashboard/page.tsx`)
+- Carte "CA ce mois" : dégradé `from-primary to-primary-dark` avec cercles décoratifs
+- Icônes colorées + ombres subtiles sur chaque card
+- Quick actions : hover coloré animé (vert/bleu/violet selon type)
+- Chart : `barCategoryGap="30%"` + tooltips avec box-shadow
+- Empty state avec CTA illustré
+- Lien "Tout voir" avec flèche `ArrowUpRight`
+
+### Mobile top bar (`app/(app)/layout.tsx`)
+Nouvelle barre sticky sur mobile (cachée sur desktop) :
+```tsx
+<div className="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
+  <Logo size="sm" variant="full" />
+</div>
+```
+
+### Styles globaux (`app/globals.css`)
+- Scrollbar fine stylée (5px, grise, arrondie)
+- `font-feature-settings: 'cv11', 'ss01'` pour Inter
+- `overscroll-behavior: none`
+
+---
+
 ## État actuel du projet
 
 ### Ce qui fonctionne
@@ -194,6 +297,12 @@ Puis **Redeploy**.
 - Version Next.js : 15.5.14 (sans vulnérabilités connues) ✓
 - Code pushé sur GitHub : `A0ik/FacturmeWeb` ✓
 - Toutes les fonctionnalités implémentées ✓
+- Design premium ✓
+- Logo Factu.me ✓
+- UserDropdown fonctionnel (Lucide) ✓
+- Paywall proactif ✓
+- Menu mobile animé ✓
+- Page auth moderne (framer-motion) ✓
 
 ### Ce qu'il reste à faire
 1. **Configurer les variables d'environnement** sur Vercel (notamment les 3 clés Supabase minimum)
@@ -204,6 +313,7 @@ Puis **Redeploy**.
    - `invoices`
    - `recurring_invoices`
    - `opportunities`
+4. **Configurer Stripe** — créer les produits Solo (9€) et Pro (19€) et renseigner les Price IDs
 
 ---
 
@@ -213,17 +323,18 @@ Puis **Redeploy**.
 FacturmeWeb/
 ├── app/
 │   ├── (app)/              # Routes protégées (auth requise)
-│   │   ├── dashboard/
-│   │   ├── invoices/
+│   │   ├── layout.tsx      # Sidebar + BottomNav + mobile top bar
+│   │   ├── dashboard/      # Dashboard redesigné premium
+│   │   ├── invoices/       # Banner paywall proactif
 │   │   │   ├── [id]/       # Détail facture (reminder, share)
-│   │   │   └── new/
+│   │   │   └── new/        # Création avec voix IA
 │   │   ├── clients/
 │   │   ├── crm/
 │   │   ├── recurring/
 │   │   ├── settings/       # Paramètres + export FEC
-│   │   └── paywall/
-│   ├── (auth)/             # Login, register, callback
-│   ├── (onboarding)/       # 4 étapes d'onboarding
+│   │   └── paywall/        # Redesign premium toggle mensuel/annuel
+│   ├── (auth)/             # Login/Register avec AuthPage
+│   ├── (onboarding)/       # 4 étapes + ProgressIndicator
 │   ├── share/[invoiceId]/  # Page publique de partage
 │   └── api/
 │       ├── send-invoice/
@@ -233,15 +344,34 @@ FacturmeWeb/
 │       ├── stripe/
 │       ├── process-voice/
 │       └── account/delete/
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.tsx     # Dark premium + Logo + UserDropdown
+│   │   ├── BottomNav.tsx   # InteractiveMenu animé
+│   │   └── Header.tsx
+│   └── ui/
+│       ├── Logo.tsx        # ← NOUVEAU composant Logo SVG
+│       ├── avatar.tsx      # ← NOUVEAU Radix Avatar
+│       ├── dropdown-menu.tsx # ← NOUVEAU Radix DropdownMenu
+│       ├── modern-mobile-menu.tsx # ← NOUVEAU menu animé
+│       ├── user-dropdown.tsx # ← Reécrit avec Lucide
+│       ├── auth-page.tsx   # ← NOUVEAU page auth framer-motion
+│       ├── progress-indicator.tsx # ← NOUVEAU progress animé
+│       ├── Button.tsx
+│       ├── Input.tsx
+│       ├── Badge.tsx
+│       └── Modal.tsx
 ├── lib/
 │   ├── supabase.ts         # Client browser (lazy init)
 │   ├── supabase-server.ts  # Client server + admin
-│   ├── pdf.ts              # Générateur HTML facture
-│   └── utils.ts            # downloadCSV, validateSiret, validateVatNumber
+│   ├── pdf.ts              # Générateur HTML facture multi-devises
+│   └── utils.ts            # downloadCSV, validateSiret, validateVatNumber, cn
 ├── stores/
 │   ├── authStore.ts
 │   ├── dataStore.ts
 │   └── crmStore.ts
+├── hooks/
+│   └── useSubscription.ts  # isFree, isSolo, isPro, isAtLimit, maxInvoices
 └── middleware.ts            # Protection routes + whitelist /share/
 ```
 
@@ -249,8 +379,22 @@ FacturmeWeb/
 
 ## Tiers de souscription
 
-| Plan | Prix | Limites |
-|------|------|---------|
-| Free | 0€ | 3 factures, pas de voix, pas de récurrentes |
-| Solo | 9€/mo | Illimité, voix, récurrentes |
-| Pro | 19€/mo | Solo + template personnalisé |
+| Plan | Prix mensuel | Prix annuel | Limites |
+|------|-------------|-------------|---------|
+| Free | 0€ | — | 3 factures, pas de voix, pas de récurrentes |
+| Solo | 9€/mois | 7€/mois (84€/an) | Illimité, voix IA, récurrentes |
+| Pro | 19€/mois | 15€/mois (180€/an) | Solo + templates premium + Stripe Connect |
+
+---
+
+## Packages npm installés (session 6)
+
+```bash
+framer-motion              # Animations (AuthPage, ProgressIndicator)
+@radix-ui/react-dropdown-menu  # Dropdown accessible
+@radix-ui/react-avatar     # Avatar accessible
+@radix-ui/react-slot       # Polymorphisme composants
+class-variance-authority   # CVA pour variants
+```
+
+> Note : `@iconify/react` a été installé puis **abandonné** (remplacé par Lucide) car les icônes Solar nécessitent un CDN externe non disponible en SSR.
