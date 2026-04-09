@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDateShort, getInitials } from '@/lib/utils';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check } from 'lucide-react';
+import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check, Star, TrendingUp, Clock } from 'lucide-react';
 
 const TAG_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -177,6 +177,30 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
   const clientTags: string[] = (client as any).tags || [];
 
+  // Scoring client
+  const paidInvoices = clientInvoices.filter((i) => i.status === 'paid' && i.paid_at && i.due_date);
+  const avgPaymentDays = paidInvoices.length > 0
+    ? paidInvoices.reduce((s, inv) => {
+        const paid = new Date(inv.paid_at!).getTime();
+        const due = new Date(inv.due_date!).getTime();
+        return s + Math.max(0, (paid - due) / (1000 * 60 * 60 * 24));
+      }, 0) / paidInvoices.length
+    : null;
+  const paymentRate = clientInvoices.length > 0
+    ? (clientInvoices.filter((i) => i.status === 'paid').length / clientInvoices.filter((i) => i.status !== 'draft').length) * 100
+    : null;
+  const clientScore = (() => {
+    if (clientInvoices.filter((i) => i.status !== 'draft').length === 0) return null;
+    let score = 100;
+    if (avgPaymentDays !== null) score -= Math.min(40, avgPaymentDays * 2);
+    if (paymentRate !== null) score -= (100 - paymentRate) * 0.5;
+    if (clientInvoices.some((i) => i.status === 'overdue')) score -= 15;
+    return Math.max(0, Math.round(score));
+  })();
+  const scoreColor = clientScore === null ? '' : clientScore >= 80 ? 'text-green-600' : clientScore >= 60 ? 'text-amber-600' : 'text-red-600';
+  const scoreBg = clientScore === null ? '' : clientScore >= 80 ? 'bg-green-50 border-green-100' : clientScore >= 60 ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100';
+  const scoreLabel = clientScore === null ? '—' : clientScore >= 80 ? 'Excellent' : clientScore >= 60 ? 'Moyen' : 'Risqué';
+
   return (
     <div className="space-y-4 max-w-2xl">
       <Header
@@ -214,6 +238,42 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <p className="text-xs text-gray-400 mt-0.5">En attente</p>
         </div>
       </div>
+
+      {/* Client score */}
+      {clientScore !== null && (
+        <div className={`bg-white rounded-2xl border p-4 ${scoreBg}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Star size={15} className={scoreColor} />
+              <h3 className="font-bold text-gray-900 text-sm">Score client</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-black ${scoreColor}`}>{clientScore}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${scoreBg} ${scoreColor}`}>{scoreLabel}</span>
+            </div>
+          </div>
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${clientScore >= 80 ? 'bg-green-500' : clientScore >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+              style={{ width: `${clientScore}%` }}
+            />
+          </div>
+          <div className="flex gap-4 mt-3 text-xs text-gray-500">
+            {avgPaymentDays !== null && (
+              <span className="flex items-center gap-1">
+                <Clock size={11} />
+                Paiement moyen : <strong className="text-gray-900">{Math.round(avgPaymentDays)}j après échéance</strong>
+              </span>
+            )}
+            {paymentRate !== null && (
+              <span className="flex items-center gap-1">
+                <TrendingUp size={11} />
+                Taux de paiement : <strong className="text-gray-900">{Math.round(paymentRate)}%</strong>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Portal URL banner */}
       {portalUrl && (

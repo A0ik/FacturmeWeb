@@ -63,7 +63,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       number = get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
       await getSupabaseClient().from('profiles').update({ invoice_count: (profile.invoice_count || 0) + 1, monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1, invoice_month: currentMonth }).eq('id', user.id);
     } else { number = get().getNextInvoiceNumber(prefix, counters.invoice_count); }
-    const { data, error } = await getSupabaseClient().from('invoices').insert({ user_id: user.id, client_id: formData.client_id || null, client_name_override: formData.client_name_override || null, number, document_type: docType, status: 'draft' as InvoiceStatus, issue_date: formData.issue_date, due_date: formData.due_date || null, items, subtotal, vat_amount: vatAmount, total: subtotal + vatAmount, notes: formData.notes || null, linked_invoice_id: formData.linked_invoice_id || null }).select('*, client:clients(*)').single();
+    const discountAmount = formData.discount_percent ? (subtotal + vatAmount) * (formData.discount_percent / 100) : 0;
+    const { data, error } = await getSupabaseClient().from('invoices').insert({ user_id: user.id, client_id: formData.client_id || null, client_name_override: formData.client_name_override || null, number, document_type: docType, status: 'draft' as InvoiceStatus, issue_date: formData.issue_date, due_date: formData.due_date || null, items, subtotal, vat_amount: vatAmount, discount_percent: formData.discount_percent || null, discount_amount: discountAmount || null, total: subtotal + vatAmount - discountAmount, notes: formData.notes || null, linked_invoice_id: formData.linked_invoice_id || null }).select('*, client:clients(*)').single();
     if (error) throw error;
     set((s) => ({ invoices: [data, ...s.invoices] })); get().computeStats(); return data;
   },

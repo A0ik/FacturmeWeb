@@ -13,7 +13,7 @@ import {
   Mic, MicOff, Plus, Trash2, Zap, FileText, Clipboard,
   RefreshCw, ChevronUp, ChevronDown, Sparkles, Calendar,
   User, AlignLeft, Receipt, AlertCircle, CheckCircle2,
-  ArrowLeft, ShoppingCart, Truck, Banknote,
+  ArrowLeft, ShoppingCart, Truck, Banknote, Wand2, Percent,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -122,6 +122,10 @@ export default function NewInvoicePage() {
     { id: generateId(), description: '', quantity: 1, unit_price: 0, vat_rate: 20 },
   ]);
   const [notes, setNotes] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
   const [issueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 30);
@@ -134,7 +138,46 @@ export default function NewInvoicePage() {
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const vatAmount = items.reduce((s, i) => s + i.quantity * i.unit_price * (i.vat_rate / 100), 0);
-  const total = subtotal + vatAmount;
+  const discountAmount = discountPercent > 0 ? (subtotal + vatAmount) * (discountPercent / 100) : 0;
+  const total = subtotal + vatAmount - discountAmount;
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    if (!sub.canUseVoice) { router.push('/paywall'); return; }
+    setAiLoading(true); setAiError('');
+    try {
+      const res = await fetch('/api/ai/generate-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt, sector: profile?.sector }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const { parsed } = data;
+      if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
+      if (parsed?.items?.length) {
+        setItems(parsed.items.map((item: any) => ({
+          id: generateId(),
+          description: item.description || '',
+          quantity: Number(item.quantity) || 1,
+          unit_price: Number(item.unit_price) || 0,
+          vat_rate: Number(item.vat_rate) || 20,
+        })));
+      }
+      if (parsed?.notes) setNotes(parsed.notes);
+      if (parsed?.discount_percent > 0) setDiscountPercent(parsed.discount_percent);
+      if (parsed?.due_days > 0) {
+        const d = new Date(); d.setDate(d.getDate() + parsed.due_days);
+        setDueDate(d.toISOString().split('T')[0]);
+      }
+      setAiPrompt('');
+      setMode('manual');
+    } catch (e: any) {
+      setAiError(e.message || 'Erreur IA');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Voice recording timer
   useEffect(() => {
@@ -243,6 +286,7 @@ export default function NewInvoicePage() {
         due_date: dueDate || undefined,
         items: items as InvoiceItem[],
         notes: notes || undefined,
+        discount_percent: discountPercent > 0 ? discountPercent : undefined,
       }, profile);
       if (user) await fetchProfile(user.id);
       setSuccess(true);
@@ -308,7 +352,7 @@ export default function NewInvoicePage() {
         })}
       </div>
 
-      {/* Voice / Manual toggle */}
+      {/* Voice / AI / Manual toggle */}
       <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
         <button
           onClick={() => setMode('voice')}
@@ -322,6 +366,17 @@ export default function NewInvoicePage() {
           {sub.canUseVoice && (
             <span className="hidden sm:inline text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">IA</span>
           )}
+        </button>
+        <button
+          onClick={() => setMode('ai' as any)}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex-1 sm:flex-initial justify-center',
+            (mode as any) === 'ai' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+          )}
+        >
+          <Wand2 size={14} />
+          Générer par IA
+          <span className="hidden sm:inline text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">NEW</span>
         </button>
         <button
           onClick={() => setMode('manual')}
@@ -421,6 +476,67 @@ export default function NewInvoicePage() {
             className="text-sm text-primary font-semibold hover:text-primary-dark transition-colors"
           >
             Passer en saisie manuelle →
+          </button>
+        </div>
+      )}
+
+      {/* AI text generation */}
+      {(mode as any) === 'ai' && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4 shadow-sm">
+          {!sub.canUseVoice && (
+            <Link
+              href="/paywall"
+              className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-left hover:border-amber-300 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Zap size={16} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-800">Disponible avec Solo ou Pro</p>
+                <p className="text-xs text-amber-600 mt-0.5">Décrivez votre prestation en texte, l'IA remplit la facture →</p>
+              </div>
+            </Link>
+          )}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Wand2 size={15} className="text-purple-500" />
+              <h3 className="text-sm font-bold text-gray-900">Décrivez ce que vous voulez facturer</h3>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Ex: "Facture pour Dupont SAS, développement d'une landing page, forfait 3 500€ HT, TVA 20%, délai 30 jours"
+            </p>
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Décrivez votre prestation en langage naturel..."
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all"
+              onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) handleAiGenerate(); }}
+            />
+            <p className="text-[11px] text-gray-300 mt-1">⌘ + Entrée pour générer</p>
+          </div>
+          {aiError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
+              <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600">{aiError}</p>
+            </div>
+          )}
+          <button
+            onClick={handleAiGenerate}
+            disabled={aiLoading || !aiPrompt.trim() || !sub.canUseVoice}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-lg shadow-purple-500/20"
+          >
+            {aiLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                L'IA génère votre facture...
+              </>
+            ) : (
+              <>
+                <Sparkles size={15} />
+                Générer la facture avec l'IA
+              </>
+            )}
           </button>
         </div>
       )}
@@ -644,6 +760,51 @@ export default function NewInvoicePage() {
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-6 space-y-3">
 
+              {/* Remise globale */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Percent size={14} className="text-gray-400" />
+                  <h3 className="text-sm font-bold text-gray-700">Remise globale</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={discountPercent || ''}
+                    onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                    placeholder="0"
+                    className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  {discountPercent > 0 && (
+                    <span className="text-sm font-bold text-green-600">−{formatCurrency(discountAmount)}</span>
+                  )}
+                  {discountPercent > 0 && (
+                    <button onClick={() => setDiscountPercent(0)} className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors">Retirer</button>
+                  )}
+                </div>
+                {discountPercent > 0 && (
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    {[5, 10, 15, 20].map((p) => (
+                      <button key={p} onClick={() => setDiscountPercent(p)} className={cn('text-xs px-2 py-1 rounded-lg font-semibold transition-colors', discountPercent === p ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-primary/10 hover:text-primary')}>
+                        {p}%
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {discountPercent === 0 && (
+                  <div className="flex gap-1.5 mt-2">
+                    {[5, 10, 15, 20].map((p) => (
+                      <button key={p} onClick={() => setDiscountPercent(p)} className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-primary/10 hover:text-primary font-semibold transition-colors">
+                        {p}%
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Totals card */}
               <div className="bg-gray-950 rounded-2xl text-white overflow-hidden shadow-xl">
                 <div className="px-5 py-4 border-b border-white/8">
@@ -660,6 +821,12 @@ export default function NewInvoicePage() {
                     <span className="text-gray-400">TVA</span>
                     <span className="font-semibold tabular-nums">{formatCurrency(vatAmount)}</span>
                   </div>
+                  {discountPercent > 0 && (
+                    <div className="flex justify-between text-sm text-green-400">
+                      <span>Remise {discountPercent}%</span>
+                      <span className="font-semibold tabular-nums">−{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
                   <div className="h-px bg-white/8" />
                   <div className="flex justify-between">
                     <span className="text-white font-bold">Total TTC</span>

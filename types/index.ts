@@ -175,4 +175,5 @@ export interface InvoiceFormData {
   items: Omit<InvoiceItem, 'total'>[];
   notes?: string;
   linked_invoice_id?: string;
+  discount_percent?: number;
 }

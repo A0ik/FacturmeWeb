@@ -7,7 +7,7 @@ import {
   Receipt, Plus, Search, Edit2, Trash2, TrendingDown,
   X, Check, Calendar, Upload, FileImage, ExternalLink,
   ShoppingCart, Car, Coffee, Home, Laptop, Briefcase, MoreHorizontal,
-  ArrowDownUp, Filter,
+  ArrowDownUp, Filter, Sparkles, Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -75,6 +75,8 @@ export default function ExpensesPage() {
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [categorizingAI, setCategorizingAI] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
@@ -127,10 +129,55 @@ export default function ExpensesPage() {
       await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
       const { data } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
       setReceiptUrl(data.publicUrl);
+      // Auto-OCR if image
+      if (file.type.startsWith('image/')) {
+        handleOCR(file);
+      }
     } catch (e: any) {
       alert(e.message);
     } finally {
       setUploadingReceipt(false);
+    }
+  };
+
+  const handleOCR = async (file: File) => {
+    setOcrLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/ai/ocr-receipt', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const { extracted } = data;
+      if (extracted?.vendor) set('vendor', extracted.vendor);
+      if (extracted?.amount) set('amount', String(extracted.amount));
+      if (extracted?.vat_amount) set('vat_amount', String(extracted.vat_amount));
+      if (extracted?.date) set('date', extracted.date);
+      if (extracted?.description) set('description', extracted.description);
+      if (extracted?.category) set('category', extracted.category);
+    } catch {
+      // silent fail — OCR is best-effort
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const handleCategorizeAI = async () => {
+    if (!form.vendor && !form.description) return;
+    setCategorizingAI(true);
+    try {
+      const res = await fetch('/api/ai/categorize-expense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor: form.vendor, description: form.description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (data.category) set('category', data.category);
+    } catch {
+      // silent fail
+    } finally {
+      setCategorizingAI(false);
     }
   };
 
@@ -443,9 +490,30 @@ export default function ExpensesPage() {
                   </div>
                 </div>
 
+                {/* OCR indicator */}
+                {ocrLoading && (
+                  <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-xl p-3">
+                    <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    <p className="text-xs text-purple-700 font-medium">L'IA analyse votre justificatif...</p>
+                  </div>
+                )}
+
                 {/* Vendor */}
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Fournisseur *</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fournisseur *</label>
+                    {(form.vendor || form.description) && (
+                      <button
+                        type="button"
+                        onClick={handleCategorizeAI}
+                        disabled={categorizingAI}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-purple-600 hover:text-purple-700 transition-colors disabled:opacity-50"
+                      >
+                        {categorizingAI ? <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /> : <Sparkles size={11} />}
+                        Catégoriser par IA
+                      </button>
+                    )}
+                  </div>
                   <input
                     required
                     value={form.vendor}

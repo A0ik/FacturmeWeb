@@ -6,7 +6,7 @@ import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar,
-  Calculator, Activity, Landmark,
+  Calculator, Activity, Landmark, Search,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -113,6 +113,18 @@ export default function Sidebar() {
           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           <span className="text-[10px] text-gray-500 font-medium uppercase tracking-widest">Espace de travail</span>
         </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative z-10 px-3 pb-2 pt-1 border-b border-white/5 flex-shrink-0">
+        <button
+          onClick={() => { const e = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }); window.dispatchEvent(e); }}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/8 border border-white/8 text-gray-400 hover:text-gray-200 transition-all text-xs group"
+        >
+          <Search size={13} />
+          <span className="flex-1 text-left font-medium">Rechercher...</span>
+          <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-500 font-mono group-hover:text-gray-400">⌘K</kbd>
+        </button>
       </div>
 
       {/* Main nav */}

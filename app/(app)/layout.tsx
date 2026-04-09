@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import { Logo } from '@/components/ui/Logo';
 import { ServiceWorkerRegistration } from '@/components/ui/ServiceWorkerRegistration';
+import CommandPalette from '@/components/ui/CommandPalette';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } catch(e) {}
       ` }} />
       <ServiceWorkerRegistration />
+      <CommandPalette />
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
         <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">
