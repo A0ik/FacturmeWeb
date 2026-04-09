@@ -456,7 +456,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         const totalPaid = partialPayments.reduce((s, p) => s + p.amount, 0);
         const pct = Math.min(100, invoice.total > 0 ? Math.round((totalPaid / invoice.total) * 100) : 0);
         const METHOD_LABELS: Record<string, string> = {
-          virement: 'Virement', carte: 'Carte', cheque: 'Chèque', especes: 'Espèces', autre: 'Autre',
+          virement: 'Virement', carte: 'Carte', cheque: 'Chèque', especes: 'Espèces', prelevement: 'Prélèvement bancaire', autre: 'Autre',
         };
         return (
           <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
@@ -565,6 +565,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                     <option value="carte">Carte</option>
                     <option value="cheque">Chèque</option>
                     <option value="especes">Espèces</option>
+                    <option value="prelevement">Prélèvement bancaire</option>
                     <option value="autre">Autre</option>
                   </select>
                 </div>

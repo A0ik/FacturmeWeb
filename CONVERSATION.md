@@ -16,7 +16,7 @@ Générer un lien d'invitation partageable sans avoir besoin d'une adresse email
 ### 3. Auto-complétion SIRET
 Lors de la création d'un client ou dans les paramètres, rechercher une entreprise par nom remplit automatiquement le SIRET, l'adresse, le code postal, la ville et le numéro de TVA intracommunautaire — via l'API gouvernementale française `recherche-entreprises.api.gouv.fr`.
 
----
+---  
 
 ## Audit des fonctionnalités manquantes
 

@@ -177,3 +177,19 @@ export interface InvoiceFormData {
   linked_invoice_id?: string;
   discount_percent?: number;
 }
+
+export interface Appointment {
+  id: string;
+  user_id: string;
+  client_id?: string;
+  client?: Client;
+  title: string;
+  description?: string;
+  location?: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  color: string;
+  google_event_id?: string;
+  created_at: string;
+}

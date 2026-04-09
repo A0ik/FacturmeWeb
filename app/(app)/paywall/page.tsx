@@ -10,8 +10,8 @@ const PLANS = [
   {
     id: 'solo',
     name: 'Solo',
-    monthly: 9,
-    yearly: 7,
+    monthly: 9.99,
+    yearly: 7.99,
     badge: null,
     icon: Zap,
     iconColor: 'text-blue-400',
@@ -29,8 +29,8 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    monthly: 19,
-    yearly: 15,
+    monthly: 19.99,
+    yearly: 15.99,
     badge: 'Recommandé',
     icon: Crown,
     iconColor: 'text-amber-400',
@@ -195,7 +195,7 @@ export default function PaywallPage() {
                 {/* Price */}
                 <div className="flex items-end gap-1.5 mb-1">
                   <span className={cn('text-5xl font-black tracking-tight', isPro ? 'text-white' : 'text-gray-900')}>
-                    {price}€
+                    {price.toFixed(2).replace('.', ',')}€
                   </span>
                   <span className={cn('pb-1.5 text-sm', isPro ? 'text-gray-400' : 'text-gray-400')}>
                     /mois
@@ -203,7 +203,7 @@ export default function PaywallPage() {
                 </div>
                 {yearly && (
                   <p className={cn('text-xs mb-5', isPro ? 'text-gray-500' : 'text-gray-400')}>
-                    Facturé {price * 12}€/an · Économisez {(plan.monthly - plan.yearly) * 12}€
+                    Facturé {(price * 12).toFixed(2).replace('.', ',')}€/an · Économisez {((plan.monthly - plan.yearly) * 12).toFixed(2).replace('.', ',')}€
                   </p>
                 )}
 
