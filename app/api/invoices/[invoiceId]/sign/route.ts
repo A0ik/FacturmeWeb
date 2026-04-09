@@ -3,11 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const { signatureDataUrl, signerName } = await req.json();
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
