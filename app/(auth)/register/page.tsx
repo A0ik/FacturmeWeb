@@ -6,6 +6,14 @@ import Link from 'next/link';
 import { useAuthStore } from '@/stores/authStore';
 import { AuthPage } from '@/components/ui/auth-page';
 
+const PASSWORD_CHECKS = [
+  { label: 'Au moins 8 caractères', test: (p: string) => p.length >= 8 },
+  { label: 'Une lettre majuscule', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Une lettre minuscule', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Un chiffre', test: (p: string) => /[0-9]/.test(p) },
+  { label: 'Un caractère spécial', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
 export default function RegisterPage() {
   const router = useRouter();
   const { signUp, signInWithGoogle, loading } = useAuthStore();
@@ -13,12 +21,22 @@ export default function RegisterPage() {
   const [confirmEmail, setConfirmEmail] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
 
-  const handleEmailRegister = async (email: string, password: string) => {
+  const handleEmailRegister = async (email: string, password: string, confirmPassword?: string) => {
     setError('');
-    if (password.length < 6) {
-      setError('Le mot de passe doit faire au moins 6 caractères');
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
+
+    // Validate password strength
+    const failedChecks = PASSWORD_CHECKS.filter((c) => !c.test(password));
+    if (failedChecks.length > 0) {
+      setError(`Le mot de passe doit contenir : ${failedChecks.map((c) => c.label.toLowerCase()).join(', ')}`);
+      return;
+    }
+
     try {
       setPendingEmail(email);
       await signUp(email, password);

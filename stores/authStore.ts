@@ -74,9 +74,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await getSupabaseClient().auth.signOut();
+    try {
+      await getSupabaseClient().auth.signOut();
+    } catch {
+      // Session may already be invalid — ignore errors
+    }
     set({ user: null, profile: null });
-    if (typeof window !== 'undefined') window.location.href = '/login';
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      window.location.href = '/login';
+    }
   },
 
   fetchProfile: async (userId) => {

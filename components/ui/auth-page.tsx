@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AtSignIcon, ChevronLeftIcon, Lock, Star } from 'lucide-react';
+import { AtSignIcon, ChevronLeftIcon, Lock, Star, Eye, EyeOff, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -155,9 +155,32 @@ const AuthSeparator = () => (
   </div>
 );
 
+/* ——— Password strength checker ——— */
+interface PasswordCheck {
+  label: string;
+  test: (p: string) => boolean;
+}
+
+const PASSWORD_CHECKS: PasswordCheck[] = [
+  { label: 'Au moins 8 caractères', test: (p) => p.length >= 8 },
+  { label: 'Une lettre majuscule', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Une lettre minuscule', test: (p) => /[a-z]/.test(p) },
+  { label: 'Un chiffre', test: (p) => /[0-9]/.test(p) },
+  { label: 'Un caractère spécial', test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
+function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+  const passed = PASSWORD_CHECKS.filter((c) => c.test(password)).length;
+  if (passed <= 1) return { score: 1, label: 'Très faible', color: 'bg-red-500' };
+  if (passed === 2) return { score: 2, label: 'Faible', color: 'bg-orange-500' };
+  if (passed === 3) return { score: 3, label: 'Moyen', color: 'bg-amber-500' };
+  if (passed === 4) return { score: 4, label: 'Fort', color: 'bg-green-500' };
+  return { score: 5, label: 'Très fort', color: 'bg-emerald-500' };
+}
+
 /* ——— Props ——— */
 export interface AuthPageProps {
-  onEmailLogin?: (email: string, password: string) => Promise<void>;
+  onEmailLogin?: (email: string, password: string, confirmPassword?: string) => Promise<void>;
   onGoogleLogin?: () => Promise<void>;
   loading?: boolean;
   error?: string;
@@ -175,13 +198,28 @@ export function AuthPage({
 }: AuthPageProps) {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirm, setShowConfirm] = React.useState(false);
+  const [passwordFocused, setPasswordFocused] = React.useState(false);
+
+  const isLogin = mode === 'login';
+  const strength = useMemo(() => getPasswordStrength(password), [password]);
+  const allChecksPassed = PASSWORD_CHECKS.every((c) => c.test(password));
+  const passwordsMatch = !isLogin && confirmPassword.length > 0 && password === confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onEmailLogin?.(email, password);
+    if (!isLogin) {
+      if (password !== confirmPassword) return;
+      if (!allChecksPassed) return;
+    }
+    await onEmailLogin?.(email, password, confirmPassword);
   };
 
-  const isLogin = mode === 'login';
+  const canSubmit = isLogin
+    ? email.length > 0 && password.length > 0
+    : email.length > 0 && allChecksPassed && password === confirmPassword;
 
   return (
     <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
@@ -307,16 +345,104 @@ export function AuthPage({
             {/* Password */}
             <div className="relative">
               <input
-                type="password"
-                placeholder="••••••••"
+                type={showPassword ? 'text' : 'password'}
+                placeholder={isLogin ? '••••••••' : 'Choisissez un mot de passe'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
                 required
-                minLength={6}
-                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                minLength={isLogin ? 1 : 8}
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
               <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
+
+            {/* Password strength (register only) */}
+            {!isLogin && password.length > 0 && (
+              <div className="space-y-2.5 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                {/* Strength bar */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+                      style={{ width: `${(strength.score / 5) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`text-[11px] font-bold ${
+                    strength.score >= 4 ? 'text-green-600' :
+                    strength.score >= 3 ? 'text-amber-600' :
+                    'text-red-500'
+                  }`}>
+                    {strength.label}
+                  </span>
+                </div>
+
+                {/* Requirements checklist */}
+                <div className="space-y-1">
+                  {PASSWORD_CHECKS.map((check) => {
+                    const passed = check.test(password);
+                    return (
+                      <div key={check.label} className="flex items-center gap-2">
+                        {passed ? (
+                          <Check size={12} className="text-green-500 flex-shrink-0" />
+                        ) : (
+                          <X size={12} className="text-gray-300 flex-shrink-0" />
+                        )}
+                        <span className={`text-[11px] ${passed ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                          {check.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Confirm password (register only) */}
+            {!isLogin && (
+              <div className="relative">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Confirmez le mot de passe"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+                <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            )}
+
+            {/* Password match indicator */}
+            {!isLogin && confirmPassword.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {passwordsMatch ? (
+                  <>
+                    <Check size={12} className="text-green-500" />
+                    <span className="text-[11px] text-green-600 font-medium">Les mots de passe correspondent</span>
+                  </>
+                ) : (
+                  <>
+                    <X size={12} className="text-red-400" />
+                    <span className="text-[11px] text-red-400">Les mots de passe ne correspondent pas</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-500">{error}</p>
@@ -324,8 +450,8 @@ export function AuthPage({
 
             <button
               type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-dark disabled:opacity-50"
+              disabled={loading || !canSubmit}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
