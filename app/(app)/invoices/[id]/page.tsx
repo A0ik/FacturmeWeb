@@ -65,6 +65,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   });
   const [paymentSaving, setPaymentSaving] = useState(false);
 
+  // SEPA state
+  const [showSepaModal, setShowSepaModal] = useState(false);
+  const [sepaIban, setSepaIban] = useState('');
+  const [sepaLoading, setSepaLoading] = useState(false);
+  const [sepaResult, setSepaResult] = useState<{ success: boolean; ibanLast4?: string; error?: string } | null>(null);
+
   const invoice = invoices.find((i) => i.id === id);
 
   useEffect(() => {
@@ -249,6 +255,37 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     });
   };
 
+  const handleSepaCharge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoice.client_id) return alert('Client introuvable');
+    setSepaLoading(true); setSepaResult(null);
+    try {
+      const res = await fetch('/api/stripe/sepa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: invoice.client_id,
+          iban: sepaIban.replace(/\s/g, ''),
+          clientName: invoice.client?.name || '',
+          clientEmail: invoice.client?.email || '',
+          invoiceId: invoice.id,
+          amount: invoice.total,
+          description: `Facture ${invoice.number}`,
+          stripeConnectId: profile?.stripe_connect_id ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSepaResult({ success: true, ibanLast4: data.ibanLast4 });
+      await updateInvoiceStatus(invoice.id, 'paid');
+      setTimeout(() => setShowSepaModal(false), 2500);
+    } catch (e: any) {
+      setSepaResult({ success: false, error: e.message });
+    } finally {
+      setSepaLoading(false);
+    }
+  };
+
   const docLabel = DOC_LABELS[invoice.document_type as keyof typeof DOC_LABELS] || 'Facture';
   const transitions = STATUS_TRANSITIONS[invoice.status] || [];
 
@@ -286,6 +323,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   {invoice.document_type === 'invoice' && (
                     <button onClick={() => { handlePaymentLink(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
                       <Link2 size={14} />Lien de paiement
+                    </button>
+                  )}
+                  {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
+                    <button onClick={() => { setShowSepaModal(true); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                      <CreditCard size={14} />Prélèvement SEPA
                     </button>
                   )}
                   <div className="border-t border-gray-100" />
@@ -652,6 +694,47 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <Button type="submit" className="flex-1" loading={sendLoading} icon={<Send size={14} />}>Envoyer</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* SEPA modal */}
+      <Modal open={showSepaModal} onClose={() => { setShowSepaModal(false); setSepaResult(null); setSepaIban(''); }} title="Prélèvement SEPA">
+        {sepaResult?.success ? (
+          <div className="text-center py-4">
+            <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <CreditCard size={24} className="text-green-600" />
+            </div>
+            <p className="text-lg font-black text-gray-900 mb-1">Prélèvement initié</p>
+            <p className="text-sm text-gray-500">IBAN se terminant par <strong>{sepaResult.ibanLast4}</strong>.<br />La facture a été marquée comme payée.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSepaCharge} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs text-amber-700 font-medium">
+                En soumettant ce formulaire, vous autorisez un prélèvement SEPA de <strong>{formatCurrency(invoice.total)}</strong> sur le compte renseigné.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">IBAN du client</label>
+              <input
+                type="text"
+                placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                value={sepaIban}
+                onChange={(e) => setSepaIban(e.target.value.toUpperCase())}
+                required
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary tracking-wider"
+              />
+            </div>
+            {sepaResult?.error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                <p className="text-xs text-red-600">{sepaResult.error}</p>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => { setShowSepaModal(false); setSepaResult(null); setSepaIban(''); }}>Annuler</Button>
+              <Button type="submit" className="flex-1" loading={sepaLoading} icon={<CreditCard size={14} />}>Prélever {formatCurrency(invoice.total)}</Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

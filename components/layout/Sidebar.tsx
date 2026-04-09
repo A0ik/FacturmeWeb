@@ -6,7 +6,7 @@ import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar,
-  Calculator, Activity,
+  Calculator, Activity, Landmark,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -28,6 +28,7 @@ const NAV_TOP = [
   { href: '/calendar',       icon: Calendar,         label: 'Agenda',          badge: null },
   { href: '/accounting',     icon: Calculator,       label: 'Comptabilité',    badge: null },
   { href: '/activity',       icon: Activity,         label: 'Activité',        badge: null },
+  { href: '/banking',        icon: Landmark,         label: 'Banque',          badge: null },
 ];
 
 const NAV_BOTTOM = [

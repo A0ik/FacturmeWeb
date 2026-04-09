@@ -12,6 +12,8 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith('/api/stripe/webhook')) return res;
   if (pathname.startsWith('/api/share/')) return res;
   if (pathname.startsWith('/share/')) return res;
+  if (pathname.startsWith('/client/')) return res;
+  if (pathname.startsWith('/api/client-portal/')) return res;
   if (pathname.startsWith('/workspace/join')) return res;
   if (pathname === '/') return res;
 
@@ -33,7 +35,7 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help', '/expenses', '/products', '/calendar', '/accounting', '/activity'];
+  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help', '/expenses', '/products', '/calendar', '/accounting', '/activity', '/banking'];
   if (!session && PROTECTED.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', req.url));
   }

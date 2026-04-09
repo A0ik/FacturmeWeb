@@ -1,568 +1,199 @@
-# FacturmeWeb — Résumé de la conversation de développement
+# FacturmeWeb — Récap de session de développement
 
-> Généré le 2026-04-08. Couvre 10 sessions de travail.
-
----
-
-## Session 1 — Correction du build Vercel
-
-### Problème
-Vercel crashait à la construction avec l'erreur :
-```
-@supabase/ssr: Your project's URL and API key are required to create a Supabase client!
-```
-
-### Cause
-`lib/supabase.ts` exportait un client Supabase **au niveau du module** :
-```typescript
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-```
-Pendant `next build`, Next.js pré-rend la page `/_not-found` côté serveur. Les variables `NEXT_PUBLIC_SUPABASE_*` n'étant pas disponibles à ce moment, le client crashait.
-
-### Fix appliqué — `lib/supabase.ts`
-```typescript
-import { createBrowserClient } from '@supabase/ssr';
-
-let _client: ReturnType<typeof createBrowserClient> | null = null;
-
-export function getSupabaseClient() {
-  if (!_client) {
-    _client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-  }
-  return _client;
-}
-```
-
-### Fichiers mis à jour pour utiliser `getSupabaseClient()`
-- `stores/authStore.ts`
-- `stores/dataStore.ts`
-- `stores/crmStore.ts`
-- `app/(auth)/callback/page.tsx`
-- `app/(app)/settings/page.tsx`
-
-**Règle à retenir :** Ne jamais exporter un client Supabase browser comme constante de module dans une app Next.js. Toujours utiliser une factory lazily initialisée.
+> Date : 9 avril 2026  
+> Projet : FacturmeWeb — SaaS de facturation Next.js 15 + Supabase + Stripe
 
 ---
 
-## Session 2 — Ajout de toutes les fonctionnalités manquantes
+## Demandes initiales
 
-### 1. PDF multi-devises + coordonnées bancaires (`lib/pdf.ts`)
-- Formatage monétaire via `Intl.NumberFormat` avec la devise et locale du profil
-- Bloc IBAN/BIC ajouté en bas de facture (si renseigné)
+### 1. Stripe Connect
+Les utilisateurs connectent leur compte Stripe. Les factures génèrent un bouton de paiement qui envoie l'argent directement sur leur compte. Statut de la facture mis à jour automatiquement quand payée.
 
-### 2. Templates d'email HTML (`app/api/send-invoice/route.ts`)
-- Réécriture complète de l'email avec layout responsive
-- Tableau des articles, totaux, infos bancaires, bouton CTA, footer brandé
-- Flag `isReminder: true` pour les emails de relance
+### 2. Invitation workspace par lien
+Générer un lien d'invitation partageable sans avoir besoin d'une adresse email.
 
-### 3. Relances automatiques (`app/api/send-reminder/route.ts`)
-- Nouvel endpoint qui appelle `/api/send-invoice` avec `isReminder: true`
-- Bouton ajouté sur la page de détail d'une facture (visible si statut = `sent` ou `overdue`)
-- Toast de confirmation affiché
-
-### 4. Page de partage public (`app/share/[invoiceId]/page.tsx`)
-- Page publique sans authentification requise
-- API : `app/api/share/[invoiceId]/route.ts` (retourne données sanitisées)
-- Middleware mis à jour pour autoriser `/share/` et `/api/share/`
-- Bouton "Partager" ajouté au menu de détail facture
-
-### 5. Export CSV (`lib/utils.ts` + pages)
-- Fonction `downloadCSV()` avec encodage BOM UTF-8
-- Bouton d'export sur la page des factures
-- Bouton d'export sur la page des clients
-
-### 6. Export FEC comptable (`app/api/export/fec/route.ts`)
-- Format DGFiP conforme (séparé par tabulations)
-- Journal VT (ventes) : comptes 411000, 706000, 445710
-- Journal BQ (paiements) : comptes 512000, 411000
-- Nom de fichier : `FEC{SIREN}{ANNEE}1231.txt`
-- Boutons dans la page paramètres (année courante + année précédente)
-
-### 7. Validation SIRET / TVA (`lib/utils.ts`)
-```typescript
-export function validateSiret(siret: string): boolean {
-  return /^\d{14}$/.test(siret.replace(/\s/g, ''));
-}
-export function validateVatNumber(vat: string): boolean {
-  return /^[A-Z]{2}[A-Z0-9]{2}[0-9]{9}$/.test(vat.replace(/\s/g, ''));
-}
-```
-
-### 8. Onboarding complet (4 étapes)
-| Étape | Fichier | Contenu |
-|-------|---------|---------|
-| 1 | `onboarding/language/page.tsx` | Choix de la langue |
-| 2 | `onboarding/company/page.tsx` | Infos entreprise |
-| 3 | `onboarding/address/page.tsx` | Adresse + coordonnées bancaires |
-| 4 | `onboarding/template/page.tsx` | Choix du modèle de facture |
-| ✓ | `onboarding/done/page.tsx` | Marque `onboarding_done: true` en BDD |
+### 3. Auto-complétion SIRET
+Lors de la création d'un client ou dans les paramètres, rechercher une entreprise par nom remplit automatiquement le SIRET, l'adresse, le code postal, la ville et le numéro de TVA intracommunautaire — via l'API gouvernementale française `recherche-entreprises.api.gouv.fr`.
 
 ---
 
-## Session 3 — Push sur GitHub
+## Audit des fonctionnalités manquantes
 
-### Solution finale
-```bash
-git remote set-url origin https://github.com/A0ik/FacturmeWeb.git
-git push --set-upstream origin main --force
-```
+Liste complète des fonctionnalités identifiées comme manquantes :
 
----
-
-## Session 4 — Correction faille sécurité Next.js (CVE-2025-66478)
-
-Mise à jour vers `next: "15.5.14"` (dernière version stable).
-
----
-
-## Session 5 — Erreur runtime Vercel
-
-### Cause
-Variables d'environnement Supabase non configurées sur Vercel.
-
-### Solution
-Dans Vercel → Project → Settings → Environment Variables, ajouter :
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-Puis Redeploy.
+- Watermark sur les PDF (BROUILLON, PAYÉ, EN RETARD, ANNULÉ)
+- QR code sur les PDF (lien de paiement Stripe)
+- Type de document "Acompte"
+- Actions groupées sur les factures (sélection multiple, marquer payées, export CSV, suppression)
+- Mode sombre
+- PWA (Progressive Web App)
+- Export RGPD (toutes les données utilisateur en JSON)
+- Page comptabilité TVA / URSSAF
+- Cron auto-rappels (relances automatiques des factures en retard)
+- Export Factur-X XML (norme e-facture française 2026)
+- Tags clients + timeline de notes
+- Tâches CRM par opportunité
+- Webhooks sortants configurables
+- Notifications push (VAPID)
+- Paiements partiels avec barre de progression
+- Journal d'activité
+- Mise à jour sidebar + middleware
 
 ---
 
-## Session 6 — Intégration composants UI modernes
+## Tout a été implémenté
 
-### Packages installés
-```bash
-npm install framer-motion @iconify/react @radix-ui/react-dropdown-menu @radix-ui/react-avatar @radix-ui/react-slot class-variance-authority
-```
+### Stripe Connect — `app/api/stripe/connect/route.ts`
+- **POST** : génère l'URL OAuth Stripe, redirige l'utilisateur
+- **GET** : callback OAuth, échange le code contre le `stripe_connect_id`, sauvegarde en base, redirige vers `/settings?stripe=connected`
+- **DELETE** : déconnecte le compte et met `stripe_connect_id` à null
+- Les paiements utilisent `transfer_data.destination` pour router les fonds vers le compte connecté
 
-### Composants créés dans `components/ui/`
-| Fichier | Description |
-|---------|-------------|
-| `avatar.tsx` | Avatar Radix UI avec fallback initiales |
-| `dropdown-menu.tsx` | DropdownMenu Radix UI complet |
-| `modern-mobile-menu.tsx` | Menu mobile animé avec routing Next.js |
-| `user-dropdown.tsx` | Dropdown utilisateur (statut, profil, upgrade, logout) |
-| `auth-page.tsx` | Page auth full-page avec animation SVG |
-| `progress-indicator.tsx` | Indicateur de progression animé (framer-motion) |
+### Invitation workspace par lien — `stores/workspaceStore.ts` + `app/(app)/workspace/page.tsx`
+- Crée une invitation avec `email: ''` (invitation ouverte, sans email requis)
+- Retourne un token → URL partageable `/workspace/join?token=xxx`
+- La page join détecte `email === ''` et insère un nouveau membre au lieu de chercher un existant
 
-> Note : `@iconify/react` installé puis abandonné — remplacé par Lucide car les icônes Solar nécessitent un CDN externe non disponible en SSR.
+### Auto-complétion SIRET — `components/ui/CompanySearch.tsx`
+- Composant réutilisable avec debounce 350ms
+- Appelle `recherche-entreprises.api.gouv.fr/search` (gratuit, sans clé API)
+- Remplit automatiquement : nom, SIRET, SIREN, adresse, code postal, ville, TVA intracommunautaire
+- Calcul TVA française : `(12 + 3 * (siren % 97)) % 97`
+- Utilisé dans : création de client + page paramètres
 
----
+### Watermark + QR Code PDF — `lib/pdf.ts`
+- BROUILLON → gris clair / EN RETARD → rouge clair / ANNULÉ → gris clair / PAYÉ → vert clair
+- QR code généré via `api.qrserver.com` (sans dépendance npm)
+- Positionné à côté du bouton de paiement en bas de facture
 
-## Session 7 — Correction bugs + Redesign premium
+### Type "Acompte" — `app/(app)/invoices/new/page.tsx`
+- Ajout dans `DOC_TYPES` avec icône `Banknote` et couleur émeraude
+- Préfixe de numérotation `ACP-` géré dans `lib/pdf.ts`
 
-### Problèmes corrigés
-1. **UserDropdown cassé** — `@iconify/react` remplacé intégralement par Lucide
-2. **Paywall jamais visible** — banner proactif ajouté sur factures et dashboard
-3. **Design insuffisant** — redesign premium complet
-4. **Logo inexistant** — nouveau composant `Logo.tsx`
+### Actions groupées — `app/(app)/invoices/page.tsx`
+- Checkbox sur chaque ligne (desktop + mobile)
+- Barre flottante en bas avec : nombre sélectionnés, marquer payées, export CSV, supprimer
+- Confirmation avant suppression groupée
 
-### Nouveau composant Logo (`components/ui/Logo.tsx`)
-```tsx
-<Logo size="md" variant="full" dark />   // → "Factu.me" avec icon
-<Logo size="sm" variant="icon" />        // → icon seul
-```
+### Mode sombre — `stores/themeStore.ts` + `components/ui/ThemeToggle.tsx`
+- Store Zustand : `theme: 'light' | 'dark'`, `toggle()`, `setTheme()`
+- Persistance via `localStorage`
+- Tailwind `darkMode: 'class'` dans `tailwind.config.ts`
+- CSS overrides dans `app/globals.css`
+- Bouton lune/soleil dans la sidebar
 
-### Redesigns effectués
-- **Sidebar** : fond gray-950, logo Factu.me, upgrade banner glassmorphism
-- **Paywall** : toggle mensuel/annuel, carte Pro dark, trust signals Stripe
-- **Dashboard** : dégradé CA, icônes colorées, chart amélioré
-- **Layout mobile** : barre sticky top avec logo
+### PWA — `public/manifest.json` + `public/sw.js`
+- `manifest.json` avec icônes, nom, couleurs
+- Service worker avec stratégie cache-first pour les assets
+- Composant `ServiceWorkerRegistration` monté côté client
 
----
+### Export RGPD — `app/api/export/rgpd/route.ts`
+- GET authentifié
+- Retourne toutes les données de l'utilisateur en JSON téléchargeable : profil, clients, factures, récurrences
 
-## Session 8 — Redesign complet UI/UX premium
+### Page Comptabilité — `app/(app)/accounting/page.tsx`
+- Sélecteur de trimestre
+- TVA collectée / déductible / nette
+- Bannière auto-entrepreneur (franchise de TVA)
+- Cotisations URSSAF estimées (22% du CA)
+- Récapitulatif annuel : CA total, moyenne mensuelle, meilleur mois
 
-### Sidebar (`components/layout/Sidebar.tsx`)
-- `h-screen sticky top-0` — profil **toujours visible en bas**, jamais scrollable
-- Widget "Aperçu rapide" dans la nav : payées / en attente / en retard en live
-- Badge rouge sur "Factures" si factures en retard
-- Icône active avec fond coloré + barre gauche verte animée
-- Indicateur plan (Gratuit / Solo / Pro) sous le nom
+### Cron auto-rappels — `app/api/cron/reminders/route.ts` + `vercel.json`
+- Déclenché chaque jour à 8h00 (`0 8 * * *`)
+- Passe les factures `sent` échues en `overdue`
+- Insère des notifications en base
+- Sécurisé par `Authorization: Bearer {CRON_SECRET}`
 
-### Page Factures (`app/(app)/invoices/page.tsx`)
-- **4 cartes stats** : total documents, revenus encaissés, en attente, en retard
-- Panneau filtres dépliant avec pills de statut colorés + filtre type
-- Tableau enrichi : icône type doc, HT en sous-titre, flèche hover, footer total sélection
-- Raccourci "+ Devis" dans la barre d'action
+### Export Factur-X XML — `app/api/export/facturx/[invoiceId]/route.ts`
+- Génère un XML CII 100 (profil MINIMUM)
+- Conforme à la norme française e-facture 2026
+- Téléchargeable depuis la page d'une facture
 
-### Page Clients (`app/(app)/clients/page.tsx`)
-- **3 cartes stats** : total clients, CA encaissé, moyenne factures/client
-- **Toggle Grille / Liste** — vue tableau complète
-- Cartes enrichies : revenus, montant en attente, factures, badge "Client actif"
-- Carte "+ Ajouter un client" dans la grille
-- Avatars avec dégradés uniques
+### Tags clients + Notes timeline — `app/(app)/clients/[id]/page.tsx`
+- Tags colorés : ajout/suppression, sauvegardés via `updateClient`
+- Timeline de notes : ajout, suppression, tri par date décroissante
+- Table Supabase : `client_notes`
 
-### Page Pipeline CRM (`app/(app)/crm/page.tsx`)
-- **4 cartes stats** : pipeline pondéré, deals gagnés, taux de conversion, négociation
-- **Barre de probabilité animée** sur chaque carte kanban
-- Actions rapides : Modifier / ✓ Gagné / Supprimer
-- Drop zone avec highlight visuel
-- Modal enrichie avec barre live + valeur attendue calculée
+### Tâches CRM — `app/(app)/crm/page.tsx`
+- Panneau de tâches par opportunité
+- Checkbox pour cocher/décocher
+- Ajout et suppression de tâches
+- Table Supabase : `crm_tasks`
 
-### Page Création facture (`app/(app)/invoices/new/page.tsx`)
-- **Layout 2 colonnes** : formulaire gauche, récapitulatif sticky droite
-- **Panneau récap dark** : total TTC, détail HT/TVA, liste lignes
-- Sélecteur type redesigné avec description
-- Boutons délai rapide (J+15, J+30, J+45, J+60)
-- Réorganisation lignes (flèches ↑↓)
-- Suggestions clients avec avatar
-- État succès animé sur le bouton CTA
+### Webhooks sortants — `app/(app)/settings/page.tsx` + `app/api/webhooks/trigger/route.ts`
+- Configuration d'URL + sélection des événements dans les paramètres
+- Endpoint interne `/api/webhooks/trigger` déclenché par le code métier
+- Sécurisé par header `X-Internal-Secret`
+- Table Supabase : `webhook_endpoints`
 
----
+### Notifications push — `app/api/push/subscribe/route.ts` + `app/api/push/send/route.ts`
+- Abonnement VAPID stocké dans `profiles.web_push_subscription`
+- Envoi via le package `web-push`
 
-## Session 9 — Workspace équipe, Notifications, Aide, Compte
+### Paiements partiels — `app/(app)/invoices/[id]/page.tsx`
+- Barre de progression visuelle (montant payé / total)
+- Liste des paiements avec date, méthode, note
+- Formulaire d'ajout collapsible
+- Marquage automatique en `paid` quand la somme atteint le total
+- Table Supabase : `partial_payments`
 
-### Base de données (Supabase — projet `ggrwyfhptxwpahwkeoyj`)
-4 nouvelles tables créées via migration MCP :
+### Journal d'activité — `app/(app)/activity/page.tsx`
+- Feed des notifications du workspace
+- Actions récentes sur les factures
 
-```sql
--- workspaces : id, name, slug, owner_id, description, logo_url, plan, settings
--- workspace_members : workspace_id, user_id, email, role, status, invited_by, joined_at
--- workspace_invitations : workspace_id, email, role, token (unique), expires_at, accepted_at
--- notifications : user_id, type, title, body, link, read, data
-```
-
-RLS activé sur toutes les tables. Index sur les colonnes critiques.
-
-### `stores/workspaceStore.ts` (nouveau)
-Store Zustand complet avec :
-- `fetchWorkspace(userId)` — charge workspace + membres + invitations
-- `createWorkspace(name, description)` — crée le workspace
-- `inviteMember(email, role)` — crée invitation + membre pending + envoie email Brevo
-- `updateMemberRole(memberId, role)` — change le rôle
-- `removeMember(memberId)` — retire le membre + supprime invitation pending
-- `fetchNotifications(userId)` — charge les 50 dernières notifs
-- `markRead(id)` / `markAllRead()` — marque comme lu
-- `createNotification(...)` — crée une notif
-
-### Page Workspace (`app/(app)/workspace/page.tsx`)
-**État sans workspace :**
-- Hero sombre avec 3 feature cards (Rôles, Invitations, Données partagées)
-- Bouton "Créer mon workspace" → modal
-
-**État avec workspace :**
-- Onglets Membres / Paramètres
-- Ligne propriétaire avec badge Crown
-- Liste membres avec avatar coloré, badge statut, sélecteur rôle inline (si owner)
-- Invitations en attente (bloc doré) avec bouton "Copier le lien"
-- Guide des rôles (4 cards)
-- Tableau des permissions par rôle (8 actions × 4 rôles)
-- Zone de danger : suppression workspace
-
-### Page Accepter invitation (`app/workspace/join/page.tsx`)
-- Page publique (whitelistée dans le middleware)
-- Vérifie le token en base, affiche infos workspace + rôle
-- Bouton Accepter → met à jour `workspace_members.status = 'active'`
-- Gère les cas : expiré, déjà accepté, token invalide
-- **Fix Vercel build** : `useSearchParams()` isolé dans `<JoinContent>` enveloppé par `<Suspense>`
-
-### API workspace (`app/api/workspace/invite/route.ts`)
-- Authentification session obligatoire
-- Récupère le profil de l'inviteur
-- Envoie email HTML responsive via Brevo (avec lien d'invitation + rôle)
-
-### Page Aide (`app/(app)/help/page.tsx`)
-- Barre de recherche full-text dans les FAQs
-- **10 catégories** avec icône colorée : Démarrage, Facturation, Clients, Dictée IA, Récurrentes, Pipeline, Comptabilité, Abonnements, Workspace, Sécurité & RGPD
-- **56 questions/réponses** rédigées
-- Filtres par catégorie (pills cliquables)
-- FAQ accordion animé (open/close)
-- Bloc contact : email support, GitHub Issues, version actuelle
-
-### Page Notifications (`app/(app)/notifications/page.tsx`)
-- Liste groupée Aujourd'hui / Plus ancien
-- Icône + couleur par type (paiement, retard, invitation, système)
-- Point bleu sur les non lues
-- Bouton "Tout marquer comme lu"
-- Auto-génération de notifs pour les factures en retard au chargement
-- Bloc tips notifications push
-
-### Sidebar mise à jour (`components/layout/Sidebar.tsx`)
-- Section "Outils" : Workspace, Notifications (badge bleu), Aide, Paramètres
-- Badge rouge sur Factures (overdue) + badge bleu sur Notifications (unread)
-- `fetchNotifications` appelé au mount pour le badge live
-
-### Settings — Suppression de compte sécurisée (`app/(app)/settings/page.tsx`)
-- **Modal de confirmation** avec :
-  - Liste des données qui seront supprimées
-  - Champ texte : l'utilisateur doit taper `SUPPRIMER` exactement
-  - Bouton désactivé (`disabled`) tant que la confirmation est incorrecte
-  - État de chargement (spinner) pendant la suppression
-- Bouton déconnexion séparé, plus visible
-
-### Middleware (`middleware.ts`)
-- Routes protégées étendues : `/workspace`, `/notifications`, `/help`
-- `/workspace/join` ajouté en liste blanche (page publique)
+### Sidebar + Middleware
+- `components/layout/Sidebar.tsx` : ajout des entrées Comptabilité et Activité
+- `middleware.ts` : `/accounting` et `/activity` ajoutés aux routes protégées
 
 ---
 
-## Variables d'environnement nécessaires sur Vercel
+## Migrations Supabase à exécuter
 
-| Variable | Source |
-|----------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
-| `BREVO_SMTP_KEY` | Brevo → SMTP & API |
-| `BREVO_SENDER_EMAIL` | Ton email vérifié Brevo |
-| `BREVO_SENDER_NAME` | Ex: "Factu.me" |
-| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys |
-| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe → Developers → API keys |
-| `STRIPE_SOLO_PRICE_ID` | Stripe → Products (Solo €9/mo) |
-| `STRIPE_PRO_PRICE_ID` | Stripe → Products (Pro €19/mo) |
-| `GROQ_API_KEY` | console.groq.com |
-| `OPENROUTER_API_KEY` | openrouter.ai |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | idem |
-| `NEXT_PUBLIC_APP_URL` | Ex: `https://facturme.app` (utilisé pour les liens d'invitation workspace) |
+Fichiers dans `supabase/migrations/` — à coller dans l'éditeur SQL de Supabase dans cet ordre :
+
+| Fichier | Table créée |
+|---|---|
+| `001_partial_payments.sql` | `partial_payments` |
+| `002_client_notes.sql` | `client_notes` |
+| `003_crm_tasks.sql` | `crm_tasks` |
+| `004_webhook_endpoints.sql` | `webhook_endpoints` |
 
 ---
 
-## État actuel du projet
+## Variables d'environnement à configurer
 
-### Ce qui fonctionne
-- Build Vercel : toutes les pages ✓ (exit code 0, 0 erreur TypeScript)
-- Version Next.js : 15.5.14 (sans vulnérabilités connues) ✓
-- Code pushé sur GitHub : `A0ik/FacturmeWeb` ✓
-- Toutes les fonctionnalités de facturation ✓
-- Design premium dark sidebar ✓
-- Profil toujours visible en bas du menu ✓
-- Workspace équipe avec rôles et invitations ✓
-- Notifications avec badge live ✓
-- Page d'aide avec 56 Q/R ✓
-- Suppression de compte sécurisée (confirmation textuelle) ✓
-- Page d'acceptation d'invitation publique ✓
-- Notes de frais avec upload de reçus ✓
-- Catalogue produits CRUD ✓
-- Google Agenda (page de configuration) ✓
-- Signature électronique (upload + aperçu dans paramètres) ✓
-- Pièces jointes par facture (Facture Cloud) ✓
-- Bon de commande + Bon de livraison ✓
-- Import IA des clients (OpenRouter GPT-4o mini) ✓
-- Gestion abonnement Stripe Billing Portal ✓
-- Switch de compte utilisateur ✓
-- Avis clients défilants sur les pages d'auth ✓
+À ajouter dans `.env.local` et dans les variables d'environnement Vercel :
 
-### Ce qu'il reste à configurer (hors code)
-1. **Variables d'environnement Vercel** (voir tableau ci-dessus)
-2. **Projet Supabase** déjà créé : `ggrwyfhptxwpahwkeoyj` (eu-west-3, Paris)
-3. **Tables SQL à créer** : `expenses`, `products` (en plus des tables existantes)
-4. **Bucket Supabase Storage** : `assets` avec dossiers `logos/`, `signatures/`, `invoice-docs/`, `receipts/`
-5. **Stripe** : créer produits Solo (9€) et Pro (19€), renseigner les Price IDs
-6. **OPENROUTER_API_KEY** : nécessaire pour l'import IA des clients
+```env
+# Stripe Connect
+STRIPE_CONNECT_CLIENT_ID=ca_xxxxxxxxxxxx
 
----
+# Cron sécurisé
+CRON_SECRET=un_secret_aleatoire_long
 
-## Architecture des fichiers clés
+# Webhooks sortants
+WEBHOOK_INTERNAL_SECRET=un_autre_secret
 
-```
-FacturmeWeb/
-├── app/
-│   ├── (app)/
-│   │   ├── layout.tsx          # Sidebar + BottomNav + mobile top bar
-│   │   ├── dashboard/          # Dashboard + actions rapides 5 types docs
-│   │   ├── invoices/           # 4 stats + filtres + table + icônes par type
-│   │   │   ├── [id]/           # Détail + pièces jointes (Facture Cloud)
-│   │   │   └── new/            # Création 2 colonnes + récap sticky + 5 types
-│   │   ├── clients/            # Grille/liste + stats + import IA
-│   │   ├── crm/                # Kanban + probability bars + win rate
-│   │   ├── recurring/          # Factures récurrentes
-│   │   ├── expenses/           # ← NOUVEAU notes de frais + upload reçus
-│   │   ├── products/           # ← NOUVEAU catalogue produits CRUD
-│   │   ├── calendar/           # ← NOUVEAU Google Agenda + guide OAuth
-│   │   ├── workspace/          # Membres + rôles + invitations
-│   │   ├── notifications/      # Centre de notifications
-│   │   ├── help/               # 56 Q/R + recherche
-│   │   ├── settings/           # Paramètres + signature + suppression sécurisée
-│   │   └── paywall/            # Plans tarifaires
-│   ├── (auth)/                 # Login/Register (AuthPage + témoignages défilants)
-│   ├── (onboarding)/           # 4 étapes + ProgressIndicator
-│   ├── share/[invoiceId]/      # Page publique de partage facture
-│   ├── workspace/
-│   │   └── join/               # Accepter une invitation (public)
-│   └── api/
-│       ├── send-invoice/
-│       ├── send-reminder/
-│       ├── share/[invoiceId]/
-│       ├── export/fec/
-│       ├── stripe/
-│       │   ├── portal/         # ← NOUVEAU Stripe Billing Portal
-│       │   ├── payment-link/
-│       │   └── webhook/
-│       ├── import/
-│       │   └── clients/        # ← NOUVEAU import IA (OpenRouter GPT-4o)
-│       ├── process-voice/
-│       ├── account/delete/
-│       └── workspace/
-│           └── invite/
-├── components/
-│   ├── layout/
-│   │   ├── Sidebar.tsx         # Dark + expenses/products/calendar dans NAV_TOP
-│   │   ├── BottomNav.tsx       # Menu mobile animé
-│   │   └── Header.tsx
-│   └── ui/
-│       ├── Logo.tsx
-│       ├── ImportClientsModal.tsx  # ← NOUVEAU modal import IA 4 étapes
-│       ├── avatar.tsx
-│       ├── dropdown-menu.tsx
-│       ├── modern-mobile-menu.tsx
-│       ├── user-dropdown.tsx       # Switch de compte + sous-menu
-│       ├── auth-page.tsx           # Témoignages défilants framer-motion
-│       ├── progress-indicator.tsx
-│       ├── Button.tsx
-│       ├── Input.tsx
-│       ├── Badge.tsx
-│       └── Modal.tsx
-├── stores/
-│   ├── authStore.ts
-│   ├── dataStore.ts            # purchase_order + delivery_note (BC/BL)
-│   ├── crmStore.ts
-│   └── workspaceStore.ts
-├── lib/
-│   └── utils.ts                # DOC_LABELS étendu aux 5 types de documents
-├── types/
-│   └── index.ts                # DocumentType : + purchase_order + delivery_note
-├── hooks/
-│   └── useSubscription.ts
-└── middleware.ts               # + /calendar dans PROTECTED
-
+# Push notifications (générer avec: npx web-push generate-vapid-keys)
+VAPID_EMAIL=mailto:toi@tondomaine.com
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxA
+VAPID_PRIVATE_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## Tiers de souscription
+## Stack technique
 
-| Plan | Prix mensuel | Prix annuel | Limites |
-|------|-------------|-------------|---------|
-| Free | 0€ | — | 3 factures, pas de voix, pas de récurrentes |
-| Solo | 9€/mois | 7€/mois (84€/an) | Illimité, voix IA, récurrentes |
-| Pro | 19€/mois | 15€/mois (180€/an) | Solo + templates premium + Workspace équipe |
-
----
-
-## Session 10 — Nouvelles fonctionnalités + design + mobile
-
-### Nouvelles pages et fonctionnalités
-
-#### 1. Notes de frais (`app/(app)/expenses/page.tsx`) ← NOUVEAU
-- 7 catégories : Transport, Repas, Hébergement, Matériel, Bureau, Achats, Autre
-- Upload de reçu vers Supabase Storage
-- Workflow validation/rejet
-- Vue groupée par mois
-- Ajouté dans la sidebar et le BottomNav mobile
-
-#### 2. Catalogue produits (`app/(app)/products/page.tsx`) ← NOUVEAU
-- 5 catégories : Service, Produit, Logiciel, Conseil, Autre
-- CRUD complet avec modal (prix, unité, TVA, référence, actif/inactif)
-- Stats : total produits, CA moyen, actifs
-- Supabase table `products`
-
-#### 3. Page Google Agenda (`app/(app)/calendar/page.tsx`) ← NOUVEAU
-- Guide de configuration OAuth 2.0 étape par étape
-- 4 feature cards (échéances, rappels, RDV clients, sync bidirectionnelle)
-- Sidebar des prochaines échéances en retard/urgentes
-- Ajouté dans `Sidebar.tsx` (icône Calendar) et `middleware.ts`
-
-#### 4. Signature électronique (`app/(app)/settings/page.tsx`)
-- Nouvelle section dans les paramètres
-- Upload PNG/JPG vers Supabase Storage : `signatures/{user_id}.{ext}`
-- Aperçu live de la signature
-- Bouton de suppression
-- Tip pour créer une signature PNG transparent
-
-#### 5. Facture Cloud — Pièces jointes (`app/(app)/invoices/[id]/page.tsx`)
-- Section "Pièces jointes" sur la page de détail de chaque facture
-- Upload de fichiers (PDF, images, documents...)
-- Stockage dans Supabase Storage : `invoice-docs/{user_id}/{invoice_id}/{filename}`
-- Liste des fichiers avec boutons télécharger / supprimer
-- Zone drag-and-drop quand aucune pièce jointe
-
-#### 6. Bon de commande + Bon de livraison
-- `DocumentType` mis à jour : `'purchase_order' | 'delivery_note'` dans `types/index.ts`
-- Préfixes : `BC` et `BL` dans `dataStore.ts`
-- Ajoutés dans le formulaire de création `invoices/new/page.tsx`
-- `DOC_LABELS` mis à jour dans `lib/utils.ts`
-- Icônes distinctes dans la liste des factures :
-  - Bon de commande : `ShoppingCart` orange
-  - Bon de livraison : `Truck` cyan
-- Filtre TYPE_OPTS dans la liste étendu à 5 types
-
-#### 7. Import IA des clients (`app/api/import/clients/route.ts` + `components/ui/ImportClientsModal.tsx`)
-- Upload de n'importe quel format (PDF, image, Excel, CSV, Word...)
-- OpenRouter (GPT-4o mini) analyse le fichier
-- Images/PDFs/Excel → vision base64
-- CSV/TXT/JSON → texte brut
-- Modal 4 étapes : upload → analyse → révision → importé
-- Extraction : nom, SIRET, TVA, email, téléphone, adresse...
-- Bouton "Import IA" violet sur la page clients
-
-#### 8. Gestion abonnement Stripe (`app/api/stripe/portal/route.ts`)
-- Nouveau endpoint : crée une session Stripe Billing Portal
-- Section dédiée dans les paramètres avec boutons Gérer / Résilier
-- CTA upgrade pour les utilisateurs gratuits
-
-### Améliorations design et mobile
-
-#### Dashboard
-- Actions rapides : 5 types de documents en ligne scrollable (mobile-friendly)
-- Icônes colorées par type (ShoppingCart, Truck, Clipboard...)
-
-#### Liste des factures
-- Icônes distinctes selon le type de document
-- Filtres étendus (5 types de documents)
-- Labels CSV mis à jour
-
-#### CSS global (`app/globals.css`)
-- `.scrollbar-none` — masque la scrollbar (utilisé dans la sidebar et les lignes scrollables)
-- `.no-tap-highlight` — supprime le highlight de tap sur iOS/Android
-- `.scroll-smooth-ios` — momentum scrolling sur iOS
-- `.focus-ring` — style de focus accessible
-
-#### Sidebar (`components/layout/Sidebar.tsx`)
-- Ajout de `/expenses` (Receipt), `/products` (Package), `/calendar` (Calendar) dans NAV_TOP
-
-#### Middleware (`middleware.ts`)
-- `/calendar` ajouté dans PROTECTED
-
-### Build final
-- ✓ `tsc --noEmit` : 0 erreur TypeScript
-- ✓ `next build` : exit code 0, toutes les pages compilées
-
----
-
-## Schéma base de données Supabase
-
-```sql
--- Tables existantes
-profiles            -- id, email, company_name, subscription_tier, invoice_count, signature_url...
-clients             -- id, user_id, name, email, phone, siret, vat_number...
-invoices            -- id, user_id, client_id, number, document_type, status, items...
-recurring_invoices  -- id, user_id, frequency, next_run_date, is_active...
-opportunities       -- id, user_id, client_name, title, value, stage, probability...
-
--- Tables ajoutées en session 9
-workspaces              -- id, name, slug, owner_id, description, plan
-workspace_members       -- id, workspace_id, user_id, email, role, status, joined_at
-workspace_invitations   -- id, workspace_id, email, role, token (unique), expires_at
-notifications           -- id, user_id, type, title, body, link, read, data
-
--- Tables à créer pour les nouvelles fonctionnalités (session 10)
-expenses                -- id, user_id, vendor, amount, vat_amount, category, date, receipt_url, status
-products                -- id, user_id, name, description, unit_price, unit, vat_rate, category, reference, is_active
-
--- Supabase Storage buckets utilisés
-assets/logos/           -- logos entreprise
-assets/signatures/      -- signatures électroniques
-assets/invoice-docs/    -- pièces jointes par facture
-assets/receipts/        -- reçus de notes de frais
-```
+| Outil | Usage |
+|---|---|
+| Next.js 15 App Router | Framework frontend + API routes |
+| Supabase | PostgreSQL + Auth + Storage |
+| Stripe | Paiements + Connect OAuth |
+| Zustand | State management (auth, data, workspace, theme) |
+| Tailwind CSS | Styles + dark mode via `darkMode: 'class'` |
+| Brevo | Envoi d'emails (factures, invitations) |
+| Groq | IA pour la dictée vocale |
+| Vercel | Hébergement + Cron jobs |
+| web-push | Notifications push VAPID |
+| recherche-entreprises.api.gouv.fr | API SIRENE gouvernementale (gratuite, sans clé) |

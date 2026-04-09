@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDateShort, getInitials } from '@/lib/utils';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X } from 'lucide-react';
+import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check } from 'lucide-react';
 
 const TAG_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -40,6 +40,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [portalUrl, setPortalUrl] = useState('');
+  const [portalCopied, setPortalCopied] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   // Tags state
   const [tagInput, setTagInput] = useState('');
@@ -151,6 +154,27 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     } catch (e: any) { alert(e.message); }
   };
 
+  const handleGeneratePortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      if (!session) throw new Error('Non authentifié');
+      const res = await fetch('/api/client-portal/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ clientId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const url = `${window.location.origin}/client/${data.token}`;
+      setPortalUrl(url);
+      navigator.clipboard.writeText(url).catch(() => {});
+      setPortalCopied(true);
+      setTimeout(() => setPortalCopied(false), 3000);
+    } catch (e: any) { alert(e.message); }
+    finally { setPortalLoading(false); }
+  };
+
   const clientTags: string[] = (client as any).tags || [];
 
   return (
@@ -160,6 +184,15 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         back="/clients"
         actions={
           <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={portalLoading}
+              icon={portalCopied ? <Check size={14} className="text-green-500" /> : <Globe size={14} />}
+              onClick={handleGeneratePortal}
+            >
+              {portalCopied ? 'Lien copié !' : 'Portail client'}
+            </Button>
             <Button variant="secondary" size="sm" icon={<Pencil size={14} />} onClick={() => setShowEdit(true)}>Modifier</Button>
             <Button variant="danger" size="sm" icon={<Trash2 size={14} />} onClick={() => setShowDelete(true)}>Supprimer</Button>
           </div>
@@ -181,6 +214,21 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <p className="text-xs text-gray-400 mt-0.5">En attente</p>
         </div>
       </div>
+
+      {/* Portal URL banner */}
+      {portalUrl && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+          <Globe size={16} className="text-green-600 flex-shrink-0" />
+          <p className="text-xs text-green-700 truncate flex-1 font-medium">{portalUrl}</p>
+          <button
+            onClick={() => { navigator.clipboard.writeText(portalUrl); setPortalCopied(true); setTimeout(() => setPortalCopied(false), 2000); }}
+            className="flex items-center gap-1 text-xs font-bold text-green-700 hover:text-green-900 transition-colors flex-shrink-0"
+          >
+            {portalCopied ? <Check size={13} /> : <Copy size={13} />}
+            {portalCopied ? 'Copié' : 'Copier'}
+          </button>
+        </div>
+      )}
 
       {/* Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
