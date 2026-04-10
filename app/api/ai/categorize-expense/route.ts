@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     });
 
     const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-7b-instruct',
+      model: 'mistralai/mistral-small-24b-instruct-2501',
       messages: [
         {
           role: 'system',
@@ -29,7 +29,7 @@ Retourne UNIQUEMENT du JSON: {"category": "string", "confidence": number (0-1)}`
     });
 
     let result: any = { category: 'other', confidence: 0 };
-    try { result = JSON.parse(completion.choices[0].message.content || '{}'); } catch {}
+    try { result = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
 
     const VALID = ['transport', 'meals', 'accommodation', 'equipment', 'office', 'shopping', 'other'];
     if (!VALID.includes(result.category)) result.category = 'other';
