@@ -41,22 +41,35 @@ CREATE POLICY "bank_transactions_delete" ON public.bank_transactions
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Create a separate function to check workspace membership (avoids recursion)
-CREATE OR REPLACE FUNCTION user_is_workspace_member(workspace_id uuid, user_id uuid)
+CREATE OR REPLACE FUNCTION public.user_is_workspace_member(workspace_id uuid, user_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.workspace_members
-    WHERE workspace_members.workspace_id = user_is_workspace_member.workspace_id
-    AND workspace_members.user_id = user_is_workspace_member.user_id
+    WHERE workspace_members.workspace_id = $1
+    AND workspace_members.user_id = $2
     AND workspace_members.status = 'active'
   );
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- Create a view for workspace documents (for workspace members access)
-CREATE OR REPLACE VIEW public.workspace_documents AS
-SELECT cd.*
-FROM public.captured_documents cd
-WHERE cd.user_id = auth.uid()
-   OR user_is_workspace_member(cd.workspace_id, auth.uid());
+-- Note: Views with auth.uid() require SECURITY INVOKER or proper function handling
+-- For now, we'll use a simpler approach with RLS on the main table
+
+CREATE OR REPLACE FUNCTION public.get_workspace_documents()
+RETURNS SETOF public.captured_documents AS $$
+BEGIN
+  RETURN QUERY
+  SELECT cd.*
+  FROM public.captured_documents cd
+  WHERE cd.user_id = auth.uid()
+     OR EXISTS (
+       SELECT 1 FROM public.workspace_members wm
+       WHERE wm.workspace_id = cd.workspace_id
+       AND wm.user_id = auth.uid()
+       AND wm.status = 'active'
+     );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Note: In a real production setup, you would:
 -- 1. Use Row Level Security on the view

@@ -12,7 +12,7 @@ import {
   SlidersHorizontal, Check, FileSpreadsheet, Building2,
   RotateCcw, Database, CreditCard, Building, Users, Wallet,
   Banknote, CheckCircle, ArrowRight, PlusCircle, Link2, Unlink,
-  ShoppingCart, TrendingUp, Receipt
+  ShoppingBag, TrendingUp, Receipt
 } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 
@@ -74,7 +74,7 @@ const STATUS_CONFIG: Record<CaptureStatus, { label: string; color: string; dot: 
 };
 
 const INVOICE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  purchase: { label: 'Achat',    color: 'bg-red-100 text-red-700',    icon: ShoppingCart },
+  purchase: { label: 'Achat',    color: 'bg-red-100 text-red-700',    icon: ShoppingBag },
   sales:    { label: 'Vente',    color: 'bg-green-100 text-green-700', icon: TrendingUp },
   expense:  { label: 'Dépense',  color: 'bg-orange-100 text-orange-700', icon: Receipt },
   receipt:  { label: 'Reçu',     color: 'bg-blue-100 text-blue-700',   icon: FileText },

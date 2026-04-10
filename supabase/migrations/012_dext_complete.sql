@@ -46,7 +46,7 @@ ADD COLUMN IF NOT EXISTS sepa_file_url TEXT;
 
 -- 5. Merchant Connections
 CREATE TABLE IF NOT EXISTS merchant_connections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
   provider VARCHAR(50) NOT NULL, -- amazon, orange, uber, apple, etc.

@@ -6,7 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { MerchantConnection, MERCHANT_PROVIDERS, MerchantProvider } from '@/types';
 import {
   Plus, Link2, RefreshCw, Trash2, CheckCircle2, AlertTriangle,
-  Settings, Download, ChevronDown, Building, ExternalLink
+  Settings, Download, ChevronDown, Building, ExternalLink as ExternalLinkIcon
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -244,7 +244,7 @@ export default function ConnectionsPage() {
                       {provider.icon}
                     </div>
                     <p className="text-xs font-semibold text-gray-700">{provider.name}</p>
-                    <ExternalLink size={10} className="text-gray-400" />
+                    <ExternalLinkIcon size={10} className="text-gray-400" />
                   </button>
                 ))}
               </div>
