@@ -126,7 +126,7 @@ export default function CapturePage() {
   const [showExport, setShowExport]   = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters]         = useState({
-    search: '', status: 'all', category: '', dateFrom: '', dateTo: '',
+    search: '', status: 'all', category: '', expenseType: 'all', dateFrom: '', dateTo: '',
   });
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
@@ -171,6 +171,12 @@ export default function CapturePage() {
   const filtered = useMemo(() => {
     let list = documents;
     if (filters.status !== 'all') list = list.filter(d => d.status === filters.status);
+    if (filters.expenseType !== 'all') {
+      list = list.filter(d => {
+         const type = d.ocr_data?.expense_type || 'purchase'; // default to purchase if missing
+         return type === filters.expenseType;
+      });
+    }
     if (filters.category)         list = list.filter(d => d.category === filters.category);
     if (filters.dateFrom)         list = list.filter(d => d.document_date && d.document_date >= filters.dateFrom);
     if (filters.dateTo)           list = list.filter(d => d.document_date && d.document_date <= filters.dateTo);
@@ -201,8 +207,13 @@ export default function CapturePage() {
       const fileToUpload = item.file.type.startsWith('image/') ? await compressImage(item.file) : item.file;
       const ext  = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `receipts/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await getSupabaseClient().storage
-        .from('assets').upload(path, fileToUpload, { upsert: true });
+      const uploadPromise = new Promise<{error: any}>((resolve) => {
+        const timer = setTimeout(() => resolve({ error: new Error('Timeout de l\'upload (30s)') }), 30000);
+        getSupabaseClient().storage.from('assets').upload(path, fileToUpload, { upsert: true })
+          .then(res => { clearTimeout(timer); resolve(res); })
+          .catch(err => { clearTimeout(timer); resolve({ error: err }); });
+      });
+      const { error: uploadErr } = await uploadPromise;
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
@@ -223,9 +234,28 @@ export default function CapturePage() {
       if (fileType === 'image' || fileType === 'pdf') {
         const fd = new FormData();
         fd.append('file', fileToUpload); // use compressed version for images
-        const res = await fetch('/api/ai/analyze-document', { method: 'POST', body: fd });
-        const { extracted, error: aiErr } = await res.json();
-        if (!aiErr && extracted) {
+        
+        const timeoutController = new AbortController();
+        const timerId = setTimeout(() => timeoutController.abort(), 60000);
+        let res: Response;
+        try {
+          res = await fetch('/api/ai/analyze-document', { method: 'POST', body: fd, signal: timeoutController.signal });
+        } catch (fetchErr: any) {
+          throw new Error(fetchErr.name === 'AbortError' ? 'Timeout de l\'IA (60s)' : fetchErr.message);
+        } finally {
+          clearTimeout(timerId);
+        }
+
+        if (!res.ok) {
+           const errText = await res.text();
+           throw new Error(`Erreur API (${res.status}): ${errText.slice(0, 40)}`);
+        }
+
+        const data = await res.json();
+        if (data.error) throw new Error(`Erreur IA : ${data.error}`);
+        const extracted = data.extracted;
+
+        if (extracted) {
           const patch: Partial<CapturedDocument> = {
             vendor:             extracted.vendor        || null,
             description:        extracted.description   || null,
@@ -638,7 +668,22 @@ export default function CapturePage() {
       )}
 
       {/* ── Filters ── */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap mb-2">
+        {/* Type pills (Dext style) */}
+        <div className="flex items-center gap-1 border-r border-gray-200 pr-2 mr-1">
+          {(['all', 'purchase', 'receipt'] as const).map(t => (
+             <button
+              key={t}
+              onClick={() => setFilters(f => ({ ...f, expenseType: t }))}
+              className={cn(
+                'px-3 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap',
+                filters.expenseType === t ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+              )}
+            >
+              {t === 'all' ? 'Toutes' : t === 'purchase' ? 'Factures d\'achats' : 'Notes de frais'}
+            </button>
+          ))}
+        </div>
         {/* Search */}
         <div className="relative flex-1 min-w-44">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -704,7 +749,7 @@ export default function CapturePage() {
               className="text-xs rounded-xl border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
           <button
-            onClick={() => setFilters({ search: '', status: 'all', category: '', dateFrom: '', dateTo: '' })}
+            onClick={() => setFilters({ search: '', status: 'all', category: '', expenseType: 'all', dateFrom: '', dateTo: '' })}
             className="text-xs text-gray-500 hover:text-gray-800 font-semibold pb-2"
           >
             Réinitialiser

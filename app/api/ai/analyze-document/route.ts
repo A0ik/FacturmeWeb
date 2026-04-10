@@ -16,11 +16,12 @@ RÈGLES D'EXTRACTION:
 - due_date: ÉCHÉANCE / DATE LIMITE / À PAYER AVANT → format YYYY-MM-DD ou null
 - description: résumé en 1 phrase de ce qui est facturé (service/produit)
 - category: une seule valeur parmi transport|meals|accommodation|equipment|office|services|shopping|other
+- expense_type: 'purchase' (si c'est une facture fournisseur classique) ou 'receipt' (si c'est un ticket de caisse, reçu, note de frais de déplacement/restaurant)
 - payment_method: transfer|card|cash|check|prelevement ou null
 - IMPORTANT: convertis les montants FR (ex: "52,74 €" → 52.74 / "1 040,00€" → 1040.00)
 
 Retourne UNIQUEMENT du JSON valide (pas de markdown, pas de commentaires):
-{"vendor":null,"invoice_number":null,"amount":0,"amount_ht":null,"vat_amount":null,"vat_rate":null,"date":null,"due_date":null,"description":null,"category":"other","payment_method":null,"currency":"EUR","supplier_siret":null,"supplier_vat_number":null}`;
+{"vendor":null,"invoice_number":null,"amount":0,"amount_ht":null,"vat_amount":null,"vat_rate":null,"date":null,"due_date":null,"description":null,"category":"other","expense_type":"purchase","payment_method":null,"currency":"EUR","supplier_siret":null,"supplier_vat_number":null}`;
 
 // ─── Sanitize numbers ─────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ function sanitize(raw: Record<string, any>) {
 
   const VALID_CATS = ['transport', 'meals', 'accommodation', 'equipment', 'office', 'services', 'shopping', 'other'];
   const VALID_PM   = ['card', 'cash', 'transfer', 'check', 'prelevement'];
+  const VALID_TYPE = ['purchase', 'receipt'];
 
   return {
     ...raw,
@@ -44,6 +46,7 @@ function sanitize(raw: Record<string, any>) {
     vat_amount: toNum(raw.vat_amount),
     vat_rate:   toNum(raw.vat_rate),
     category:   VALID_CATS.includes(raw.category) ? raw.category : 'other',
+    expense_type: VALID_TYPE.includes(raw.expense_type) ? raw.expense_type : 'purchase',
     payment_method: VALID_PM.includes(raw.payment_method) ? raw.payment_method : null,
   };
 }
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
         if (text.length > 20) {
           // We have usable text — analyze with a text model (fast + cheap)
           const completion = await openrouter.chat.completions.create({
-            model: 'google/gemini-flash-1.5',
+            model: 'google/gemini-2.5-flash',
             messages: [
               {
                 role: 'user',
@@ -100,7 +103,7 @@ export async function POST(req: NextRequest) {
     if (!responseText) {
       const base64     = Buffer.from(arrayBuffer).toString('base64');
       const completion = await openrouter.chat.completions.create({
-        model: 'google/gemini-flash-1.5',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
