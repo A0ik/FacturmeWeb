@@ -131,6 +131,10 @@ export default function CapturePage() {
   const [workspaces, setWorkspaces]   = useState<any[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string | null>(null);
   const [isPro, setIsPro]             = useState(false);
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspaceDesc, setNewWorkspaceDesc] = useState('');
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false);
 
   // Upload queue
   const [queue, setQueue]             = useState<QueueItem[]>([]);
@@ -638,6 +642,44 @@ export default function CapturePage() {
     setShowExport(false);
   };
 
+  // ── Create Workspace ───────────────────────────────────────────────────────
+
+  const handleCreateWorkspace = async () => {
+    if (!user || !newWorkspaceName.trim()) return;
+
+    setCreatingWorkspace(true);
+    try {
+      const res = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newWorkspaceName.trim(),
+          user_id: user.id,
+          description: newWorkspaceDesc.trim() || null,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Erreur lors de la création du dossier');
+
+      const { workspace } = await res.json();
+
+      // Add new workspace to list
+      setWorkspaces(prev => [workspace, ...prev]);
+
+      // Select the new workspace
+      setSelectedWorkspace(workspace.id);
+
+      // Reset form and close modal
+      setNewWorkspaceName('');
+      setNewWorkspaceDesc('');
+      setShowCreateWorkspace(false);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setCreatingWorkspace(false);
+    }
+  };
+
   // ── SEPA XML Generation (ISO 20022) ───────────────────────────────────────
 
   const generateSEPAXML = (doc: CapturedDocument) => {
@@ -742,7 +784,7 @@ export default function CapturePage() {
             Importez vos factures — l&apos;IA extrait automatiquement toutes les données
           </p>
           {/* Workspace Selector (PRO only) */}
-          {isPro && workspaces.length > 0 && (
+          {isPro && (
             <div className="flex items-center gap-2 mt-3">
               <Building size={14} className="text-gray-400" />
               <select
@@ -750,11 +792,18 @@ export default function CapturePage() {
                 onChange={(e) => setSelectedWorkspace(e.target.value || null)}
                 className="text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
-                <option value="">Tous les dossiers</option>
+                <option value="">{workspaces.length === 0 ? 'Aucun dossier' : 'Tous les dossiers'}</option>
                 {workspaces.map((ws: any) => (
                   <option key={ws.id} value={ws.id}>{ws.name}</option>
                 ))}
               </select>
+              <button
+                onClick={() => setShowCreateWorkspace(true)}
+                className="flex items-center justify-center w-6 h-6 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                title="Créer un nouveau dossier"
+              >
+                <Plus size={12} />
+              </button>
             </div>
           )}
         </div>
@@ -1546,6 +1595,77 @@ export default function CapturePage() {
                 className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-colors disabled:opacity-50">
                 {saving ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Create Workspace Modal */}
+      {showCreateWorkspace && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+            onClick={() => setShowCreateWorkspace(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-bold text-gray-900">Créer un nouveau dossier</p>
+                <button
+                  onClick={() => setShowCreateWorkspace(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-2">Nom du dossier *</label>
+                  <input
+                    type="text"
+                    value={newWorkspaceName}
+                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                    placeholder="Ex: Client XYZ, Dossier Personnel..."
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-2">Description (optionnel)</label>
+                  <textarea
+                    value={newWorkspaceDesc}
+                    onChange={(e) => setNewWorkspaceDesc(e.target.value)}
+                    placeholder="Description de ce dossier..."
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50">
+                <button
+                  onClick={() => setShowCreateWorkspace(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleCreateWorkspace}
+                  disabled={!newWorkspaceName.trim() || creatingWorkspace}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {creatingWorkspace ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={14} />
+                      Créer le dossier
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </>

@@ -9,37 +9,8 @@ ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON D
 ALTER TABLE bank_transactions
 ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE SET NULL;
 
--- Update RLS policies to include workspace_id checks
-DROP POLICY IF EXISTS "captured_documents_select" ON public.captured_documents;
-CREATE POLICY "captured_documents_select" ON public.captured_documents
-  FOR SELECT USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM public.workspace_members
-      WHERE workspace_members.user_id = auth.uid()
-      AND workspace_members.workspace_id = captured_documents.workspace_id
-    )
-  );
-
-DROP POLICY IF EXISTS "captured_documents_update" ON public.captured_documents;
-CREATE POLICY "captured_documents_update" ON public.captured_documents
-  FOR UPDATE USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM public.workspace_members
-      WHERE workspace_members.user_id = auth.uid()
-      AND workspace_members.workspace_id = captured_documents.workspace_id
-      AND workspace_members.role IN ('admin', 'editor')
-    )
-  ) WITH CHECK (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM public.workspace_members
-      WHERE workspace_members.user_id = auth.uid()
-      AND workspace_members.workspace_id = captured_documents.workspace_id
-      AND workspace_members.role IN ('admin', 'editor')
-    )
-  );
+-- Note: Workspace-based RLS is handled via the workspace_documents view
+-- to avoid recursion issues. See migration 013.
 
 -- 2. Line-by-Line Extraction
 ALTER TABLE captured_documents
