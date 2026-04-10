@@ -193,3 +193,30 @@ export interface Appointment {
   google_event_id?: string;
   created_at: string;
 }
+
+export type CaptureStatus = 'pending' | 'reviewed' | 'published';
+
+export interface CapturedDocument {
+  id: string;
+  user_id: string;
+  client_id?: string;
+  file_url: string;
+  file_type: string;
+  status: CaptureStatus;
+  ocr_data?: Record<string, any>;
+  vendor?: string;
+  description?: string;
+  amount: number;
+  vat_amount: number;
+  vat_rate: number;
+  document_date?: string;
+  due_date?: string;
+  category?: string;
+  payment_method?: string;
+  notes?: string;
+  supplier_reference?: string;
+  reviewed_at?: string;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
+}
