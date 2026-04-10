@@ -309,7 +309,7 @@ export default function CapturePage() {
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         className={cn(
-          'relative rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-200 cursor-pointer',
+          'relative rounded-2xl border-2 border-dashed p-4 sm:p-8 text-center transition-all duration-200 cursor-pointer',
           isDragging ? 'border-primary bg-primary/5 scale-[1.01]' :
           'border-gray-200 hover:border-primary/40 hover:bg-gray-50'
         )}
@@ -494,7 +494,7 @@ export default function CapturePage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   {doc.status === 'pending' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); changeStatus(doc.id, 'reviewed'); }}

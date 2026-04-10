@@ -10,7 +10,7 @@ import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils'
 import Modal from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus, Sparkles, Eye, Upload } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
@@ -86,6 +86,56 @@ export default function SettingsPage() {
   });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // AI Template analysis state
+  const templateFileRef = useRef<HTMLInputElement>(null);
+  const [analyzingTemplate, setAnalyzingTemplate] = useState(false);
+  const [analyzedTemplateHtml, setAnalyzedTemplateHtml] = useState<string | null>(null);
+  const [analyzedStyleDesc, setAnalyzedStyleDesc] = useState('');
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+  const [templateError, setTemplateError] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const handleAnalyzeTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!sub.canUseCustomTemplate) { router.push('/paywall'); return; }
+    setAnalyzingTemplate(true);
+    setTemplateError('');
+    setAnalyzedTemplateHtml(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/ai/analyze-invoice-template', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur analyse');
+      setAnalyzedTemplateHtml(data.template_html);
+      setAnalyzedStyleDesc(data.style_description || 'Style personnalisé');
+      if (data.accent_color) set('accent_color', data.accent_color);
+    } catch (err: any) {
+      setTemplateError(err.message || 'Erreur lors de l\'analyse');
+    } finally {
+      setAnalyzingTemplate(false);
+    }
+  };
+
+  const handleSaveCustomTemplate = async () => {
+    if (!analyzedTemplateHtml) return;
+    setSavingTemplate(true);
+    try {
+      await updateProfile({ custom_template_html: analyzedTemplateHtml, template_id: 0 } as any);
+      setAnalyzedTemplateHtml(null);
+      setAnalyzedStyleDesc('');
+    } catch (e: any) { setTemplateError(e.message); }
+    finally { setSavingTemplate(false); }
+  };
+
+  const handleResetCustomTemplate = async () => {
+    if (!confirm('Revenir aux templates par défaut ?')) return;
+    try {
+      await updateProfile({ custom_template_html: null, template_id: parseInt(form.template_id) || 1 } as any);
+    } catch (e: any) { setTemplateError(e.message); }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -305,24 +355,24 @@ export default function SettingsPage() {
             }}
             placeholder="Rechercher votre entreprise..."
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Prénom" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} />
             <Input label="Nom" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
             <Input label="Téléphone" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
           </div>
           <Input label="Adresse" value={form.address} onChange={(e) => set('address', e.target.value)} />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="CP" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} />
-            <Input label="Ville" value={form.city} onChange={(e) => set('city', e.target.value)} className="col-span-2" />
+            <Input label="Ville" value={form.city} onChange={(e) => set('city', e.target.value)} className="sm:col-span-2" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Statut juridique" value={form.legal_status} onChange={(e) => set('legal_status', e.target.value)} options={[{ value: '', label: 'Choisir...' }, ...LEGAL_STATUSES.map((s) => ({ value: s.value, label: s.label }))]} />
             <Select label="Secteur" value={form.sector} onChange={(e) => set('sector', e.target.value)} options={[{ value: '', label: 'Choisir...' }, ...SECTORS.map((s) => ({ value: s, label: s }))]} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="SIRET" value={form.siret} onChange={(e) => set('siret', e.target.value)} />
             <Input label="N° TVA" value={form.vat_number} onChange={(e) => set('vat_number', e.target.value)} />
           </div>
@@ -333,13 +383,136 @@ export default function SettingsPage() {
       title: 'Facturation',
       fields: (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Préfixe numéro" value={form.invoice_prefix} onChange={(e) => set('invoice_prefix', e.target.value)} placeholder="FACT" />
             <Select label="Devise" value={form.currency} onChange={(e) => set('currency', e.target.value)} options={CURRENCY_OPTS} />
-            <Select label="Modèle PDF" value={form.template_id} onChange={(e) => set('template_id', e.target.value)} options={TEMPLATE_OPTS} />
           </div>
           <Textarea label="Conditions de paiement" value={form.payment_terms} onChange={(e) => set('payment_terms', e.target.value)} rows={2} placeholder="Payable sous 30 jours par virement..." />
           <Textarea label="Mentions légales" value={form.legal_mention} onChange={(e) => set('legal_mention', e.target.value)} rows={2} placeholder="Numéro RCS, capital social..." />
+        </div>
+      ),
+    },
+    {
+      title: 'Modèle de facture',
+      fields: (
+        <div className="space-y-4">
+          {profile?.custom_template_html && (
+            <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl px-3 py-2.5">
+              <Sparkles size={15} className="text-purple-600 flex-shrink-0" />
+              <p className="text-sm font-semibold text-purple-700">Template personnalisé actif</p>
+              <button onClick={handleResetCustomTemplate} className="ml-auto text-xs text-purple-500 hover:text-purple-700 font-semibold">Réinitialiser</button>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: '1', name: 'Minimaliste', desc: 'Épuré et moderne', bg: 'bg-white', border: 'border-gray-200', accent: '#1D9E75' },
+              { id: '2', name: 'Classique', desc: 'Professionnel et sobre', bg: 'bg-gray-900', border: 'border-gray-700', accent: '#1a1a2e' },
+              { id: '3', name: 'Moderne', desc: 'Dynamique et coloré', bg: 'bg-primary', border: 'border-primary-dark', accent: '#1D9E75' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => { if (!profile?.custom_template_html) set('template_id', t.id); }}
+                className={`relative p-3 rounded-xl border-2 text-center transition-all ${
+                  profile?.custom_template_html ? 'opacity-40 cursor-not-allowed' :
+                  form.template_id === t.id ? 'border-primary shadow-md bg-primary/5' : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className={`w-full h-16 rounded-lg ${t.bg} mb-2 flex items-center justify-center overflow-hidden`}>
+                  <div className={`w-3/4 ${t.id === '2' ? 'bg-gray-600' : 'bg-primary/30'} h-2 rounded-full mb-1`} />
+                  <div className={`w-1/2 ${t.id === '2' ? 'bg-gray-500' : 'bg-gray-300'} h-1.5 rounded-full`} />
+                </div>
+                <p className="text-xs font-bold text-gray-900">{t.name}</p>
+                <p className="text-[10px] text-gray-400">{t.desc}</p>
+                {form.template_id === t.id && !profile?.custom_template_html && (
+                  <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center">
+                    <CheckCircle2 size={10} />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* AI Template Upload - Pro only */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={14} className={sub.canUseCustomTemplate ? 'text-purple-500' : 'text-gray-300'} />
+              <h4 className="text-sm font-bold text-gray-900">Importer un template avec l'IA</h4>
+              {!sub.canUseCustomTemplate && (
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">PRO</span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mb-3">Uploadez une facture et l'IA créera un template basé sur son style.</p>
+
+            {sub.canUseCustomTemplate ? (
+              <div className="space-y-3">
+                <div
+                  onClick={() => templateFileRef.current?.click()}
+                  className="relative rounded-xl border-2 border-dashed p-4 text-center transition-all cursor-pointer border-gray-200 hover:border-primary/40 hover:bg-gray-50"
+                >
+                  <input ref={templateFileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleAnalyzeTemplate} />
+                  {analyzingTemplate ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-semibold text-gray-600">L'IA analyse votre facture...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload size={20} className="text-gray-400" />
+                      <p className="text-xs font-semibold text-gray-600">Glissez ou <span className="text-primary">parcourez</span></p>
+                      <p className="text-[10px] text-gray-400">PNG, JPG, PDF</p>
+                    </div>
+                  )}
+                </div>
+
+                {analyzedTemplateHtml && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                      <CheckCircle2 size={14} className="text-green-600" />
+                      <div>
+                        <p className="text-xs font-bold text-green-700">Template généré</p>
+                        <p className="text-[10px] text-green-600">{analyzedStyleDesc}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplatePreview(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:border-primary hover:text-primary transition-colors"
+                      >
+                        <Eye size={13} /> Aperçu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveCustomTemplate}
+                        disabled={savingTemplate}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
+                      >
+                        {savingTemplate ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <CheckCircle2 size={13} />
+                        )}
+                        Sauvegarder comme mon template
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {templateError && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                    <AlertTriangle size={13} className="text-red-500" />
+                    <p className="text-xs text-red-600">{templateError}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                <p className="text-xs text-gray-400">Disponible avec le plan Pro</p>
+                <button onClick={() => router.push('/paywall')} className="mt-2 text-xs text-primary font-bold hover:underline">Voir les offres →</button>
+              </div>
+            )}
+          </div>
         </div>
       ),
     },
@@ -403,7 +576,7 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                 {[
                   { label: 'Paiement par carte', desc: 'Visa, Mastercard, Amex' },
                   { label: 'Virement direct', desc: 'Les fonds vont sur votre Stripe' },
@@ -514,7 +687,7 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-4">
         {SECTIONS.map(({ title, fields }) => (
-          <div key={title} className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div key={title} className="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4">
             <h3 className="font-bold text-gray-900 mb-4">{title}</h3>
             {fields}
           </div>
@@ -776,6 +949,39 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Template preview modal */}
+      <Modal
+        open={showTemplatePreview}
+        onClose={() => setShowTemplatePreview(false)}
+        title="Aperçu du template"
+        size="xl"
+      >
+        {analyzedTemplateHtml && (
+          <div className="space-y-3">
+            <div className="bg-gray-100 rounded-xl overflow-hidden" style={{ maxHeight: '70vh' }}>
+              <iframe
+                srcDoc={analyzedTemplateHtml}
+                className="w-full border-0"
+                style={{ height: '600px', minWidth: '600px', transform: 'scale(0.6)', transformOrigin: 'top left', width: '166.6%' }}
+                title="Template preview"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowTemplatePreview(false)}>
+                Fermer
+              </Button>
+              <Button
+                className="flex-1"
+                loading={savingTemplate}
+                onClick={async () => { await handleSaveCustomTemplate(); setShowTemplatePreview(false); }}
+              >
+                Sauvegarder ce template
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Delete account confirmation modal */}

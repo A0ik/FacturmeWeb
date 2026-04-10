@@ -241,7 +241,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Chart ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 overflow-x-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-bold text-gray-900">Évolution mensuelle</h2>

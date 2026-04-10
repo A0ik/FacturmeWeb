@@ -319,7 +319,7 @@ export default function NewInvoicePage() {
       </div>
 
       {/* Document type selector */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {DOC_TYPES.map((dt) => {
           const Icon = dt.icon;
           const active = docType === dt.value;
@@ -596,7 +596,7 @@ export default function NewInvoicePage() {
                 <Calendar size={14} className="text-gray-400" />
                 <h3 className="text-sm font-bold text-gray-700">Dates</h3>
               </div>
-              <div className="p-4 grid grid-cols-2 gap-3">
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   label="Date d'émission"
                   type="date"
@@ -683,7 +683,7 @@ export default function NewInvoicePage() {
                       className="mb-2"
                     />
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <Input
                         type="number"
                         label="Qté"

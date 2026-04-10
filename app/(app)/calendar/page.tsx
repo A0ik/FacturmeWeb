@@ -372,7 +372,7 @@ export default function CalendarPage() {
                   key={i}
                   onClick={() => day && setSelectedDay(day === selectedDay ? null : day)}
                   className={cn(
-                    'min-h-[80px] p-1.5 border-b border-r border-gray-50 transition-colors',
+                    'min-h-[60px] sm:min-h-[80px] p-1.5 border-b border-r border-gray-50 transition-colors',
                     day ? 'cursor-pointer' : 'bg-gray-50/40',
                     day && !isSelected ? 'hover:bg-gray-50' : '',
                     isSelected && 'bg-primary/5 border-primary/10',
@@ -671,7 +671,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Date + Time */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Date *</label>
                   <input
