@@ -38,7 +38,7 @@ Règles:
 - Si le montant est TTC, calcule le HT en divisant par (1 + vat_rate/100)`;
 
     const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-7b-instruct',
+      model: 'mistralai/mistral-small-24b-instruct-2501',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
@@ -47,7 +47,7 @@ Règles:
     });
 
     let parsed = {};
-    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch {}
+    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
 
     return NextResponse.json({ transcript, parsed });
   } catch (error: any) {

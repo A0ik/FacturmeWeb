@@ -45,7 +45,7 @@ Règles strictes:
 - Assure-toi que les prix sont raisonnables et cohérents avec le marché français`;
 
     const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-7b-instruct',
+      model: 'mistralai/mistral-small-24b-instruct-2501',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },

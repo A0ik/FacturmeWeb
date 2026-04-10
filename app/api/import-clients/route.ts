@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const text = await file.text();
 
     const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-7b-instruct',
+      model: 'mistralai/mistral-small-24b-instruct-2501',
       messages: [
         {
           role: 'system',
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     });
 
     let parsed: { clients?: any[] } = {};
-    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch {}
+    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
 
     const clients = parsed.clients || [];
     if (clients.length === 0) return NextResponse.json({ imported: 0 });
