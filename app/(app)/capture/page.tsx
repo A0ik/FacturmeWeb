@@ -7,11 +7,39 @@ import { CapturedDocument, CaptureStatus } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Upload, Camera, FileText, Search, Trash2, CheckCircle2,
-  Eye, X, ChevronDown, Image as ImageIcon, File, Plus,
+  Eye, X, ChevronDown, Image as ImageIcon, File as FileIcon, Plus,
   AlertTriangle, Download, Sparkles, Archive, ZoomIn,
   SlidersHorizontal, Check, FileSpreadsheet, Building2,
   RotateCcw,
 } from 'lucide-react';
+
+// ─── Image compression (client-side, no library needed) ─────────────────────
+
+async function compressImage(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1400;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+        else                { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -168,12 +196,13 @@ export default function CapturePage() {
       setQueue(prev => prev.map(q => q.id === item.id ? { ...q, ...u } : q));
 
     try {
-      // 1. Upload to Supabase storage
+      // 1. Compress image if needed, then upload to Supabase storage
       upd({ status: 'uploading' });
-      const ext  = item.file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileToUpload = item.file.type.startsWith('image/') ? await compressImage(item.file) : item.file;
+      const ext  = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `receipts/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadErr } = await getSupabaseClient().storage
-        .from('assets').upload(path, item.file, { upsert: true });
+        .from('assets').upload(path, fileToUpload, { upsert: true });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
@@ -189,11 +218,11 @@ export default function CapturePage() {
       if (insertErr) throw insertErr;
       setDocuments(prev => [doc, ...prev]);
 
-      // 3. AI analysis — send file directly (avoids URL timing issues)
+      // 3. AI analysis — send compressed/original file directly
       upd({ status: 'analyzing' });
       if (fileType === 'image' || fileType === 'pdf') {
         const fd = new FormData();
-        fd.append('file', item.file);
+        fd.append('file', fileToUpload); // use compressed version for images
         const res = await fetch('/api/ai/analyze-document', { method: 'POST', body: fd });
         const { extracted, error: aiErr } = await res.json();
         if (!aiErr && extracted) {
@@ -744,7 +773,7 @@ export default function CapturePage() {
                       ? <img src={doc.file_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       : doc.file_type === 'pdf'
                         ? <FileText size={16} className="text-red-400" />
-                        : <File size={16} className="text-gray-400" />}
+                        : <FileIcon size={16} className="text-gray-400" />}
                   </div>
 
                   {/* Vendor + description */}
