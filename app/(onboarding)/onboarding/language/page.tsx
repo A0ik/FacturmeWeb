@@ -1,25 +1,37 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { changeLanguage } from '@/i18n';
 
 export default function OnboardingLanguagePage() {
   const router = useRouter();
-  const { updateProfile } = useAuthStore();
+  const { updateProfile, user } = useAuthStore();
   const [loading, setLoading] = useState(false);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user, router]);
 
   const handleSelect = async (lang: 'fr' | 'en') => {
     setLoading(true);
     try {
       await changeLanguage(lang);
       await updateProfile({ language: lang } as any);
-    } catch {}
-    finally {
-      setLoading(false);
       router.push('/onboarding/company');
+    } catch (err) {
+      console.error('Failed to save language:', err);
+      // Still navigate so user doesn't get stuck, but try again in background
+      router.push('/onboarding/company');
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-light via-white to-blue-50 flex items-center justify-center p-4">

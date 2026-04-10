@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import Button from '@/components/ui/Button';
@@ -7,33 +7,44 @@ import { Input } from '@/components/ui/Input';
 
 export default function OnboardingAddressPage() {
   const router = useRouter();
-  const { updateProfile } = useAuthStore();
+  const { updateProfile, profile, user } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
-    address: '',
-    postal_code: '',
-    city: '',
-    country: 'France',
-    phone: '',
-    iban: '',
-    bic: '',
-    bank_name: '',
+    address: profile?.address || '',
+    postal_code: profile?.postal_code || '',
+    city: profile?.city || '',
+    country: profile?.country || 'France',
+    phone: profile?.phone || '',
+    iban: profile?.iban || '',
+    bic: profile?.bic || '',
+    bank_name: profile?.bank_name || '',
   });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await updateProfile(form as any);
       router.push('/onboarding/template');
-    } catch {
-      router.push('/onboarding/template');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la sauvegarde');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -67,6 +78,12 @@ export default function OnboardingAddressPage() {
               <Input label="BIC/SWIFT" placeholder="BNPAFRPP" value={form.bic} onChange={(e) => set('bic', e.target.value)} />
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-1">
             <Button type="button" variant="ghost" onClick={() => router.push('/onboarding/template')}>

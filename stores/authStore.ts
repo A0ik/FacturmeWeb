@@ -58,6 +58,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!data.user) throw new Error('Erreur lors de la création du compte');
       set({ user: data.user });
       if (!data.session) throw new Error('CONFIRM_EMAIL');
+      // Create initial profile row immediately so onboarding updateProfile works
+      const { error: profileError } = await getSupabaseClient().from('profiles').upsert({
+        id: data.user.id,
+        email: data.user.email ?? email,
+        company_name: '',
+        language: 'fr',
+        onboarding_done: false,
+        created_at: new Date().toISOString(),
+      }).select().single();
+      if (profileError) console.error('[signUp] profile creation warning:', profileError.message);
       return { userId: data.user.id };
     } finally { set({ loading: false }); }
   },
