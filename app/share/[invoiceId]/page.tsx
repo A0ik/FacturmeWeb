@@ -273,7 +273,16 @@ export default function SharePage({ params }: { params: Promise<{ invoiceId: str
             style={{ background: accent }}
             className="flex items-center justify-center gap-2 text-white text-base font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity"
           >
-            Payer {fmt(invoice.total)} en ligne →
+            Payer {fmt(invoice.total)} en ligne (Stripe) →
+          </a>
+        )}
+        {invoice.payment_link && !invoice.stripe_payment_url && invoice.status !== 'paid' && (
+          <a
+            href={invoice.payment_link}
+            style={{ background: '#1D9E75' }}
+            className="flex items-center justify-center gap-2 text-white text-base font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity"
+          >
+            Payer {fmt(invoice.total)} avec SumUp →
           </a>
         )}
 

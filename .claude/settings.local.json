@@ -7,7 +7,11 @@
       "Bash(node -e ':*)",
       "Bash(claude logout:*)",
       "Bash(npx next:*)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(xxd \"C:/Users/salma/Desktop/FacturmeWeb-main/plan.md\")",
+      "Bash(wc -l /c/Users/salma/Desktop/FacturmeWeb-main/app/api/*/*/route.ts /c/Users/salma/Desktop/FacturmeWeb-main/app/api/*/route.ts)",
+      "WebSearch",
+      "mcp__claude_ai_Supabase__search_docs"
     ]
   }
 }

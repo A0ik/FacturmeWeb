@@ -120,6 +120,7 @@ export interface Invoice {
   payment_link?: string;
   payment_method?: string;
   stripe_payment_url?: string;
+  sumup_checkout_id?: string;
   partial_payments?: PartialPayment[];
   amount_paid?: number;
   voice_transcript?: string;

@@ -52,6 +52,13 @@ export default function SettingsPage() {
   const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<'connected' | 'error' | null>(null);
 
+  // SumUp state
+  const [sumupApiKey, setSumupApiKey] = useState('');
+  const [sumupMerchantCode, setSumupMerchantCode] = useState('');
+  const [sumupConnected, setSumupConnected] = useState(false);
+  const [sumupLoading, setSumupLoading] = useState(false);
+  const [sumupStatus, setSumupStatus] = useState<'connected' | 'error' | null>(null);
+
   // Webhook state
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
   const [showWebhookModal, setShowWebhookModal] = useState(false);
@@ -187,6 +194,54 @@ export default function SettingsPage() {
       }
     } catch (e: any) { alert(e.message); }
     finally { setStripeConnectLoading(false); }
+  };
+
+  // Check SumUp connection on mount
+  useEffect(() => {
+    fetch('/api/sumup/connect')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.connected) {
+          setSumupConnected(true);
+          setSumupMerchantCode(d.merchantCode || '');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleConnectSumUp = async () => {
+    setSumupLoading(true); setSumupStatus(null);
+    try {
+      const res = await fetch('/api/sumup/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: sumupApiKey, merchantCode: sumupMerchantCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSumupConnected(true);
+      setSumupStatus('connected');
+    } catch (e: any) {
+      setSumupStatus('error');
+      alert(e.message);
+    } finally {
+      setSumupLoading(false);
+    }
+  };
+
+  const handleDisconnectSumUp = async () => {
+    if (!confirm('Déconnecter votre compte SumUp ? Les liens de paiement existants ne seront plus actifs.')) return;
+    setSumupLoading(true);
+    try {
+      const res = await fetch('/api/sumup/connect', { method: 'DELETE' });
+      if (res.ok) {
+        setSumupConnected(false);
+        setSumupApiKey('');
+        setSumupMerchantCode('');
+        setSumupStatus(null);
+      }
+    } catch (e: any) { alert(e.message); }
+    finally { setSumupLoading(false); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -600,6 +655,108 @@ export default function SettingsPage() {
                   <Link2 size={15} />
                 )}
                 Connecter avec Stripe
+              </button>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Paiement en ligne (SumUp)',
+      fields: (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Connectez votre compte SumUp pour accepter des paiements en ligne directement sur vos factures. Entrez votre clé API et code marchand SumUp.
+          </p>
+
+          {sumupStatus === 'connected' && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+              <CheckCircle2 size={15} className="text-green-600 flex-shrink-0" />
+              <p className="text-sm font-semibold text-green-700">SumUp connecté avec succès !</p>
+            </div>
+          )}
+          {sumupStatus === 'error' && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+              <XCircle size={15} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600">Erreur lors de la connexion. Vérifiez vos identifiants.</p>
+            </div>
+          )}
+
+          {sumupConnected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3.5 bg-green-50 rounded-xl border border-green-100">
+                <div className="w-9 h-9 rounded-lg bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 size={16} className="text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-green-800">Compte SumUp connecté</p>
+                  <p className="text-xs text-green-600 font-mono truncate">{sumupMerchantCode}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <Link2 size={14} className="text-blue-500 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  Un bouton <strong>Payer avec SumUp</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte SumUp.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDisconnectSumUp}
+                disabled={sumupLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <Unlink size={14} />
+                Déconnecter SumUp
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                {[
+                  { label: 'Paiement par carte', desc: 'Visa, Mastercard, Amex' },
+                  { label: 'Terminal SumUp', desc: 'Paiement en personne' },
+                  { label: 'Mise à jour auto', desc: 'Facture passée en "Payée"' },
+                ].map((f) => (
+                  <div key={f.label} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-700">{f.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Clé API SumUp</label>
+                  <input
+                    type="password"
+                    value={sumupApiKey}
+                    onChange={(e) => setSumupApiKey(e.target.value)}
+                    placeholder="sup_pk_..."
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Code marchand</label>
+                  <input
+                    type="text"
+                    value={sumupMerchantCode}
+                    onChange={(e) => setSumupMerchantCode(e.target.value)}
+                    placeholder="MH4K9XY5"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleConnectSumUp}
+                disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D9E75] text-white text-sm font-bold hover:bg-[#188A66] transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {sumupLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Link2 size={15} />
+                )}
+                Connecter SumUp
               </button>
             </div>
           )}

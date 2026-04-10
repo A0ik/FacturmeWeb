@@ -40,6 +40,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [sending, setSending] = useState(false);
   const [payLinkLoading, setPayLinkLoading] = useState(false);
   const [payLink, setPayLink] = useState('');
+  const [sumupLinkLoading, setSumupLinkLoading] = useState(false);
+  const [sumupLink, setSumupLink] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [sendEmail, setSendEmail] = useState('');
@@ -64,6 +66,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     note: '',
   });
   const [paymentSaving, setPaymentSaving] = useState(false);
+
+  // Status change confirmation
+  const [statusChangeMsg, setStatusChangeMsg] = useState('');
 
   // SEPA state
   const [showSepaModal, setShowSepaModal] = useState(false);
@@ -166,8 +171,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     </div>
   );
 
+  const STATUS_LABELS: Record<string, string> = {
+    sent: 'envoyée',
+    paid: 'payée',
+    overdue: 'en retard',
+    draft: 'brouillon',
+    accepted: 'acceptée',
+    refused: 'refusée',
+  };
+
   const handleStatusChange = async (next: InvoiceStatus) => {
     await updateInvoiceStatus(invoice.id, next);
+    setStatusChangeMsg(`${docLabel} marquée comme ${STATUS_LABELS[next] || next} !`);
+    setTimeout(() => setStatusChangeMsg(''), 4000);
   };
 
   const handleDownload = () => downloadInvoicePdf(invoice, profile || undefined);
@@ -221,6 +237,21 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       if (data.url) { setPayLink(data.url); navigator.clipboard.writeText(data.url).catch(() => {}); }
     } catch {}
     finally { setPayLinkLoading(false); }
+  };
+
+  const handleSumUpLink = async () => {
+    setSumupLinkLoading(true);
+    try {
+      const res = await fetch('/api/sumup/payment-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id }),
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      if (data.url) { setSumupLink(data.url); navigator.clipboard.writeText(data.url).catch(() => {}); }
+    } catch (e: any) { alert(e.message); }
+    finally { setSumupLinkLoading(false); }
   };
 
   const handleDelete = async () => {
@@ -322,7 +353,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   </button>
                   {invoice.document_type === 'invoice' && (
                     <button onClick={() => { handlePaymentLink(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
-                      <Link2 size={14} />Lien de paiement
+                      <Link2 size={14} />Lien de paiement Stripe
+                    </button>
+                  )}
+                  {invoice.document_type === 'invoice' && (
+                    <button onClick={() => { handleSumUpLink(); setShowMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2">
+                      <Link2 size={14} />Lien de paiement SumUp
                     </button>
                   )}
                   {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
@@ -370,8 +406,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         {payLink && (
           <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
             <Link2 size={14} className="text-green-600 flex-shrink-0" />
-            <p className="text-xs text-green-700 truncate flex-1">{payLink}</p>
+            <p className="text-xs text-green-700 truncate flex-1">Stripe : {payLink}</p>
             <button onClick={() => navigator.clipboard.writeText(payLink)} className="text-xs font-bold text-green-600 hover:underline">Copier</button>
+          </div>
+        )}
+        {sumupLink && (
+          <div className="mt-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+            <Link2 size={14} className="text-emerald-600 flex-shrink-0" />
+            <p className="text-xs text-emerald-700 truncate flex-1">SumUp : {sumupLink}</p>
+            <button onClick={() => navigator.clipboard.writeText(sumupLink)} className="text-xs font-bold text-emerald-600 hover:underline">Copier</button>
           </div>
         )}
         {reminderSent && (
@@ -385,6 +428,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <Share2 size={14} className="text-purple-600 flex-shrink-0" />
             <p className="text-xs text-purple-700 truncate flex-1">{shareUrl}</p>
             <span className="text-xs font-bold text-purple-600">Copié !</span>
+          </div>
+        )}
+        {statusChangeMsg && (
+          <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+            <CheckCircle size={14} className="text-green-600 flex-shrink-0" />
+            <p className="text-xs text-green-700 font-semibold">{statusChangeMsg}</p>
           </div>
         )}
       </div>
