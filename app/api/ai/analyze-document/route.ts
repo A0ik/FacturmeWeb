@@ -40,25 +40,37 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: 'text',
-              text: `Tu es un assistant comptable expert. Analyse cette facture ou ce justificatif et extrait TOUTES les informations visibles.
-Retourne UNIQUEMENT du JSON valide sans aucun commentaire ni markdown:
+              text: `Tu es un expert en OCR et comptabilité. Lis attentivement cette image de facture ou justificatif et extrais TOUTES les informations visibles, même partiellement.
+
+RÈGLES IMPORTANTES:
+- Lis tout le texte visible dans l'image, y compris les petits caractères
+- Pour "vendor": cherche le nom de l'entreprise émettrice (logo, en-tête, section ÉMETTEUR, nom en haut)
+- Pour "amount": cherche TOTAL TTC, MONTANT TTC, TOTAL À PAYER — c'est le montant final avec taxes
+- Pour "amount_ht": cherche TOTAL HT, SOUS-TOTAL, MONTANT HT
+- Pour "vat_amount": cherche TVA, T.V.A., taxe — c'est amount - amount_ht
+- Pour "invoice_number": cherche N° FACTURE, FACTURE N°, REF, NUMÉRO
+- Pour "date": cherche DATE, DATE DE FACTURE — format YYYY-MM-DD
+- Pour "due_date": cherche ÉCHÉANCE, DATE D'ÉCHÉANCE, À PAYER AVANT
+- Si un nombre est écrit "1 040,00€" ou "1040,00€" ou "1.040,00€", c'est 1040.00
+- Convertis toujours les virgules décimales en points (ex: 6240,00 → 6240.00)
+
+Retourne UNIQUEMENT du JSON valide:
 {
-  "vendor": "nom exact du fournisseur / émetteur de la facture",
-  "invoice_number": "numéro de facture ou bon de commande (ex: FAC-2024-001) ou null",
-  "amount": montant TTC total en nombre décimal (ex: 119.99) — obligatoire, 0 si illisible,
-  "amount_ht": montant hors taxes en nombre décimal ou null,
-  "vat_amount": montant TVA en nombre décimal ou null,
-  "vat_rate": taux TVA principal parmi 20, 10, 5.5, 2.1, 0 (nombre entier ou décimal) ou null,
-  "date": "date de la facture au format YYYY-MM-DD ou null",
-  "due_date": "date d'échéance au format YYYY-MM-DD ou null",
-  "description": "description courte en français de l'achat ou service (1 ligne max)",
-  "category": une seule valeur exacte parmi: transport, meals, accommodation, equipment, office, services, shopping, other,
-  "payment_method": une seule valeur exacte parmi: card, cash, transfer, check, prelevement — ou null si non mentionné,
-  "currency": "EUR" par défaut sauf si autre devise clairement visible (USD, GBP, etc.),
-  "supplier_siret": "numéro SIRET à 14 chiffres du fournisseur si visible sinon null",
-  "supplier_vat_number": "numéro TVA intracommunautaire fournisseur (ex: FR12345678901) si visible sinon null"
-}
-Si une information est absente ou illisible, mets null (pas de chaîne vide). Ne devine pas.`,
+  "vendor": "nom de l'entreprise émettrice",
+  "invoice_number": "numéro de facture ou null",
+  "amount": montant TTC en nombre (ex: 6240.00),
+  "amount_ht": montant HT en nombre ou null,
+  "vat_amount": montant TVA en nombre ou null,
+  "vat_rate": taux TVA en % (20, 10, 5.5, 2.1, ou 0) ou null,
+  "date": "YYYY-MM-DD ou null",
+  "due_date": "YYYY-MM-DD ou null",
+  "description": "résumé en 1 ligne de ce qui est facturé",
+  "category": "services" (par défaut si incertain, sinon: transport|meals|accommodation|equipment|office|shopping|other),
+  "payment_method": "transfer|card|cash|check|prelevement ou null",
+  "currency": "EUR",
+  "supplier_siret": "SIRET 14 chiffres si visible sinon null",
+  "supplier_vat_number": "numéro TVA si visible sinon null"
+}`,
             },
             {
               type: 'image_url',

@@ -29,9 +29,24 @@ CREATE TABLE IF NOT EXISTS public.captured_documents (
 ALTER TABLE public.captured_documents ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
-  CREATE POLICY "captured_documents_owner" ON public.captured_documents FOR ALL USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
+  CREATE POLICY "captured_documents_select" ON public.captured_documents
+    FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "captured_documents_insert" ON public.captured_documents
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "captured_documents_update" ON public.captured_documents
+    FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "captured_documents_delete" ON public.captured_documents
+    FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_captured_docs_user ON public.captured_documents(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_captured_docs_date ON public.captured_documents(user_id, document_date);

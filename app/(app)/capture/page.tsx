@@ -189,14 +189,12 @@ export default function CapturePage() {
       if (insertErr) throw insertErr;
       setDocuments(prev => [doc, ...prev]);
 
-      // 3. AI analysis (image or PDF)
+      // 3. AI analysis — send file directly (avoids URL timing issues)
       upd({ status: 'analyzing' });
       if (fileType === 'image' || fileType === 'pdf') {
-        const res = await fetch('/api/ai/analyze-document', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: fileUrl, mimeType: item.file.type }),
-        });
+        const fd = new FormData();
+        fd.append('file', item.file);
+        const res = await fetch('/api/ai/analyze-document', { method: 'POST', body: fd });
         const { extracted, error: aiErr } = await res.json();
         if (!aiErr && extracted) {
           const patch: Partial<CapturedDocument> = {
