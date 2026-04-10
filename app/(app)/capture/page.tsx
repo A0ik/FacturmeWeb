@@ -10,8 +10,11 @@ import {
   Eye, X, ChevronDown, Image as ImageIcon, File as FileIcon, Plus,
   AlertTriangle, Download, Sparkles, Archive, ZoomIn,
   SlidersHorizontal, Check, FileSpreadsheet, Building2,
-  RotateCcw,
+  RotateCcw, Database, CreditCard, Building, Users, Wallet,
+  Banknote, CheckCircle, ArrowRight, PlusCircle, Link2, Unlink,
+  ShoppingCart, TrendingUp, Receipt
 } from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 
 // ─── Image compression (client-side, no library needed) ─────────────────────
 
@@ -70,6 +73,20 @@ const STATUS_CONFIG: Record<CaptureStatus, { label: string; color: string; dot: 
   published: { label: 'Archivé',   color: 'bg-green-100 text-green-700',  dot: 'bg-green-500' },
 };
 
+const INVOICE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  purchase: { label: 'Achat',    color: 'bg-red-100 text-red-700',    icon: ShoppingCart },
+  sales:    { label: 'Vente',    color: 'bg-green-100 text-green-700', icon: TrendingUp },
+  expense:  { label: 'Dépense',  color: 'bg-orange-100 text-orange-700', icon: Receipt },
+  receipt:  { label: 'Reçu',     color: 'bg-blue-100 text-blue-700',   icon: FileText },
+};
+
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  unpaid:   { label: 'Non payé',   color: 'bg-red-100 text-red-700' },
+  pending:  { label: 'En attente', color: 'bg-amber-100 text-amber-700' },
+  paid:     { label: 'Payé',      color: 'bg-green-100 text-green-700' },
+  cancelled: { label: 'Annulé',   color: 'bg-gray-100 text-gray-700' },
+};
+
 const PAYMENT_METHODS = [
   { value: 'card',        label: 'Carte bancaire' },
   { value: 'cash',        label: 'Espèces' },
@@ -110,6 +127,11 @@ export default function CapturePage() {
   const [documents, setDocuments]     = useState<CapturedDocument[]>([]);
   const [loading, setLoading]         = useState(true);
 
+  // Workspace support (PRO)
+  const [workspaces, setWorkspaces]   = useState<any[]>([]);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string | null>(null);
+  const [isPro, setIsPro]             = useState(false);
+
   // Upload queue
   const [queue, setQueue]             = useState<QueueItem[]>([]);
 
@@ -138,10 +160,23 @@ export default function CapturePage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data } = await getSupabaseClient()
-        .from('captured_documents').select('*')
+      // Fetch documents with workspace data
+      const { data: docs } = await getSupabaseClient()
+        .from('captured_documents').select('*, workspaces(name)')
         .eq('user_id', user.id).order('created_at', { ascending: false });
-      setDocuments(data || []);
+      setDocuments(docs || []);
+
+      // Fetch profile and workspaces
+      const { data: profile } = await getSupabaseClient()
+        .from('profiles').select('subscription_tier').eq('id', user.id).single();
+      const proTier = profile?.subscription_tier === 'pro';
+      setIsPro(proTier);
+
+      if (proTier) {
+        const { data: ws } = await getSupabaseClient()
+          .from('workspaces').select('*').eq('owner_id', user.id);
+        setWorkspaces(ws || []);
+      }
     } finally {
       setLoading(false);
     }
@@ -170,13 +205,25 @@ export default function CapturePage() {
 
   const filtered = useMemo(() => {
     let list = documents;
+
+    // Workspace filter (PRO only)
+    if (isPro && selectedWorkspace) {
+      list = list.filter(d => d.workspace_id === selectedWorkspace);
+    }
+
+    // Status filter
     if (filters.status !== 'all') list = list.filter(d => d.status === filters.status);
+
+    // Invoice type filter (purchases/sales/expense/receipt)
     if (filters.expenseType !== 'all') {
       list = list.filter(d => {
-         const type = d.ocr_data?.expense_type || 'purchase'; // default to purchase if missing
+         // Use invoice_type field if available, fallback to ocr_data.expense_type
+         const type = d.invoice_type || d.ocr_data?.expense_type || d.ocr_data?.invoice_type || 'purchase';
          return type === filters.expenseType;
       });
     }
+
+    // Other filters
     if (filters.category)         list = list.filter(d => d.category === filters.category);
     if (filters.dateFrom)         list = list.filter(d => d.document_date && d.document_date >= filters.dateFrom);
     if (filters.dateTo)           list = list.filter(d => d.document_date && d.document_date <= filters.dateTo);
@@ -189,7 +236,7 @@ export default function CapturePage() {
       );
     }
     return list;
-  }, [documents, filters]);
+  }, [documents, filters, isPro, selectedWorkspace]);
 
   const activeUploads = queue.filter(q => ['waiting', 'uploading', 'analyzing'].includes(q.status)).length;
 
@@ -256,6 +303,19 @@ export default function CapturePage() {
         const extracted = data.extracted;
 
         if (extracted) {
+          let finalAccountCode = extracted.suggested_account_code || null;
+          let finalAccountName = null;
+          
+          if (extracted.vendor) {
+             const { data: mapping } = await getSupabaseClient().from('vendor_mappings')
+               .select('*').eq('user_id', user.id).ilike('vendor_name_pattern', extracted.vendor).maybeSingle();
+             if (mapping) {
+                finalAccountCode = mapping.account_code;
+                finalAccountName = mapping.account_name;
+             }
+          }
+          const confScore = typeof extracted.confidence_score === 'number' ? extracted.confidence_score : 100;
+
           const patch: Partial<CapturedDocument> = {
             vendor:             extracted.vendor        || null,
             description:        extracted.description   || null,
@@ -268,7 +328,31 @@ export default function CapturePage() {
             payment_method:     extracted.payment_method|| null,
             supplier_reference: extracted.invoice_number|| null,
             ocr_data:           extracted,
+            confidence_score:   confScore,
+            needs_review:       confScore < 80,
+            account_code:       finalAccountCode,
+            account_name:       finalAccountName,
+            // New Dext fields
+            invoice_type:       extracted.invoice_type || 'purchase',
+            line_items:         extracted.line_items || [],
+            supplier_iban:      extracted.supplier_iban || null,
+            supplier_bic:       extracted.supplier_bic || null,
+            supplier_bank_name: extracted.supplier_bank_name || null,
           };
+
+          // AI-based workspace assignment for PRO users
+          if (isPro && extracted.vendor && workspaces.length > 0) {
+            // Simple AI logic: match vendor name pattern to workspace
+            // In production, this could use a more sophisticated ML model
+            const vendorLower = extracted.vendor.toLowerCase();
+            const matchedWorkspace = workspaces.find((ws: any) =>
+              vendorLower.includes(ws.name.toLowerCase()) ||
+              ws.name.toLowerCase().includes(vendorLower)
+            );
+            if (matchedWorkspace) {
+              patch.workspace_id = matchedWorkspace.id;
+            }
+          }
           const { data: updated } = await getSupabaseClient()
             .from('captured_documents').update(patch).eq('id', doc.id).select().single();
           if (updated) setDocuments(prev => prev.map(d => d.id === doc.id ? updated : d));
@@ -288,7 +372,39 @@ export default function CapturePage() {
     const valid = files.filter(f => ALLOWED_TYPES.includes(f.type) || /\.(jpg|jpeg|png|webp|pdf|heic|heif)$/i.test(f.name));
     if (valid.length === 0) return;
 
-    const items: QueueItem[] = valid.map(file => ({
+    let finalFiles: File[] = [];
+
+    for (const f of valid) {
+      if (f.type === 'application/pdf') {
+        try {
+          const arrayBuffer = await f.arrayBuffer();
+          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          const pageCount = pdfDoc.getPageCount();
+          
+          if (pageCount > 1) {
+            // Split PDF automatiquement
+            for (let i = 0; i < pageCount; i++) {
+              const newPdf = await PDFDocument.create();
+              const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+              newPdf.addPage(copiedPage);
+              const pdfBytes = await newPdf.save();
+              const baseName = f.name.replace(/\.[^/.]+$/, "");
+              const newFile = new File([pdfBytes], `${baseName}_p${i + 1}.pdf`, { type: 'application/pdf' });
+              finalFiles.push(newFile);
+            }
+          } else {
+            finalFiles.push(f);
+          }
+        } catch (err) {
+          console.error("PDF Split Error", err);
+          finalFiles.push(f); // Fallback
+        }
+      } else {
+        finalFiles.push(f);
+      }
+    }
+
+    const items: QueueItem[] = finalFiles.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       file, name: file.name, status: 'waiting',
     }));
@@ -322,11 +438,21 @@ export default function CapturePage() {
     try {
       const { data } = await getSupabaseClient()
         .from('captured_documents')
-        .update({ ...editForm, updated_at: new Date().toISOString() })
+        .update({ ...editForm, needs_review: false, updated_at: new Date().toISOString() })
         .eq('id', selectedDoc.id).select().single();
       if (data) {
         setDocuments(prev => prev.map(d => d.id === selectedDoc.id ? data : d));
         setSelectedDoc(data);
+
+        // Update ML mappings if vendor and account code are set
+        if (editForm.vendor && editForm.account_code && user) {
+          await getSupabaseClient().from('vendor_mappings').upsert({
+            user_id: user.id,
+            vendor_name_pattern: editForm.vendor,
+            account_code: editForm.account_code,
+            account_name: editForm.account_name || null
+          }, { onConflict: 'user_id,vendor_name_pattern' });
+        }
       }
     } finally {
       setSaving(false);
@@ -396,6 +522,16 @@ export default function CapturePage() {
       payment_method:     doc.payment_method     || '',
       notes:              doc.notes              || '',
       supplier_reference: doc.supplier_reference || '',
+      account_code:       doc.account_code       || '',
+      account_name:       doc.account_name       || '',
+      // New fields
+      invoice_type:       doc.invoice_type       || 'purchase',
+      line_items:         doc.line_items         || [],
+      supplier_iban:      doc.supplier_iban      || '',
+      supplier_bic:       doc.supplier_bic       || '',
+      supplier_bank_name: doc.supplier_bank_name || '',
+      payment_status:     doc.payment_status     || 'unpaid',
+      workspace_id:       doc.workspace_id       || '',
     });
   };
 
@@ -430,6 +566,42 @@ export default function CapturePage() {
     setShowExport(false);
   };
 
+  const exportFEC = () => {
+    // Norme Fichier des Ecritures Comptables (FEC)
+    const headers = ['JournalCode', 'JournalLib', 'EcritureNum', 'EcritureDate', 'CompteNum', 'CompteLib', 'CompAuxNum', 'CompAuxLib', 'PieceRef', 'PieceDate', 'EcritureLib', 'Debit', 'Credit', 'EcritureLet', 'DateLet', 'ValidDate', 'Montantdevise', 'Idevise'];
+    const rows: string[][] = [];
+    
+    exportSet.forEach(d => {
+      if (!d.document_date) return;
+      const dateFec = d.document_date.replace(/-/g, ''); // YYYYMMDD
+      const pieceRef = d.supplier_reference || d.id.slice(0, 8).toUpperCase();
+      const numLogic = d.id.slice(0, 6).toUpperCase();
+      const vendorName = d.vendor || 'FOURNISSEUR INCONNU';
+      const label = (vendorName.slice(0, 20) + (d.supplier_reference ? ` - ${d.supplier_reference}` : '')).slice(0, 35);
+      const tva = d.vat_amount || 0;
+      const amountTtc = d.amount || 0;
+      const ht = +(amountTtc - tva).toFixed(2);
+      
+      // Ligne de Charge (HT) au débit
+      if (ht > 0) {
+        rows.push(['ACH', 'Achats', numLogic, dateFec, d.account_code || '606400', d.account_name || 'Achats divers', '', '', pieceRef, dateFec, label, ht.toFixed(2).replace('.', ','), '0,00', '', '', dateFec, '', '']);
+      }
+      // Ligne de TVA au débit
+      if (tva > 0) {
+        rows.push(['ACH', 'Achats', numLogic, dateFec, '445660', 'TVA Deductible', '', '', pieceRef, dateFec, label, tva.toFixed(2).replace('.', ','), '0,00', '', '', dateFec, '', '']);
+      }
+      // Ligne Fournisseur (Dette TTC) au crédit
+      if (amountTtc > 0) {
+        const auxCompte = `F${vendorName.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+        rows.push(['ACH', 'Achats', numLogic, dateFec, '401000', 'Fournisseurs', auxCompte, vendorName, pieceRef, dateFec, label, '0,00', amountTtc.toFixed(2).replace('.', ','), '', '', dateFec, '', '']);
+      }
+    });
+
+    const csv = [headers, ...rows].map(r => r.join('\t')).join('\n'); // FEC est souvent tabulaire (.txt)
+    downloadBlob('\uFEFF' + csv, `FEC-ACHATS-${new Date().toISOString().slice(0, 10)}.txt`, 'text/plain;charset=utf-8;');
+    setShowExport(false);
+  };
+
   const exportJSON = () => {
     const data = exportSet.map(d => ({
       date:            d.document_date,
@@ -451,29 +623,7 @@ export default function CapturePage() {
     setShowExport(false);
   };
 
-  const exportFEC = () => {
-    // Simplified FEC — journal AC (Achats fournisseurs)
-    const lines = ['JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tEcritureLib\tDebit\tCredit\tEcritureLet\tDateLet\tValidDate\tMontantdevise\tIdevise'];
-    exportSet.forEach((d, i) => {
-      const num    = String(i + 1).padStart(6, '0');
-      const date   = (d.document_date || d.created_at.slice(0, 10)).replace(/-/g, '');
-      const ht     = d.amount != null && d.vat_amount != null ? +(d.amount - d.vat_amount).toFixed(2) : (d.amount || 0);
-      const tva    = d.vat_amount || 0;
-      const ttc    = d.amount || 0;
-      const ref    = d.supplier_reference || `CAP${num}`;
-      const lib    = (d.vendor || d.description || 'Capture').slice(0, 50);
-      // Compte charge
-      lines.push(`AC\tAchats\t${num}\t${date}\t601000\tAchats et approvisionnements\t\t\t${ref}\t${date}\t${lib}\t${ht.toFixed(2)}\t0,00\t\t\t${date}\t${ht.toFixed(2)}\tEUR`);
-      // TVA déductible
-      if (tva > 0) {
-        lines.push(`AC\tAchats\t${num}\t${date}\t445660\tTVA déductible sur ABS\t\t\t${ref}\t${date}\t${lib}\t${tva.toFixed(2)}\t0,00\t\t\t${date}\t${tva.toFixed(2)}\tEUR`);
-      }
-      // Fournisseur (créditeur)
-      lines.push(`AC\tAchats\t${num}\t${date}\t401000\tFournisseurs\t\t\t${ref}\t${date}\t${lib}\t0,00\t${ttc.toFixed(2)}\t\t\t${date}\t${ttc.toFixed(2)}\tEUR`);
-    });
-    downloadBlob(lines.join('\n'), `fec-achats-${new Date().toISOString().slice(0, 10)}.txt`, 'text/plain;charset=utf-8;');
-    setShowExport(false);
-  };
+
 
   const exportOFX = () => {
     const ts = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
@@ -486,6 +636,94 @@ export default function CapturePage() {
     ofx += `</BANKTRANLIST>\n</STMTRS>\n</STMTTRNRS>\n</BANKMSGSRSV1>\n</OFX>`;
     downloadBlob(ofx, `export-ofx-${new Date().toISOString().slice(0, 10)}.ofx`, 'application/x-ofx');
     setShowExport(false);
+  };
+
+  // ── SEPA XML Generation (ISO 20022) ───────────────────────────────────────
+
+  const generateSEPAXML = (doc: CapturedDocument) => {
+    const iban = (doc.supplier_iban || editForm.supplier_iban || '').replace(/\s/g, '');
+    const bic = (doc.supplier_bic || editForm.supplier_bic || '').replace(/\s/g, '');
+    const amount = (doc.amount || 0).toFixed(2);
+    const now = new Date();
+    const msgId = `MSG-${now.getTime()}`;
+    const pmtId = `PMT-${doc.id.slice(0, 8)}-${now.getTime()}`;
+    const paymentDate = doc.due_date || now.toISOString().slice(0, 10);
+
+    // Generate SEPA Customer Credit Transfer XML (pain.001.001.03)
+    const sepaXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>${msgId}</MsgId>
+      <CreDtTm>${now.toISOString()}</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>${amount}</CtrlSum>
+      <InitgPty>
+        <Nm>FacturmeWeb</Nm>
+      </InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>${pmtId}</PmtInfId>
+      <PmtMtd>TRF</PmtMtd>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>${amount}</CtrlSum>
+      <PmtTpInf>
+        <SvcLvl>
+          <Cd>SEPA</Cd>
+        </SvcLvl>
+      </PmtTpInf>
+      <ReqdExctnDt>${paymentDate}</ReqdExctnDt>
+      <Dbtr>
+        <Nm>Votre Entreprise</Nm>
+      </Dbtr>
+      <DbtrAcct>
+        <Id>
+          <IBAN>FR76XXXXXXXXXXXXXXXXXX</IBAN>
+        </Id>
+      </DbtrAcct>
+      <DbtrAgt>
+        <FinInstnId>
+          <BIC>XXXXXXXX</BIC>
+        </FinInstnId>
+      </DbtrAgt>
+      <ChrgBr>SHAR</ChrgBr>
+      <CdtTrfTxInf>
+        <PmtId>
+          <EndToEndId>${doc.supplier_reference || doc.id.slice(0, 35)}</EndToEndId>
+        </PmtId>
+        <Amt>
+          <InstdAmt Ccy="EUR">${amount}</InstdAmt>
+        </Amt>
+        <CdtrAgt>
+          <FinInstnId>
+            <BIC>${bic}</BIC>
+          </FinInstnId>
+        </CdtrAgt>
+        <Cdtr>
+          <Nm>${doc.vendor || 'Fournisseur'}</Nm>
+        </Cdtr>
+        <CdtrAcct>
+          <Id>
+            <IBAN>${iban}</IBAN>
+          </Id>
+        </CdtrAcct>
+        <RmtInf>
+          <Ustrd>${doc.description || `Facture ${doc.supplier_reference || doc.id}`}</Ustrd>
+        </RmtInf>
+      </CdtTrfTxInf>
+    </PmtInf>
+  </CstmrCdtTrfInitn>
+</Document>`;
+
+    downloadBlob(sepaXml, `SEPA-${doc.supplier_reference || doc.id.slice(0, 8)}.xml`, 'application/xml');
+
+    // Update document to mark SEPA as generated
+    getSupabaseClient().from('captured_documents').update({
+      sepa_generated: true,
+      payment_status: 'pending'
+    }).eq('id', doc.id);
+
+    setSelectedDoc(prev => prev ? { ...prev, sepa_generated: true, payment_status: 'pending' as any } : null);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -501,8 +739,24 @@ export default function CapturePage() {
         <div>
           <h1 className="text-2xl font-black text-gray-900">Capture de documents</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Importez vos factures fournisseurs — l&apos;IA extrait automatiquement toutes les données
+            Importez vos factures — l&apos;IA extrait automatiquement toutes les données
           </p>
+          {/* Workspace Selector (PRO only) */}
+          {isPro && workspaces.length > 0 && (
+            <div className="flex items-center gap-2 mt-3">
+              <Building size={14} className="text-gray-400" />
+              <select
+                value={selectedWorkspace || ''}
+                onChange={(e) => setSelectedWorkspace(e.target.value || null)}
+                className="text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Tous les dossiers</option>
+                {workspaces.map((ws: any) => (
+                  <option key={ws.id} value={ws.id}>{ws.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Export dropdown */}
@@ -669,20 +923,24 @@ export default function CapturePage() {
 
       {/* ── Filters ── */}
       <div className="flex items-center gap-2 flex-wrap mb-2">
-        {/* Type pills (Dext style) */}
+        {/* Type pills (Dext style - expanded) */}
         <div className="flex items-center gap-1 border-r border-gray-200 pr-2 mr-1">
-          {(['all', 'purchase', 'receipt'] as const).map(t => (
-             <button
-              key={t}
-              onClick={() => setFilters(f => ({ ...f, expenseType: t }))}
-              className={cn(
-                'px-3 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap',
-                filters.expenseType === t ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-              )}
-            >
-              {t === 'all' ? 'Toutes' : t === 'purchase' ? 'Factures d\'achats' : 'Notes de frais'}
-            </button>
-          ))}
+          {(['all', 'purchase', 'sales', 'expense', 'receipt'] as const).map(t => {
+            const config = INVOICE_TYPE_CONFIG[t] || INVOICE_TYPE_CONFIG.purchase;
+            return (
+              <button
+                key={t}
+                onClick={() => setFilters(f => ({ ...f, expenseType: t }))}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap',
+                  filters.expenseType === t ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                )}
+              >
+                {filters.expenseType === t && <config.icon size={12} />}
+                {t === 'all' ? 'Tous' : config.label}
+              </button>
+            );
+          })}
         </div>
         {/* Search */}
         <div className="relative flex-1 min-w-44">
@@ -775,16 +1033,17 @@ export default function CapturePage() {
       ) : (
         <div className="rounded-2xl border border-gray-200 overflow-hidden">
           {/* Table head */}
-          <div className="grid grid-cols-[auto_40px_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+          <div className="grid grid-cols-[auto_40px_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
             <input type="checkbox"
               checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
               onChange={toggleAll}
               className="rounded" />
             <span />
             <span>Fournisseur / Description</span>
-            <span className="text-right hidden sm:block w-28">TTC</span>
-            <span className="hidden md:block w-20 text-right">TVA</span>
-            <span className="hidden lg:block w-24">Date</span>
+            <span className="hidden md:block w-20 text-center">Type</span>
+            <span className="text-right hidden sm:block w-24">TTC</span>
+            <span className="hidden lg:block w-20 text-right">TVA</span>
+            <span className="hidden xl:block w-24">Date</span>
             <span className="w-24">Statut</span>
           </div>
 
@@ -800,7 +1059,7 @@ export default function CapturePage() {
                   key={doc.id}
                   onClick={() => openDetail(doc)}
                   className={cn(
-                    'grid grid-cols-[auto_40px_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors group',
+                    'grid grid-cols-[auto_40px_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors group',
                     selected && 'bg-primary/5',
                     active   && 'bg-blue-50/60',
                   )}
@@ -837,6 +1096,19 @@ export default function CapturePage() {
                     </p>
                   </div>
 
+                  {/* Invoice Type */}
+                  <div className="hidden md:block w-20 text-center shrink-0">
+                    {(() => {
+                      const invType = doc.invoice_type || doc.ocr_data?.invoice_type || doc.ocr_data?.expense_type || 'purchase';
+                      const config = INVOICE_TYPE_CONFIG[invType] || INVOICE_TYPE_CONFIG.purchase;
+                      return (
+                        <span className={cn('inline-flex items-center justify-center px-2 py-1 rounded-full text-[10px] font-semibold', config.color)}>
+                          {config.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
                   {/* Amount TTC */}
                   <div className="text-right hidden sm:block w-28 shrink-0">
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(doc.amount || 0)}</p>
@@ -863,6 +1135,11 @@ export default function CapturePage() {
 
                   {/* Status + inline actions */}
                   <div className="w-24 shrink-0 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    {doc.needs_review && (
+                      <span title="Confiance < 80% (à vérifier)">
+                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                      </span>
+                    )}
                     <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0', st.color)}>
                       <span className={cn('w-1.5 h-1.5 rounded-full', st.dot)} />
                       {st.label}
@@ -919,6 +1196,10 @@ export default function CapturePage() {
           <button onClick={() => bulkStatus('published')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition-colors">
             <Archive size={12} /> Archiver
+          </button>
+          <button onClick={exportFEC}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-900 text-xs font-bold hover:bg-white transition-colors">
+            <Database size={12} /> FEC
           </button>
           <button onClick={exportCSV}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-700 text-white text-xs font-bold hover:bg-gray-600 transition-colors">
@@ -1082,7 +1363,24 @@ export default function CapturePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                {/* Intelligence Comptable */}
+                <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-100/50">
+                  <p className="text-[10px] font-bold text-amber-800 uppercase mb-2 flex items-center gap-1">
+                    <Sparkles size={11} /> Affectation Comptable
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="text" value={editForm.account_code || ''}
+                      onChange={e => setEditForm(f => ({ ...f, account_code: e.target.value }))}
+                      placeholder="Code (ex: 6061)"
+                      className="w-24 px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-amber-300" />
+                    <input type="text" value={editForm.account_name || ''}
+                      onChange={e => setEditForm(f => ({ ...f, account_name: e.target.value }))}
+                      placeholder="Nom du compte de charge"
+                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-amber-300" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-1">
                   <div>
                     <label className="text-[10px] font-semibold text-gray-500 uppercase block mb-1">Catégorie</label>
                     <select value={editForm.category || ''}
@@ -1111,6 +1409,126 @@ export default function CapturePage() {
                     rows={2}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
                 </div>
+
+                {/* Invoice Type (Purchases vs Sales) */}
+                <div>
+                  <label className="text-[10px] font-semibold text-gray-500 uppercase block mb-1">Type de document</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['purchase', 'sales', 'expense', 'receipt'] as const).map(type => {
+                      const config = INVOICE_TYPE_CONFIG[type];
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setEditForm(f => ({ ...f, invoice_type: type }))}
+                          className={cn(
+                            'flex flex-col items-center gap-1 px-2 py-2 rounded-xl text-[10px] font-semibold transition-colors',
+                            editForm.invoice_type === type
+                              ? 'bg-gray-900 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          )}
+                        >
+                          <config.icon size={14} />
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Line Items Table */}
+                {(editForm.line_items && editForm.line_items.length > 0) && (
+                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    <p className="text-[10px] font-bold text-gray-800 uppercase mb-2 flex items-center gap-1">
+                      <FileSpreadsheet size={11} /> Lignes de facture
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr className="text-left text-gray-500 font-semibold">
+                            <th className="pb-2">Description</th>
+                            <th className="pb-2 text-right">Qté</th>
+                            <th className="pb-2 text-right">Prix HT</th>
+                            <th className="pb-2 text-right">TVA %</th>
+                            <th className="pb-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editForm.line_items.map((item: any, idx: number) => (
+                            <tr key={idx} className="border-t border-gray-200">
+                              <td className="py-1.5">{item.description}</td>
+                              <td className="py-1.5 text-right">{item.quantity}</td>
+                              <td className="py-1.5 text-right">{formatCurrency(item.unit_price)}</td>
+                              <td className="py-1.5 text-right">{item.vat_rate}%</td>
+                              <td className="py-1.5 text-right font-semibold">{formatCurrency(item.total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* SEPA Payment Hub */}
+                {editForm.invoice_type === 'purchase' && (
+                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                    <p className="text-[10px] font-bold text-blue-800 uppercase mb-2 flex items-center gap-1">
+                      <CreditCard size={11} /> Paiement Fournisseur (SEPA)
+                    </p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[9px] font-semibold text-blue-700 uppercase block mb-1">IBAN</label>
+                        <input type="text" value={editForm.supplier_iban || ''}
+                          onChange={e => setEditForm(f => ({ ...f, supplier_iban: e.target.value.toUpperCase() }))}
+                          placeholder="FR76..."
+                          className="w-full px-2 py-1.5 text-[10px] rounded-lg border border-blue-200 bg-white focus:outline-none focus:border-blue-400 font-mono" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-semibold text-blue-700 uppercase block mb-1">BIC/SWIFT</label>
+                          <input type="text" value={editForm.supplier_bic || ''}
+                            onChange={e => setEditForm(f => ({ ...f, supplier_bic: e.target.value.toUpperCase() }))}
+                            placeholder="XXXXXXXX"
+                            className="w-full px-2 py-1.5 text-[10px] rounded-lg border border-blue-200 bg-white focus:outline-none focus:border-blue-400 font-mono" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-semibold text-blue-700 uppercase block mb-1">Banque</label>
+                          <input type="text" value={editForm.supplier_bank_name || ''}
+                            onChange={e => setEditForm(f => ({ ...f, supplier_bank_name: e.target.value }))}
+                            placeholder="Nom de la banque"
+                            className="w-full px-2 py-1.5 text-[10px] rounded-lg border border-blue-200 bg-white focus:outline-none focus:border-blue-400" />
+                        </div>
+                      </div>
+                      {(editForm.supplier_iban && editForm.supplier_bic) && (
+                        <button
+                          type="button"
+                          onClick={() => generateSEPAXML(selectedDoc!)}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-[10px] font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Database size={12} />
+                          Générer le fichier SEPA pour paiement
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Workspace Selector (PRO only) */}
+                {isPro && workspaces.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-500 uppercase block mb-1 flex items-center gap-1">
+                      <Building size={11} /> Dossier client
+                    </label>
+                    <select value={editForm.workspace_id || ''}
+                      onChange={e => setEditForm(f => ({ ...f, workspace_id: e.target.value }))}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none bg-white">
+                      <option value="">Aucun dossier</option>
+                      {workspaces.map((ws: any) => (
+                        <option key={ws.id} value={ws.id}>{ws.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 

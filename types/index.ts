@@ -196,11 +196,24 @@ export interface Appointment {
 }
 
 export type CaptureStatus = 'pending' | 'reviewed' | 'published';
+export type InvoiceType = 'purchase' | 'sales' | 'expense' | 'receipt';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'cancelled';
+export type WorkspaceRole = 'admin' | 'editor' | 'viewer';
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  vat_amount: number;
+  total: number;
+}
 
 export interface CapturedDocument {
   id: string;
   user_id: string;
   client_id?: string;
+  workspace_id?: string;
   file_url: string;
   file_type: string;
   status: CaptureStatus;
@@ -220,4 +233,98 @@ export interface CapturedDocument {
   published_at?: string;
   created_at: string;
   updated_at: string;
+  confidence_score?: number;
+  needs_review?: boolean;
+  account_code?: string;
+  account_name?: string;
+  matched_transaction_id?: string;
+  // New Dext fields
+  line_items?: InvoiceLineItem[];
+  invoice_type?: InvoiceType;
+  // Payment fields (SEPA)
+  supplier_iban?: string;
+  supplier_bic?: string;
+  supplier_bank_name?: string;
+  payment_status?: PaymentStatus;
+  payment_due_date?: string;
+  sepa_generated?: boolean;
+  sepa_file_url?: string;
 }
+
+export interface VendorMapping {
+  id: string;
+  user_id: string;
+  vendor_name_pattern: string;
+  account_code: string;
+  account_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankTransaction {
+  id: string;
+  user_id: string;
+  workspace_id?: string;
+  amount: number;
+  transaction_date: string;
+  label: string;
+  currency: string;
+  source: string;
+  status: 'unreconciled' | 'reconciled';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  description?: string;
+  logo_url?: string;
+  plan: string;
+  settings?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  email: string;
+  role: WorkspaceRole;
+  status: 'pending' | 'active' | 'declined' | 'removed';
+  invited_by?: string;
+  joined_at?: string;
+  created_at: string;
+}
+
+export interface MerchantConnection {
+  id: string;
+  user_id: string;
+  workspace_id?: string;
+  provider: string;
+  provider_account_id?: string;
+  credentials_encrypted: string;
+  credentials_key_id?: string;
+  status: 'active' | 'suspended' | 'error' | 'revoked';
+  last_sync_at?: string;
+  sync_error?: string;
+  auto_import: boolean;
+  import_settings?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type MerchantProvider = 'amazon' | 'orange' | 'uber' | 'apple' | 'google' | 'microsoft' | 'other';
+
+export const MERCHANT_PROVIDERS: Record<MerchantProvider, { name: string; icon: string; color: string }> = {
+  amazon: { name: 'Amazon Business', icon: '📦', color: 'bg-orange-500' },
+  orange: { name: 'Orange Business', icon: '🔶', color: 'bg-orange-400' },
+  uber: { name: 'Uber for Business', icon: '🚗', color: 'bg-black' },
+  apple: { name: 'Apple Business', icon: '🍎', color: 'bg-gray-800' },
+  google: { name: 'Google Workspace', icon: '🔵', color: 'bg-blue-500' },
+  microsoft: { name: 'Microsoft 365', icon: '🔷', color: 'bg-blue-600' },
+  other: { name: 'Autre fournisseur', icon: '🏢', color: 'bg-gray-500' },
+};
