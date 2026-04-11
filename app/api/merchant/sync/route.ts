@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the connection
-    const { data: conn, error: connErr } = await supabaseAdmin
+    const { data: conn, error: connErr } = await getSupabaseAdmin()
       .from('merchant_connections')
       .select('*')
       .eq('id', id)
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Update last_sync_at
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('merchant_connections')
       .update({
         last_sync_at: new Date().toISOString(),
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (id) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('merchant_connections')
         .update({ sync_error: err.message })
         .eq('id', id);

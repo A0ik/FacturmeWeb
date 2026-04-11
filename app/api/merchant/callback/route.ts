@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -39,14 +42,14 @@ export async function GET(req: NextRequest) {
 
     // For demo, create a mock connection
     // In production, get user_id from session
-    const { data: { user } } = await supabaseAdmin.auth.getUser();
+    const { data: { user } } = await getSupabaseAdmin().auth.getUser();
 
     if (!user) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
 
     // Create the merchant connection
-    const { error } = await supabaseAdmin.from('merchant_connections').insert({
+    const { error } = await getSupabaseAdmin().from('merchant_connections').insert({
       user_id: user.id,
       provider,
       provider_account_id: `demo_${provider}_${user.id.slice(0, 8)}`,

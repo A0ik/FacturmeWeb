@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
     // In production, this would be called after OAuth callback
     // with the authorization code to exchange for access token
 
-    const { data: conn, error } = await supabaseAdmin
+    const { data: conn, error } = await getSupabaseAdmin()
       .from('merchant_connections')
       .insert({
         user_id,

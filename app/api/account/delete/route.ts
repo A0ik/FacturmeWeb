@@ -52,7 +52,12 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Delete profile explicitly (uses id not user_id)
-    try { await admin.from('profiles').delete().eq('id', userId); } catch {}
+    try {
+      await admin.from('profiles').delete().eq('id', userId);
+    } catch (err) {
+      console.error('[account/delete] Failed to delete profile:', err);
+      // Continue anyway - auth deletion is the critical part
+    }
 
     // Delete auth user
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);

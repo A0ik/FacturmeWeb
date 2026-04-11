@@ -1,14 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { validateBody, sanitizeString, checkRateLimit } from '@/lib/api-validation';
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting - prevent spam
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimit = checkRateLimit(ip, 10, 60000); // 10 invites per minute
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Veuillez réessayer dans quelques minutes.' },
+        { status: 429 }
+      );
+    }
+
     const supabase = await createServerSupabaseClient();
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
 
-    const { email, role, token, workspaceName } = await req.json();
-    if (!email || !token) return NextResponse.json({ error: 'Email et token requis' }, { status: 400 });
+    // Validate request body
+    const body = await req.json();
+    const validation = validateBody(body, {
+      email: { required: true, type: 'email', maxLength: 255 },
+      role: { required: true, type: 'string', enum: ['admin', 'member', 'viewer'] },
+      token: { required: true, type: 'string', minLength: 16, maxLength: 128 },
+      sanitizedWorkspaceName: { required: true, type: 'string', minLength: 1, maxLength: 100 },
+    });
+
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: 'Données invalides', details: validation.errors },
+        { status: 400 }
+      );
+    }
+
+    const { email, role, token, sanitizedWorkspaceName: workspaceName } = body;
+
+    // Sanitize inputs
+    const sanitizedWorkspaceName = sanitizeString(workspaceName);
+
+    // Verify token exists in database and is unused (prevent token reuse/abuse)
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('workspace_invitations')
+      .select('id, workspace_id, status, created_at')
+      .eq('token', token)
+      .single();
+
+    if (tokenError || !tokenData) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 404 });
+    }
+
+    if (tokenData.status !== 'pending') {
+      return NextResponse.json({ error: 'Ce token a déjà été utilisé' }, { status: 400 });
+    }
+
+    // Check if the inviter is an admin of this workspace
+    const { data: memberData, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', tokenData.workspace_id)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (memberError || !memberData || memberData.role !== 'admin') {
+      return NextResponse.json({ error: 'Non autorisé à inviter dans ce workspace' }, { status: 403 });
+    }
 
     // Get inviter profile
     const { data: profile } = await supabase
@@ -33,7 +91,7 @@ export async function POST(req: NextRequest) {
       const emailBody = {
         sender: { name: senderName, email: senderEmail },
         to: [{ email }],
-        subject: `${inviterName} vous invite à rejoindre ${workspaceName} sur Factu.me`,
+        subject: `${inviterName} vous invite à rejoindre ${sanitizedWorkspaceName} sur Factu.me`,
         htmlContent: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -50,7 +108,7 @@ export async function POST(req: NextRequest) {
         <tr><td style="padding:40px">
           <h2 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#111827">Vous avez été invité 🎉</h2>
           <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6">
-            <strong style="color:#111">${inviterName}</strong> vous invite à rejoindre le workspace <strong style="color:#111">${workspaceName}</strong> en tant que <strong style="color:#1D9E75">${ROLE_LABELS[role] || role}</strong>.
+            <strong style="color:#111">${inviterName}</strong> vous invite à rejoindre le workspace <strong style="color:#111">${sanitizedWorkspaceName}</strong> en tant que <strong style="color:#1D9E75">${ROLE_LABELS[role] || role}</strong>.
           </p>
           <!-- Role info -->
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:24px">

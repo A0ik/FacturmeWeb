@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,12 +18,12 @@ export async function POST(req: NextRequest) {
 
     if (!email) return NextResponse.json({ error: 'Missing user_email' }, { status: 400 });
 
-    const { data: user } = await supabaseAdmin.from('profiles').select('id').eq('email', email).single();
+    const { data: user } = await getSupabaseAdmin().from('profiles').select('id').eq('email', email).single();
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     for (const trx of transactions) {
       // 1. Inserer la transaction bancaire
-      const { data: bTrx, error: insertErr } = await supabaseAdmin.from('bank_transactions').insert({
+      const { data: bTrx, error: insertErr } = await getSupabaseAdmin().from('bank_transactions').insert({
         user_id: user.id,
         amount: trx.amount,
         transaction_date: trx.date,
@@ -37,7 +40,7 @@ export async function POST(req: NextRequest) {
         const docAmount = Math.abs(trx.amount);
         
         // On cherche un document non encore rapproché
-        const { data: docs } = await supabaseAdmin
+        const { data: docs } = await getSupabaseAdmin()
           .from('captured_documents')
           .select('id, document_date')
           .eq('user_id', user.id)
@@ -51,12 +54,12 @@ export async function POST(req: NextRequest) {
           const targetDoc = docs[0]; 
 
           // Lier la facture à la transaction
-          await supabaseAdmin.from('captured_documents')
+          await getSupabaseAdmin().from('captured_documents')
             .update({ matched_transaction_id: bTrx.id })
             .eq('id', targetDoc.id);
 
           // Passer la transaction en "reconciled"
-          await supabaseAdmin.from('bank_transactions')
+          await getSupabaseAdmin().from('bank_transactions')
             .update({ status: 'reconciled' })
             .eq('id', bTrx.id);
         }

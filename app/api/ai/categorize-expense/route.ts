@@ -29,7 +29,12 @@ Retourne UNIQUEMENT du JSON: {"category": "string", "confidence": number (0-1)}`
     });
 
     let result: any = { category: 'other', confidence: 0 };
-    try { result = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
+    try {
+      result = JSON.parse(completion.choices[0].message.content || '{}');
+    } catch (err) {
+      console.error('[categorize-expense] Failed to parse AI response:', err);
+      result = { category: 'other', confidence: 0 };
+    }
 
     const VALID = ['transport', 'meals', 'accommodation', 'equipment', 'office', 'shopping', 'other'];
     if (!VALID.includes(result.category)) result.category = 'other';

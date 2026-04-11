@@ -393,7 +393,9 @@ export default function CapturePage() {
               newPdf.addPage(copiedPage);
               const pdfBytes = await newPdf.save();
               const baseName = f.name.replace(/\.[^/.]+$/, "");
-              const newFile = new File([pdfBytes], `${baseName}_p${i + 1}.pdf`, { type: 'application/pdf' });
+              // Create Blob from Uint8Array with type assertion
+              const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+              const newFile = new File([blob], `${baseName}_p${i + 1}.pdf`, { type: 'application/pdf' });
               finalFiles.push(newFile);
             }
           } else {

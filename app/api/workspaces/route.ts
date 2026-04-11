@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
       .replace(/^-|-$/g, '');
 
     // Check if slug already exists
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await getSupabaseAdmin()
       .from('workspaces')
       .select('id')
       .eq('slug', slug)
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
       : slug;
 
     // Create workspace
-    const { data: workspace, error } = await supabaseAdmin
+    const { data: workspace, error } = await getSupabaseAdmin()
       .from('workspaces')
       .insert({
         name,
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
 
     // Add owner as admin member
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('workspace_members')
       .insert({
         workspace_id: workspace.id,
@@ -76,7 +79,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
     }
 
-    const { data: workspaces, error } = await supabaseAdmin
+    const { data: workspaces, error } = await getSupabaseAdmin()
       .from('workspaces')
       .select('*')
       .eq('owner_id', userId)

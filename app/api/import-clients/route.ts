@@ -26,7 +26,12 @@ export async function POST(req: NextRequest) {
     });
 
     let parsed: { clients?: any[] } = {};
-    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
+    try {
+      parsed = JSON.parse(completion.choices[0].message.content || '{}');
+    } catch (err) {
+      console.error('[import-clients] Failed to parse AI response:', err);
+      parsed = {};
+    }
 
     const clients = parsed.clients || [];
     if (clients.length === 0) return NextResponse.json({ imported: 0 });

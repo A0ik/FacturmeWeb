@@ -47,7 +47,12 @@ Règles:
     });
 
     let parsed = {};
-    try { parsed = JSON.parse(completion.choices[0].message.content || '{}'); } catch { }
+    try {
+      parsed = JSON.parse(completion.choices[0].message.content || '{}');
+    } catch (err) {
+      console.error('[process-voice] Failed to parse AI response:', err);
+      parsed = {};
+    }
 
     return NextResponse.json({ transcript, parsed });
   } catch (error: any) {

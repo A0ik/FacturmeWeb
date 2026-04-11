@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration du client Supabase "Admin" pour écrire sans auth client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time execution
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
       if (!fromEmail) continue;
 
       // 1. Trouver l'utilisateur Facturme
-      const { data: user } = await supabaseAdmin
+      const { data: user } = await getSupabaseAdmin()
         .from('profiles')
         .select('id')
         .eq('email', fromEmail)
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
         const ext = att.Name.split('.').pop()?.toLowerCase() || 'pdf';
         const path = `receipts/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         
-        const { error: uploadErr } = await supabaseAdmin.storage
+        const { error: uploadErr } = await getSupabaseAdmin().storage
           .from('assets')
           .upload(path, fileData, { contentType: att.ContentType, upsert: true });
 
@@ -57,12 +59,12 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const { data: urlData } = supabaseAdmin.storage.from('assets').getPublicUrl(path);
+        const { data: urlData } = getSupabaseAdmin().storage.from('assets').getPublicUrl(path);
         
         // 4. Créer la facture dans Facturme (Statut pending)
         const fileType = att.ContentType.startsWith('image/') ? 'image' : 'pdf';
         
-        await supabaseAdmin.from('captured_documents').insert({
+        await getSupabaseAdmin().from('captured_documents').insert({
           user_id: user.id,
           file_url: urlData.publicUrl,
           file_type: fileType,

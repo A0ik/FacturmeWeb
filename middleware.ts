@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { validateEnv } from './lib/env-validation';
+
+// Validate environment variables on startup
+validateEnv();
 
 const PUBLIC_PATHS = ['/login', '/register', '/auth/callback', '/onboarding'];
 

@@ -1,36 +1,39 @@
-# Plan d'Implémentation "Ultimate Expert" (Intégralité Dext)
-
-Suite à votre confirmation audio, voici le plan d'action exhaustif et définitif. Il englobe **absolument tout** ce qui manque pour transformer FacturmeWeb en l'équivalent parfait de Dext. J'ai analysé l'architecture existante de votre site, et j'ai constaté que les fondations pour les "Workspaces" et les "Rôles" sont bien présentes ! Les bases sont excellentes.
-
-Voici exactement comment je vais tout implémenter :
-
-## 1. Moteur "Multi-Dossier" & Rôles (Réservé PRO) 🏢
-Vous avez déjà une table `workspaces` et `workspace_members` dans votre code de base. Je vais réveiller cette fonctionnalité pour la capture.
-*   **Base de Données :** Lier les factures traitées (`captured_documents`) et les flux bancaires (`bank_transactions`) à une colonne `workspace_id`.
-*   **Accessibilité PRO :** La sélection du dossier client ne s'affichera que si `profile.subscription_tier === 'pro'`.
-*   **Routage IA :** Le `workspace_id` sera affecté de manière magique par l'IA en reconnaissant "Facturé à".
-*   **Rôles :** En fonction du rôle dans le workspace (*Admin* vs *Viewer*), les employés ne pourront pas valider ou exporter une facture.
-
-## 2. Extraction Ligne par Ligne (TVA & Détails) 🔍
-*   **Intelligence Artificielle :** Modification de l'API `/api/ai/analyze-document` pour qu'elle ne retourne pas uniquement le "Total TTC", mais un tableau JSON contenant **chaque ligne de la facture** (Description, Quantité, Prix Unitaire, Taux de TVA Ligne).
-*   **Interface :** Ajout d'un tableau récapitulatif modifiable dans le panneau des détails, affichant les lignes détectées.
-
-## 3. Catégorisation Exhaustive (Achats & Ventes) 🗂️
-*   **Onglets d'interface :** J'ajouterai l'onglet `Ventes` à l'UI aux côtés de `Achats` et `Notes de Frais`.
-*   **Logique IA :** Le prompt sera ajusté pour identifier si c'est une facture fournisseur ou votre propre facture client, sans intervention humaine.
-
-## 4. Découpage Systématique des PDF ✂️
-*   **Technologie :** J'intègre la librairie native `pdf-lib` côté frontend.
-*   **Processus Invisible :** Tout PDF sera silencieusement intercepté au Drag&Drop. S'il fait 60 pages, la librairie créera 60 buffers virtuels et les injectera comme 60 factures unitaires dans la file d'attente existante. Vitesse optimale garantie.
-
-## 5. Hub de Paiement Fournisseur (SEPA/Virements) 💳
-*   **Reconnaissance :** L'IA ira lire l'**IBAN/BIC** du fournisseur sur la facture.
-*   **Génération :** Ajout d'un bouton "Payer le Fournisseur". Au clic, l'application générera un fichier standard bancaire **XML SEPA (ISO 20022)** contenant les coordonnées lues pour déclencher le virement sur votre interface bancaire d'entreprise.
-
-## 6. Architecture des Connecteurs Marchands 🤖
-*   **Infrastructure :** Les fournisseurs marchands demandent des accès persistants. Je créerai une table `merchant_connections` (id, user_id, provider_name, credentials_encrypted) et l'interface "Connexions" pour lier un compte Amazon/Orange/Uber. 
-
----
-
-> [!CAUTION] Validation de l'Étape Supérieure
-> C'est un plan colossal et révolutionnaire. Si vous me confirmez l'exécution de **ce plan intégral**, je commence le code du **Découpage PDF**, du **Tri Achats/Ventes** et de **l'Extraction Ligne par Ligne** en premier ! Go ?
+23:45:46.407 Running build in Washington, D.C., USA (East) – iad1
+23:45:46.408 Build machine configuration: 2 cores, 8 GB
+23:45:46.633 Cloning github.com/A0ik/FacturmeWeb (Branch: main, Commit: d084d5b)
+23:45:46.957 Warning: Failed to fetch one or more git submodules
+23:45:46.958 Cloning completed: 325.000ms
+23:45:48.853 Restored build cache from previous deployment (8ZRiPULfeqzpyqNVF3NAH6iFT6bg)
+23:45:50.134 Running "vercel build"
+23:45:50.758 Vercel CLI 50.42.0
+23:45:51.026 Installing dependencies...
+23:45:52.861 
+23:45:52.862 added 5 packages in 2s
+23:45:52.862 
+23:45:52.862 49 packages are looking for funding
+23:45:52.862   run `npm fund` for details
+23:45:52.892 Detected Next.js version: 15.5.14
+23:45:52.893 Running "next build"
+23:45:53.980    ▲ Next.js 15.5.14
+23:45:53.980 
+23:45:54.069    Creating an optimized production build ...
+23:46:14.822  ✓ Compiled successfully in 18.1s
+23:46:14.826    Linting and checking validity of types ...
+23:46:28.829 Failed to compile.
+23:46:28.830 
+23:46:28.830 ./app/(app)/capture/page.tsx:396:41
+23:46:28.831 Type error: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+23:46:28.831   Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+23:46:28.831     Types of property 'buffer' are incompatible.
+23:46:28.831       Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+23:46:28.831         Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+23:46:28.832 
+23:46:28.832 [0m [90m 394 |[39m               [36mconst[39m pdfBytes [33m=[39m [36mawait[39m newPdf[33m.[39msave()[33m;[39m
+23:46:28.832  [90m 395 |[39m               [36mconst[39m baseName [33m=[39m f[33m.[39mname[33m.[39mreplace([35m/\.[^/.]+$/[39m[33m,[39m [32m""[39m)[33m;[39m
+23:46:28.832 [31m[1m>[22m[39m[90m 396 |[39m               [36mconst[39m newFile [33m=[39m [36mnew[39m [33mFile[39m([pdfBytes][33m,[39m [32m`${baseName}_p${i + 1}.pdf`[39m[33m,[39m { type[33m:[39m [32m'application/pdf'[39m })[33m;[39m
+23:46:28.833  [90m     |[39m                                         [31m[1m^[22m[39m
+23:46:28.833  [90m 397 |[39m               finalFiles[33m.[39mpush(newFile)[33m;[39m
+23:46:28.833  [90m 398 |[39m             }
+23:46:28.834  [90m 399 |[39m           } [36melse[39m {[0m
+23:46:28.873 Next.js build worker exited with code: 1 and signal: null
+23:46:28.891 Error: Command "next build" exited with 1

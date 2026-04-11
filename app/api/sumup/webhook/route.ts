@@ -8,7 +8,12 @@ export async function POST(req: NextRequest) {
 
   // Verify webhook signature
   const signature = req.headers.get('x-sumup-signature');
-  if (webhookSecret && signature) {
+
+  // If webhook secret is configured, signature is mandatory and must be valid
+  if (webhookSecret) {
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+    }
     const expected = crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
     if (signature !== expected) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
