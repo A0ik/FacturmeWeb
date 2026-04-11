@@ -4,6 +4,13 @@ import OpenAI from 'openai';
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (GROQ_API_KEY)' }, { status: 500 });
+    }
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const openrouter = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY });
     const formData = await req.formData();
@@ -56,7 +63,14 @@ Règles:
 
     return NextResponse.json({ transcript, parsed });
   } catch (error: any) {
-    console.error('[process-voice]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Process Voice] Error:', error);
+    const message = error.message || 'Erreur lors du traitement vocal';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez GROQ_API_KEY et OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

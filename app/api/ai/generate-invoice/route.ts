@@ -6,6 +6,10 @@ export async function POST(req: NextRequest) {
     const { prompt, sector } = await req.json();
     if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt requis' }, { status: 400 });
 
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const openrouter = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: process.env.OPENROUTER_API_KEY,
@@ -63,6 +67,14 @@ Règles strictes:
 
     return NextResponse.json({ parsed });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[AI Generate Invoice] Error:', error);
+    const message = error.message || 'Erreur lors de la génération IA';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide ou expirée. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Limite de requêtes atteinte. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

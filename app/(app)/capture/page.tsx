@@ -263,7 +263,7 @@ export default function CapturePage() {
       const ext  = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `receipts/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const uploadPromise = new Promise<{error: any}>((resolve) => {
-        const timer = setTimeout(() => resolve({ error: new Error('Timeout de l\'upload (30s)') }), 30000);
+        const timer = setTimeout(() => resolve({ error: new Error('Timeout de l\'upload (60s)') }), 60000);
         getSupabaseClient().storage.from('assets').upload(path, fileToUpload, { upsert: true })
           .then(res => { clearTimeout(timer); resolve(res); })
           .catch(err => { clearTimeout(timer); resolve({ error: err }); });
@@ -291,12 +291,12 @@ export default function CapturePage() {
         fd.append('file', fileToUpload); // use compressed version for images
         
         const timeoutController = new AbortController();
-        const timerId = setTimeout(() => timeoutController.abort(), 60000);
+        const timerId = setTimeout(() => timeoutController.abort(), 120000); // Increased to 2 minutes
         let res: Response;
         try {
           res = await fetch('/api/ai/analyze-document', { method: 'POST', body: fd, signal: timeoutController.signal });
         } catch (fetchErr: any) {
-          throw new Error(fetchErr.name === 'AbortError' ? 'Timeout de l\'IA (60s)' : fetchErr.message);
+          throw new Error(fetchErr.name === 'AbortError' ? 'Timeout de l\'IA (2min). Réessayez avec un fichier plus léger.' : fetchErr.message);
         } finally {
           clearTimeout(timerId);
         }

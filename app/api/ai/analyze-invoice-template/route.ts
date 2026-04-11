@@ -3,6 +3,10 @@ import OpenAI from 'openai';
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     if (!file) return NextResponse.json({ error: 'Fichier requis' }, { status: 400 });
@@ -18,7 +22,7 @@ export async function POST(req: NextRequest) {
     });
 
     const completion = await openrouter.chat.completions.create({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.0-flash-exp',
       messages: [
         {
           role: 'system',
@@ -86,6 +90,17 @@ Retourne UNIQUEMENT du JSON valide:
       style_description: result.style_description || 'Style personnalisé',
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Analyze Invoice Template] Error:', error);
+    const message = error.message || 'Erreur lors de l\'analyse du modèle';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+      return NextResponse.json({ error: 'Le délai d\'analyse a été dépassé. Réessayez avec un fichier plus léger.' }, { status: 504 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

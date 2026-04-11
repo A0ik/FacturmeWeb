@@ -117,6 +117,10 @@ function sanitize(raw: Record<string, any>) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'Fichier requis' }, { status: 400 });
@@ -141,10 +145,10 @@ export async function POST(req: NextRequest) {
         const pdfData  = await pdfParse(buffer);
         const text     = pdfData.text?.trim() || '';
 
-        if (text.length > 20) {
+        if (text.length > 50) {
           // We have usable text — analyze with a text model (fast + cheap)
           const completion = await openrouter.chat.completions.create({
-            model: 'google/gemini-2.0-flash-exp',
+            model: 'mistralai/mistral-small-24b-instruct-2501',
             messages: [
               {
                 role: 'user',
@@ -152,11 +156,13 @@ export async function POST(req: NextRequest) {
               },
             ],
             response_format: { type: 'json_object' },
+            max_tokens: 4000,
           });
           responseText = completion.choices[0].message.content;
         }
         // else: fall through to vision below
-      } catch {
+      } catch (pdfErr) {
+        console.error('[Analyze Document] PDF extraction failed, falling back to vision:', pdfErr);
         // pdf-parse failed — fall through to vision
       }
     }
@@ -164,6 +170,7 @@ export async function POST(req: NextRequest) {
     // ── Image (or PDF fallback): vision model ─────────────────────────────────
     if (!responseText) {
       const base64     = Buffer.from(arrayBuffer).toString('base64');
+      // Use gemini-2.0-flash-exp for vision - it supports images and has good OCR
       const completion = await openrouter.chat.completions.create({
         model: 'google/gemini-2.0-flash-exp',
         messages: [
@@ -190,6 +197,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ extracted: sanitize(extracted) });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Analyze Document] Error:', error);
+    const message = error.message || 'Erreur lors de l\'analyse du document';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+      return NextResponse.json({ error: 'Le délai d\'analyse a été dépassé. Réessayez avec un fichier plus léger.' }, { status: 504 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

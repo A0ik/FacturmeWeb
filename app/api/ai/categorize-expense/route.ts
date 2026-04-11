@@ -5,6 +5,10 @@ export async function POST(req: NextRequest) {
   try {
     const { vendor, description } = await req.json();
 
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const openrouter = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: process.env.OPENROUTER_API_KEY,
@@ -41,6 +45,14 @@ Retourne UNIQUEMENT du JSON: {"category": "string", "confidence": number (0-1)}`
 
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Categorize Expense] Error:', error);
+    const message = error.message || 'Erreur lors de la catégorisation';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

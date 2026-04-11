@@ -4,6 +4,10 @@ import { createAdminClient } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'Configuration IA manquante (OPENROUTER_API_KEY)' }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const userId = formData.get('userId') as string;
@@ -44,6 +48,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ imported: data?.length || 0, clients: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Import Clients] Error:', error);
+    const message = error.message || 'Erreur lors de l\'import';
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
