@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
         if (text.length > 20) {
           // We have usable text — analyze with a text model (fast + cheap)
           const completion = await openrouter.chat.completions.create({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-2.0-flash-exp',
             messages: [
               {
                 role: 'user',
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     if (!responseText) {
       const base64     = Buffer.from(arrayBuffer).toString('base64');
       const completion = await openrouter.chat.completions.create({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.0-flash-exp',
         messages: [
           {
             role: 'user',
