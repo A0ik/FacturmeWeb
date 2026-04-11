@@ -151,6 +151,7 @@ export default function CapturePage() {
   const [isDragging, setIsDragging]   = useState(false);
   const [showExport, setShowExport]   = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const [filters, setFilters]         = useState({
     search: '', status: 'all', category: '', expenseType: 'all', dateFrom: '', dateTo: '',
   });
@@ -158,6 +159,7 @@ export default function CapturePage() {
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const processedFilesRef = useRef<Set<string>>(new Set()); // Track processed files to prevent duplicates
+  const processingFileHashesRef = useRef<Set<string>>(new Set()); // Track files currently being processed
   const isProcessingRef = useRef(false); // Prevent simultaneous processing
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -373,6 +375,14 @@ export default function CapturePage() {
 
   // ── Process multiple files ─────────────────────────────────────────────────
 
+  // Helper function to create a hash from file content for reliable duplicate detection
+  const getFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashArray = Array.from(new Uint8Array(buffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${file.name}-${file.size}-${hashHex.substring(0, 32)}`;
+  };
+
   const processFiles = useCallback(async (files: File[]) => {
     if (!user || files.length === 0) return;
 
@@ -389,57 +399,82 @@ export default function CapturePage() {
 
     let finalFiles: File[] = [];
     const processedFiles = processedFilesRef.current;
+    const processingFileHashes = processingFileHashesRef.current;
 
     for (const f of valid) {
-      // Create unique key based on name and size to prevent duplicates
-      const fileKey = `${f.name}-${f.size}`;
+      try {
+        // Create a more reliable hash for duplicate detection
+        const fileHash = await getFileHash(f);
 
-      // Skip if this exact file has already been processed
-      if (processedFiles.has(fileKey)) {
-        console.log(`Skipping duplicate file: ${f.name}`);
-        continue;
-      }
-
-      // Mark this file as processed
-      processedFiles.add(fileKey);
-      if (f.type === 'application/pdf') {
-        try {
-          const arrayBuffer = await f.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(arrayBuffer);
-          const pageCount = pdfDoc.getPageCount();
-          
-          if (pageCount > 1) {
-            // Split PDF automatiquement
-            for (let i = 0; i < pageCount; i++) {
-              const newPdf = await PDFDocument.create();
-              const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
-              newPdf.addPage(copiedPage);
-              const pdfBytes = await newPdf.save();
-              const baseName = f.name.replace(/\.[^/.]+$/, "");
-              const splitFileName = `${baseName}_p${i + 1}.pdf`;
-
-              // Create unique key for split files to prevent duplicates
-              const splitFileKey = `${splitFileName}-${pdfBytes.length}`;
-              if (processedFiles.has(splitFileKey)) {
-                console.log(`Skipping duplicate split file: ${splitFileName}`);
-                continue;
-              }
-
-              processedFiles.add(splitFileKey);
-
-              // Create Blob from Uint8Array with type assertion
-              const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-              const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
-              finalFiles.push(newFile);
-            }
-          } else {
-            finalFiles.push(f);
-          }
-        } catch (err) {
-          console.error("PDF Split Error", err);
-          finalFiles.push(f); // Fallback
+        // Skip if this exact file has already been processed
+        if (processedFiles.has(fileHash)) {
+          console.log(`Skipping duplicate file: ${f.name}`);
+          continue;
         }
-      } else {
+
+        // Skip if this file is currently being processed
+        if (processingFileHashes.has(fileHash)) {
+          console.log(`File already being processed: ${f.name}`);
+          continue;
+        }
+
+        // Mark this file as being processed
+        processingFileHashes.add(fileHash);
+
+        if (f.type === 'application/pdf') {
+          try {
+            const arrayBuffer = await f.arrayBuffer();
+            const pdfDoc = await PDFDocument.load(arrayBuffer);
+            const pageCount = pdfDoc.getPageCount();
+
+            if (pageCount > 1) {
+              // Split PDF automatiquement
+              for (let i = 0; i < pageCount; i++) {
+                const newPdf = await PDFDocument.create();
+                const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+                newPdf.addPage(copiedPage);
+                const pdfBytes = await newPdf.save();
+                const baseName = f.name.replace(/\.[^/.]+$/, "");
+                const splitFileName = `${baseName}_p${i + 1}.pdf`;
+
+                // Create unique hash for split files to prevent duplicates
+                const splitFileHash = await getFileHash(new File([pdfBytes], splitFileName, { type: 'application/pdf' }));
+                if (processedFiles.has(splitFileHash)) {
+                  console.log(`Skipping duplicate split file: ${splitFileName}`);
+                  continue;
+                }
+
+                processedFiles.add(splitFileHash);
+
+                // Create Blob from Uint8Array with type assertion
+                const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+                const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
+                finalFiles.push(newFile);
+              }
+            } else {
+              // Single page PDF - add directly
+              processedFiles.add(fileHash);
+              finalFiles.push(f);
+            }
+          } catch (err) {
+            console.error("PDF Split Error", err);
+            processedFiles.add(fileHash);
+            finalFiles.push(f); // Fallback
+          }
+        } else {
+          // Non-PDF file - add directly
+          processedFiles.add(fileHash);
+          finalFiles.push(f);
+        }
+      } catch (hashError) {
+        console.error("Error creating file hash:", hashError);
+        // Fallback to simple name-size check
+        const fileKey = `${f.name}-${f.size}`;
+        if (processedFiles.has(fileKey)) {
+          console.log(`Skipping duplicate file (fallback): ${f.name}`);
+          continue;
+        }
+        processedFiles.add(fileKey);
         finalFiles.push(f);
       }
     }
@@ -448,13 +483,19 @@ export default function CapturePage() {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       file, name: file.name, status: 'waiting',
     }));
-    setQueue(prev => [...prev, ...items]);
 
-    // Parallel batches of 5
-    const BATCH = 5;
-    for (let i = 0; i < items.length; i += BATCH) {
-      await Promise.all(items.slice(i, i + BATCH).map(it => processQueueItem(it)));
+    if (items.length > 0) {
+      setQueue(prev => [...prev, ...items]);
+
+      // Parallel batches of 5
+      const BATCH = 5;
+      for (let i = 0; i < items.length; i += BATCH) {
+        await Promise.all(items.slice(i, i + BATCH).map(it => processQueueItem(it)));
+      }
     }
+
+    // Clean up processing hashes after processing is complete
+    processingFileHashes.clear();
 
     // Clean up processed files after 5 minutes to allow re-uploads
     setTimeout(() => {
@@ -471,15 +512,19 @@ export default function CapturePage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    processFiles(Array.from(e.dataTransfer.files));
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processFiles(files);
+    }
   }, [processFiles]);
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files);
+      processFiles(files);
       e.target.value = '';
     }
-  };
+  }, [processFiles]);
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
@@ -832,25 +877,84 @@ export default function CapturePage() {
           </p>
           {/* Workspace Selector (PRO only) */}
           {isPro && (
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-3 relative">
               <Building size={14} className="text-gray-400" />
-              <select
-                value={selectedWorkspace || ''}
-                onChange={(e) => setSelectedWorkspace(e.target.value || null)}
-                className="text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">{workspaces.length === 0 ? 'Aucun dossier' : 'Tous les dossiers'}</option>
-                {workspaces.map((ws: any) => (
-                  <option key={ws.id} value={ws.id}>{ws.name}</option>
-                ))}
-              </select>
-              <button
-                onClick={() => setShowCreateWorkspace(true)}
-                className="flex items-center justify-center w-6 h-6 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                title="Créer un nouveau dossier"
-              >
-                <Plus size={12} />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowWorkspaceDropdown(prev => !prev)}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[180px] justify-between shadow-sm"
+                >
+                  <span className="truncate flex items-center gap-1.5">
+                    {selectedWorkspace ? (
+                      <>
+                        <Building size={11} className="text-primary" />
+                        {workspaces.find((ws: any) => ws.id === selectedWorkspace)?.name || 'Dossier inconnu'}
+                      </>
+                    ) : workspaces.length === 0 ? (
+                      'Aucun dossier'
+                    ) : (
+                      'Tous les dossiers'
+                    )}
+                  </span>
+                  <ChevronDown size={11} className={showWorkspaceDropdown ? 'rotate-180 transition-transform duration-200' : 'transition-transform duration-200'} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {showWorkspaceDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowWorkspaceDropdown(false)} />
+                    <div className="absolute top-full left-0 mt-1.5 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-40 overflow-hidden animate-in slide-in-from-top-1 fade-in duration-200">
+                      <div className="max-h-64 overflow-y-auto">
+                        <button
+                          onClick={() => {
+                            setSelectedWorkspace(null);
+                            setShowWorkspaceDropdown(false);
+                          }}
+                          className={cn(
+                            'w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 transition-colors border-b border-gray-100',
+                            !selectedWorkspace ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-700'
+                          )}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Building2 size={11} className={cn(selectedWorkspace ? 'text-gray-400' : 'text-primary')} />
+                            Tous les dossiers
+                          </span>
+                        </button>
+                        {workspaces.map((ws: any) => (
+                          <button
+                            key={ws.id}
+                            onClick={() => {
+                              setSelectedWorkspace(ws.id);
+                              setShowWorkspaceDropdown(false);
+                            }}
+                            className={cn(
+                              'w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 transition-colors',
+                              selectedWorkspace === ws.id ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-700'
+                            )}
+                          >
+                            <span className="flex items-center gap-2">
+                              <Building size={11} className={selectedWorkspace === ws.id ? 'text-primary' : 'text-gray-400'} />
+                              <span className="truncate">{ws.name}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-100 p-2 bg-gray-50">
+                        <button
+                          onClick={() => {
+                            setShowWorkspaceDropdown(false);
+                            setShowCreateWorkspace(true);
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-primary bg-white hover:bg-primary/5 rounded-lg transition-colors border border-gray-200 shadow-sm"
+                        >
+                          <Plus size={12} />
+                          Créer un nouveau dossier
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
