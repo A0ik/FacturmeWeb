@@ -437,18 +437,18 @@ export default function CapturePage() {
                 const baseName = f.name.replace(/\.[^/.]+$/, "");
                 const splitFileName = `${baseName}_p${i + 1}.pdf`;
 
+                // Create Blob from Uint8Array
+                const blob = new Blob([pdfBytes.buffer], { type: 'application/pdf' });
+                const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
+
                 // Create unique hash for split files to prevent duplicates
-                const splitFileHash = await getFileHash(new File([pdfBytes], splitFileName, { type: 'application/pdf' }));
+                const splitFileHash = await getFileHash(newFile);
                 if (processedFiles.has(splitFileHash)) {
                   console.log(`Skipping duplicate split file: ${splitFileName}`);
                   continue;
                 }
 
                 processedFiles.add(splitFileHash);
-
-                // Create Blob from Uint8Array with type assertion
-                const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-                const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
                 finalFiles.push(newFile);
               }
             } else {
