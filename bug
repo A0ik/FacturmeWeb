@@ -1,39 +1,37 @@
-13:41:57.657 Running build in Washington, D.C., USA (East) – iad1
-13:41:57.658 Build machine configuration: 2 cores, 8 GB
-13:41:57.789 Cloning github.com/A0ik/FacturmeWeb (Branch: main, Commit: a3e2261)
-13:41:58.173 Warning: Failed to fetch one or more git submodules
-13:41:58.174 Cloning completed: 385.000ms
-13:41:59.949 Restored build cache from previous deployment (GfxicyS7Bd5GvMAg11NSHEwutwq9)
-13:42:00.271 Running "vercel build"
-13:42:00.990 Vercel CLI 50.42.0
-13:42:01.269 Installing dependencies...
-13:42:02.272 
-13:42:02.272 up to date in 741ms
-13:42:02.273 
-13:42:02.273 49 packages are looking for funding
-13:42:02.273   run `npm fund` for details
-13:42:02.309 Detected Next.js version: 15.5.14
-13:42:02.310 Running "next build"
-13:42:03.665    ▲ Next.js 15.5.14
-13:42:03.666 
-13:42:03.715    Creating an optimized production build ...
-13:42:19.405  ✓ Compiled successfully in 13.0s
-13:42:19.408    Linting and checking validity of types ...
-13:42:33.232 Failed to compile.
-13:42:33.232 
-13:42:33.232 ./app/(app)/capture/page.tsx:441:67
-13:42:33.233 Type error: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
-13:42:33.233   Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
-13:42:33.233     Types of property 'buffer' are incompatible.
-13:42:33.233       Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
-13:42:33.233         Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
-13:42:33.234 
-13:42:33.234 [0m [90m 439 |[39m
-13:42:33.234  [90m 440 |[39m                 [90m// Create unique hash for split files to prevent duplicates[39m
-13:42:33.234 [31m[1m>[22m[39m[90m 441 |[39m                 [36mconst[39m splitFileHash [33m=[39m [36mawait[39m getFileHash([36mnew[39m [33mFile[39m([pdfBytes][33m,[39m splitFileName[33m,[39m { type[33m:[39m [32m'application/pdf'[39m }))[33m;[39m
-13:42:33.235  [90m     |[39m                                                                   [31m[1m^[22m[39m
-13:42:33.235  [90m 442 |[39m                 [36mif[39m (processedFiles[33m.[39mhas(splitFileHash)) {
-13:42:33.235  [90m 443 |[39m                   console[33m.[39mlog([32m`Skipping duplicate split file: ${splitFileName}`[39m)[33m;[39m
-13:42:33.235  [90m 444 |[39m                   [36mcontinue[39m[33m;[39m[0m
-13:42:33.274 Next.js build worker exited with code: 1 and signal: null
-13:42:33.292 Error: Command "next build" exited with 1
+13:50:40.582 Running build in Washington, D.C., USA (East) – iad1
+13:50:40.583 Build machine configuration: 2 cores, 8 GB
+13:50:40.703 Cloning github.com/A0ik/FacturmeWeb (Branch: main, Commit: 78698d5)
+13:50:41.095 Warning: Failed to fetch one or more git submodules
+13:50:41.095 Cloning completed: 392.000ms
+13:50:42.969 Restored build cache from previous deployment (GfxicyS7Bd5GvMAg11NSHEwutwq9)
+13:50:43.687 Running "vercel build"
+13:50:44.309 Vercel CLI 50.42.0
+13:50:44.889 Installing dependencies...
+13:50:45.907 
+13:50:45.907 up to date in 763ms
+13:50:45.908 
+13:50:45.908 49 packages are looking for funding
+13:50:45.908   run `npm fund` for details
+13:50:46.083 Detected Next.js version: 15.5.14
+13:50:46.083 Running "next build"
+13:50:47.317    ▲ Next.js 15.5.14
+13:50:47.318 
+13:50:47.405    Creating an optimized production build ...
+13:51:04.427  ✓ Compiled successfully in 14.3s
+13:51:04.430    Linting and checking validity of types ...
+13:51:18.150 Failed to compile.
+13:51:18.150 
+13:51:18.150 ./app/(app)/capture/page.tsx:441:40
+13:51:18.150 Type error: Type 'ArrayBufferLike' is not assignable to type 'BlobPart'.
+13:51:18.151   Type 'SharedArrayBuffer' is not assignable to type 'BlobPart'.
+13:51:18.151     Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+13:51:18.151 
+13:51:18.151 [0m [90m 439 |[39m
+13:51:18.151  [90m 440 |[39m                 [90m// Create Blob from Uint8Array[39m
+13:51:18.151 [31m[1m>[22m[39m[90m 441 |[39m                 [36mconst[39m blob [33m=[39m [36mnew[39m [33mBlob[39m([pdfBytes[33m.[39mbuffer][33m,[39m { type[33m:[39m [32m'application/pdf'[39m })[33m;[39m
+13:51:18.151  [90m     |[39m                                        [31m[1m^[22m[39m
+13:51:18.151  [90m 442 |[39m                 [36mconst[39m newFile [33m=[39m [36mnew[39m [33mFile[39m([blob][33m,[39m splitFileName[33m,[39m { type[33m:[39m [32m'application/pdf'[39m })[33m;[39m
+13:51:18.152  [90m 443 |[39m
+13:51:18.152  [90m 444 |[39m                 [90m// Create unique hash for split files to prevent duplicates[39m[0m
+13:51:18.191 Next.js build worker exited with code: 1 and signal: null
+13:51:18.209 Error: Command "next build" exited with 1

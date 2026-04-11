@@ -437,8 +437,8 @@ export default function CapturePage() {
                 const baseName = f.name.replace(/\.[^/.]+$/, "");
                 const splitFileName = `${baseName}_p${i + 1}.pdf`;
 
-                // Create Blob from Uint8Array
-                const blob = new Blob([pdfBytes.buffer], { type: 'application/pdf' });
+                // Create Blob from Uint8Array - create new Uint8Array to ensure proper type
+                const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
                 const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
 
                 // Create unique hash for split files to prevent duplicates
