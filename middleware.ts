@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateEnv } from './lib/env-validation';
-
-// Validate environment variables on startup
-validateEnv();
 
 const PUBLIC_PATHS = ['/login', '/register', '/auth/callback', '/onboarding'];
 
@@ -20,6 +16,12 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith('/api/client-portal/')) return res;
   if (pathname.startsWith('/workspace/join')) return res;
   if (pathname === '/') return res;
+
+  // Check if Supabase environment variables are set
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase environment variables in middleware');
+    return res;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
