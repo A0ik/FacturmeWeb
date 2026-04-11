@@ -158,9 +158,16 @@ export default function CapturePage() {
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const processedFilesRef = useRef<Set<string>>(new Set()); // Track processed files to prevent duplicates
-  const processingFileHashesRef = useRef<Set<string>>(new Set()); // Track files currently being processed
-  const isProcessingRef = useRef(false); // Prevent simultaneous processing
+  // Track file hashes currently in queue (reset on page load)
+  const uploadingIdsRef = useRef<Set<string>>(new Set());
+
+  // PDF split confirmation state
+  const [pdfSplitModal, setPdfSplitModal] = useState<{
+    show: boolean;
+    fileName: string;
+    pageCount: number;
+    onConfirm: (split: boolean) => void;
+  } | null>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -375,139 +382,115 @@ export default function CapturePage() {
 
   // ── Process multiple files ─────────────────────────────────────────────────
 
-  // Helper function to create a hash from file content for reliable duplicate detection
-  const getFileHash = async (file: File): Promise<string> => {
-    const buffer = await file.arrayBuffer();
-    const hashArray = Array.from(new Uint8Array(buffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${file.name}-${file.size}-${hashHex.substring(0, 32)}`;
-  };
+  // Lightweight duplicate key: name + size (sufficient for same-session dedup)
+  const getFileKey = (file: File) => `${file.name}-${file.size}`;
 
-  const processFiles = useCallback(async (files: File[]) => {
-    if (!user || files.length === 0) return;
+  // ── Enqueue and process files after optional PDF split confirmation ────────
+  const enqueueAndProcess = useCallback(async (filesToUpload: File[]) => {
+    if (!user || filesToUpload.length === 0) return;
 
-    // Prevent simultaneous processing
-    if (isProcessingRef.current) {
-      console.log('Already processing files, skipping duplicate request');
-      return;
-    }
-
-    isProcessingRef.current = true;
-    try {
-    const valid = files.filter(f => ALLOWED_TYPES.includes(f.type) || /\.(jpg|jpeg|png|webp|pdf|heic|heif)$/i.test(f.name));
-    if (valid.length === 0) return;
-
-    let finalFiles: File[] = [];
-    const processedFiles = processedFilesRef.current;
-    const processingFileHashes = processingFileHashesRef.current;
-
-    for (const f of valid) {
-      try {
-        // Create a more reliable hash for duplicate detection
-        const fileHash = await getFileHash(f);
-
-        // Skip if this exact file has already been processed
-        if (processedFiles.has(fileHash)) {
-          console.log(`Skipping duplicate file: ${f.name}`);
-          continue;
-        }
-
-        // Skip if this file is currently being processed
-        if (processingFileHashes.has(fileHash)) {
-          console.log(`File already being processed: ${f.name}`);
-          continue;
-        }
-
-        // Mark this file as being processed
-        processingFileHashes.add(fileHash);
-
-        if (f.type === 'application/pdf') {
-          try {
-            const arrayBuffer = await f.arrayBuffer();
-            const pdfDoc = await PDFDocument.load(arrayBuffer);
-            const pageCount = pdfDoc.getPageCount();
-
-            if (pageCount > 1) {
-              // Split PDF automatiquement
-              for (let i = 0; i < pageCount; i++) {
-                const newPdf = await PDFDocument.create();
-                const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
-                newPdf.addPage(copiedPage);
-                const pdfBytes = await newPdf.save();
-                const baseName = f.name.replace(/\.[^/.]+$/, "");
-                const splitFileName = `${baseName}_p${i + 1}.pdf`;
-
-                // Create File directly from pdfBytes using proper type casting
-                const newFile = new File(
-                  [pdfBytes.buffer as any],
-                  splitFileName,
-                  { type: 'application/pdf' }
-                );
-
-                // Create unique hash for split files to prevent duplicates
-                const splitFileHash = await getFileHash(newFile);
-                if (processedFiles.has(splitFileHash)) {
-                  console.log(`Skipping duplicate split file: ${splitFileName}`);
-                  continue;
-                }
-
-                processedFiles.add(splitFileHash);
-                finalFiles.push(newFile);
-              }
-            } else {
-              // Single page PDF - add directly
-              processedFiles.add(fileHash);
-              finalFiles.push(f);
-            }
-          } catch (err) {
-            console.error("PDF Split Error", err);
-            processedFiles.add(fileHash);
-            finalFiles.push(f); // Fallback
-          }
-        } else {
-          // Non-PDF file - add directly
-          processedFiles.add(fileHash);
-          finalFiles.push(f);
-        }
-      } catch (hashError) {
-        console.error("Error creating file hash:", hashError);
-        // Fallback to simple name-size check
-        const fileKey = `${f.name}-${f.size}`;
-        if (processedFiles.has(fileKey)) {
-          console.log(`Skipping duplicate file (fallback): ${f.name}`);
-          continue;
-        }
-        processedFiles.add(fileKey);
-        finalFiles.push(f);
-      }
-    }
-
-    const items: QueueItem[] = finalFiles.map(file => ({
+    const items: QueueItem[] = filesToUpload.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       file, name: file.name, status: 'waiting',
     }));
 
-    if (items.length > 0) {
-      setQueue(prev => [...prev, ...items]);
+    setQueue(prev => [...prev, ...items]);
 
-      // Parallel batches of 5
-      const BATCH = 5;
-      for (let i = 0; i < items.length; i += BATCH) {
-        await Promise.all(items.slice(i, i + BATCH).map(it => processQueueItem(it)));
+    // Process in parallel batches of 3
+    const BATCH = 3;
+    for (let i = 0; i < items.length; i += BATCH) {
+      await Promise.all(items.slice(i, i + BATCH).map(it => processQueueItem(it)));
+    }
+  }, [user, processQueueItem]);
+
+  // ── Split a multi-page PDF into individual Files ───────────────────────────
+  const splitPDF = async (f: File): Promise<File[]> => {
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pageCount = pdfDoc.getPageCount();
+      if (pageCount <= 1) return [f];
+
+      const parts: File[] = [];
+      const baseName = f.name.replace(/\.[^/.]+$/, '');
+      for (let i = 0; i < pageCount; i++) {
+        const newPdf = await PDFDocument.create();
+        const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+        newPdf.addPage(copiedPage);
+        const pdfBytes = await newPdf.save();
+        parts.push(new File([pdfBytes.buffer as ArrayBuffer], `${baseName}_p${i + 1}.pdf`, { type: 'application/pdf' }));
+      }
+      return parts;
+    } catch (err) {
+      console.error('PDF Split Error', err);
+      return [f]; // fallback: keep original
+    }
+  };
+
+  // ── Main processFiles: dedup + PDF split confirmation ────────────────────
+  const processFiles = useCallback(async (files: File[]) => {
+    if (!user || files.length === 0) return;
+
+    const valid = files.filter(f =>
+      ALLOWED_TYPES.includes(f.type) || /\.(jpg|jpeg|png|webp|pdf|heic|heif)$/i.test(f.name)
+    );
+    if (valid.length === 0) return;
+
+    // Deduplicate against files already in queue this session
+    const uniqueFiles = valid.filter(f => {
+      const key = getFileKey(f);
+      if (uploadingIdsRef.current.has(key)) return false;
+      uploadingIdsRef.current.add(key);
+      return true;
+    });
+    if (uniqueFiles.length === 0) return;
+
+    // Check if any PDFs are multi-page
+    const finalFiles: File[] = [];
+    for (const f of uniqueFiles) {
+      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+        try {
+          const arrayBuffer = await f.arrayBuffer();
+          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          const pageCount = pdfDoc.getPageCount();
+
+          if (pageCount > 1) {
+            // Ask user: split or keep as whole?
+            const userChoice = await new Promise<boolean>(resolve => {
+              setPdfSplitModal({
+                show: true,
+                fileName: f.name,
+                pageCount,
+                onConfirm: (split) => {
+                  setPdfSplitModal(null);
+                  resolve(split);
+                },
+              });
+            });
+
+            if (userChoice) {
+              // Split: process each page separately
+              const pages = await splitPDF(f);
+              finalFiles.push(...pages);
+            } else {
+              // Keep whole
+              finalFiles.push(f);
+            }
+          } else {
+            // Single page — upload directly
+            finalFiles.push(f);
+          }
+        } catch {
+          // Can't read PDF structure — upload as-is
+          finalFiles.push(f);
+        }
+      } else {
+        finalFiles.push(f);
       }
     }
 
-    // Clean up processing hashes after processing is complete
-    processingFileHashes.clear();
-
-    // Clean up processed files after 5 minutes to allow re-uploads
-    setTimeout(() => {
-      processedFilesRef.current.clear();
-    }, 5 * 60 * 1000);
-    } finally {
-      isProcessingRef.current = false;
-    }
-  }, [user, processQueueItem]);
+    await enqueueAndProcess(finalFiles);
+  }, [user, enqueueAndProcess]);
 
   // ── Drag & drop ────────────────────────────────────────────────────────────
 
@@ -522,11 +505,10 @@ export default function CapturePage() {
   }, [processFiles]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      processFiles(files);
-      e.target.value = '';
-    }
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    // Reset value BEFORE processing to prevent double-fire on some browsers
+    e.target.value = '';
+    if (files.length > 0) processFiles(files);
   }, [processFiles]);
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
@@ -1819,6 +1801,66 @@ export default function CapturePage() {
                     </>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── PDF Split Confirmation Modal ── */}
+      {pdfSplitModal && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                    <FileText size={18} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">PDF multi-pages détecté</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">{pdfSplitModal.fileName}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Ce PDF contient <strong className="text-gray-900">{pdfSplitModal.pageCount} pages</strong>.
+                  Voulez-vous les traiter séparément (une facture par page) ou envoyer le document entier à l'IA ?
+                </p>
+              </div>
+
+              {/* Options */}
+              <div className="px-5 pb-5 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => pdfSplitModal.onConfirm(false)}
+                  className="flex flex-col items-center gap-2 px-3 py-3 rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
+                >
+                  <FileText size={20} className="text-gray-500" />
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">Document entier</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">1 analyse IA</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => pdfSplitModal.onConfirm(true)}
+                  className="flex flex-col items-center gap-2 px-3 py-3 rounded-xl border-2 border-primary/40 bg-primary/5 hover:border-primary/60 hover:bg-primary/10 transition-all text-left"
+                >
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: Math.min(pdfSplitModal.pageCount, 4) }).map((_, i) => (
+                      <div key={i} className="w-3 h-4 rounded-sm bg-primary/60" style={{ opacity: 1 - i * 0.15 }} />
+                    ))}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-primary">Séparer les pages</p>
+                    <p className="text-[10px] text-primary/60 mt-0.5">{pdfSplitModal.pageCount} analyses IA</p>
+                  </div>
+                </button>
+              </div>
+              <div className="px-5 pb-4 -mt-1">
+                <p className="text-[10px] text-gray-400 text-center">
+                  ✨ Style Dext — chaque page = une facture individuelle
+                </p>
               </div>
             </div>
           </div>

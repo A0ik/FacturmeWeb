@@ -73,7 +73,6 @@ function sanitize(raw: Record<string, any>) {
 
   const VALID_CATS = ['transport', 'meals', 'accommodation', 'equipment', 'office', 'services', 'shopping', 'other'];
   const VALID_PM   = ['card', 'cash', 'transfer', 'check', 'prelevement'];
-  const VALID_TYPE = ['purchase', 'sales', 'expense', 'receipt'];
   const VALID_INV_TYPE = ['purchase', 'sales', 'expense', 'receipt'];
 
   // Backward compatibility: expense_type -> invoice_type
@@ -125,6 +124,11 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'Fichier requis' }, { status: 400 });
 
+    // Limit file size to 10MB to avoid memory issues on Vercel
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fichier trop volumineux (max 10 Mo). Compressez le fichier avant l\'envoi.' }, { status: 413 });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const mimeType    = file.type || 'image/jpeg';
     const isPDF       = mimeType === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
@@ -136,54 +140,74 @@ export async function POST(req: NextRequest) {
 
     let responseText: string | null = null;
 
+    // ── Vercel-safe timeout wrapper (50s to stay under 60s limit) ────────────
+    const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout IA (${ms / 1000}s)`)), ms)
+        ),
+      ]);
+
     // ── PDF: extract text first, then analyze as plain text ──────────────────
     if (isPDF) {
       try {
-        // Dynamic import avoids webpack bundling issues with pdf-parse
+        // Use require() inside try/catch for Vercel compatibility
+        // serverExternalPackages: ['pdf-parse'] in next.config.ts handles bundling
         const pdfParse = require('pdf-parse');
         const buffer   = Buffer.from(arrayBuffer);
-        const pdfData  = await pdfParse(buffer);
+        const pdfData  = await withTimeout(pdfParse(buffer), 20000) as any;
         const text     = pdfData.text?.trim() || '';
 
         if (text.length > 50) {
           // We have usable text — analyze with a text model (fast + cheap)
-          const completion = await openrouter.chat.completions.create({
-            model: 'mistralai/mistral-small-24b-instruct-2501',
-            messages: [
-              {
-                role: 'user',
-                content: `${PROMPT}\n\n--- TEXTE EXTRAIT DU PDF ---\n${text.slice(0, 12000)}`,
-              },
-            ],
-            response_format: { type: 'json_object' },
-            max_tokens: 4000,
-          });
+          const completion = await withTimeout(
+            openrouter.chat.completions.create({
+              model: 'mistralai/mistral-small-24b-instruct-2501',
+              messages: [
+                {
+                  role: 'user',
+                  content: `${PROMPT}\n\n--- TEXTE EXTRAIT DU PDF ---\n${text.slice(0, 12000)}`,
+                },
+              ],
+              response_format: { type: 'json_object' },
+              max_tokens: 2000,
+            }),
+            40000
+          );
           responseText = completion.choices[0].message.content;
         }
         // else: fall through to vision below
       } catch (pdfErr) {
         console.error('[Analyze Document] PDF extraction failed, falling back to vision:', pdfErr);
-        // pdf-parse failed — fall through to vision
+        // pdf-parse failed or timed out — fall through to vision
       }
     }
 
     // ── Image (or PDF fallback): vision model ─────────────────────────────────
     if (!responseText) {
       const base64     = Buffer.from(arrayBuffer).toString('base64');
-      // Use gemini-2.0-flash-exp for vision - it supports images and has good OCR
-      const completion = await openrouter.chat.completions.create({
-        model: 'google/gemini-2.0-flash-exp',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: PROMPT },
-              { type: 'image_url', image_url: { url: `data:${isPDF ? 'image/jpeg' : mimeType};base64,${base64}` } },
-            ],
-          },
-        ],
-        response_format: { type: 'json_object' },
-      });
+      // Use gemini-2.0-flash-exp for vision - supports images with good OCR
+      const completion = await withTimeout(
+        openrouter.chat.completions.create({
+          model: 'google/gemini-2.0-flash-exp',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: PROMPT },
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:${isPDF ? 'image/jpeg' : mimeType};base64,${base64}` },
+                },
+              ],
+            },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 2000,
+        }),
+        45000
+      );
       responseText = completion.choices[0].message.content;
     }
 
@@ -205,8 +229,8 @@ export async function POST(req: NextRequest) {
     if (error.status === 429) {
       return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
     }
-    if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
-      return NextResponse.json({ error: 'Le délai d\'analyse a été dépassé. Réessayez avec un fichier plus léger.' }, { status: 504 });
+    if (error.message?.includes('Timeout') || error.message?.includes('timeout')) {
+      return NextResponse.json({ error: 'Le délai d\'analyse a été dépassé. Essayez avec un fichier plus léger ou utilisez un PDF textuel.' }, { status: 504 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }

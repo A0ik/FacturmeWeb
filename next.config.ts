@@ -1,13 +1,16 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse'],
+  // Keep pdf-parse out of the webpack bundle (it uses native bindings + CommonJS)
+  serverExternalPackages: ['pdf-parse', 'canvas'],
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
+
   async headers() {
     return [
       {
@@ -18,6 +21,18 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+
+  webpack(config, { isServer }) {
+    if (isServer) {
+      // Prevent webpack from trying to bundle native node modules
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : []),
+        'pdf-parse',
+        'canvas',
+      ];
+    }
+    return config;
   },
 };
 

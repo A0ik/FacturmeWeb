@@ -34,7 +34,7 @@ Règles STRICTES :
 - Nettoie les SIRET : retire espaces/tirets → 14 chiffres continus
 - Déduplique (même SIRET ou même nom = une seule entrée)
 
-Retourne UNIQUEMENT du JSON valide :
+Retourne UNIQUEMENT du JSON valide (sans markdown, sans backticks) :
 {
   "companies": [
     {
@@ -53,50 +53,51 @@ Retourne UNIQUEMENT du JSON valide :
   "summary": "description du document en 1 phrase"
 }`;
 
+// ── Vision model (images + PDF) ─────────────────────────────────────────────
+
 async function analyzeWithVision(base64: string, mimeType: string): Promise<any> {
+  // Use gemini-2.0-flash-exp — supports vision + json_object reliably via OpenRouter
+  const effectiveMime = mimeType === 'application/pdf' ? 'image/jpeg' : mimeType;
+
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'openai/gpt-4o-mini',
+    model: 'google/gemini-2.0-flash-exp',
     messages: [
-      {
-        role: 'system',
-        content: EXTRACTION_PROMPT,
-      },
       {
         role: 'user',
         content: [
+          { type: 'text', text: EXTRACTION_PROMPT },
           {
             type: 'image_url',
-            image_url: { url: `data:${mimeType};base64,${base64}` },
-          },
-          {
-            type: 'text',
-            text: 'Extrais toutes les entreprises présentes dans ce document.',
+            image_url: { url: `data:${effectiveMime};base64,${base64}` },
           },
         ],
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 4000,
+    max_tokens: 2000,
   });
 
   const raw = completion.choices[0].message.content || '{}';
   try { return JSON.parse(raw); } catch { return { companies: [] }; }
 }
+
+// ── Text model (CSV, TXT, JSON…) ─────────────────────────────────────────────
 
 async function analyzeText(text: string): Promise<any> {
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'openai/gpt-4o-mini',
+    model: 'mistralai/mistral-small-24b-instruct-2501',
     messages: [
-      { role: 'system', content: EXTRACTION_PROMPT },
-      { role: 'user', content: `Voici le contenu à analyser :\n\n${text.slice(0, 40000)}` },
+      { role: 'user', content: `${EXTRACTION_PROMPT}\n\n--- CONTENU À ANALYSER ---\n${text.slice(0, 40000)}` },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 4000,
+    max_tokens: 2000,
   });
 
   const raw = completion.choices[0].message.content || '{}';
   try { return JSON.parse(raw); } catch { return { companies: [] }; }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function cleanCompanies(companies: any[]) {
   return companies
@@ -115,6 +116,8 @@ function cleanCompanies(companies: any[]) {
     }));
 }
 
+// ── Route handler ─────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.OPENROUTER_API_KEY) {
@@ -126,6 +129,11 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: 'Aucun fichier reçu' }, { status: 400 });
+    }
+
+    // Limit file size to 8MB
+    if (file.size > 8 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fichier trop volumineux (max 8 Mo)' }, { status: 413 });
     }
 
     const mimeType = file.type || '';
@@ -144,38 +152,24 @@ export async function POST(req: NextRequest) {
       result = await analyzeWithVision(base64, mimeType || 'image/jpeg');
     }
 
-    // ── PDF → vision model (GPT-4o handles PDFs natively via base64) ──
+    // ── PDF → extract text first (fast+cheap), fallback to vision ──
     else if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
-      const base64 = buffer.toString('base64');
-      result = await analyzeWithVision(base64, 'application/pdf');
-    }
-
-    // ── Excel / Spreadsheets → vision ──
-    else if (
-      mimeType.includes('spreadsheet') ||
-      mimeType.includes('excel') ||
-      /\.(xlsx|xls|ods)$/.test(fileName)
-    ) {
-      const base64 = buffer.toString('base64');
-      result = await analyzeWithVision(
-        base64,
-        mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      );
-    }
-
-    // ── Word documents → try text extraction, fallback to vision ──
-    else if (
-      mimeType.includes('word') ||
-      mimeType.includes('officedocument.wordprocessingml') ||
-      /\.(docx|doc)$/.test(fileName)
-    ) {
-      // Try basic text extraction for docx (XML-based format)
-      const text = buffer.toString('utf-8').replace(/[^\x20-\x7E\u00C0-\u024F\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (text.length > 100) {
-        result = await analyzeText(text);
-      } else {
+      let usedVision = false;
+      try {
+        const pdfParse = require('pdf-parse');
+        const pdfData = await pdfParse(buffer);
+        const text = pdfData.text?.trim() || '';
+        if (text.length > 50) {
+          result = await analyzeText(text);
+        } else {
+          usedVision = true;
+        }
+      } catch {
+        usedVision = true;
+      }
+      if (usedVision) {
         const base64 = buffer.toString('base64');
-        result = await analyzeWithVision(base64, mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        result = await analyzeWithVision(base64, 'image/jpeg');
       }
     }
 
@@ -190,6 +184,22 @@ export async function POST(req: NextRequest) {
       result = await analyzeText(text);
     }
 
+    // ── Word / Excel → try text extraction, fallback to vision ──
+    else if (
+      mimeType.includes('word') ||
+      mimeType.includes('spreadsheet') ||
+      mimeType.includes('excel') ||
+      /\.(docx|doc|xlsx|xls|ods)$/.test(fileName)
+    ) {
+      const text = buffer.toString('utf-8').replace(/[^\x20-\x7E\u00C0-\u024F\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (text.length > 100) {
+        result = await analyzeText(text);
+      } else {
+        const base64 = buffer.toString('base64');
+        result = await analyzeWithVision(base64, mimeType || 'image/jpeg');
+      }
+    }
+
     // ── Unknown format → try as text, then vision ──
     else {
       const text = buffer.toString('utf-8');
@@ -198,7 +208,7 @@ export async function POST(req: NextRequest) {
         result = await analyzeText(text);
       } else {
         const base64 = buffer.toString('base64');
-        result = await analyzeWithVision(base64, mimeType || 'application/octet-stream');
+        result = await analyzeWithVision(base64, mimeType || 'image/jpeg');
       }
     }
 
@@ -211,6 +221,17 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('[import/clients]', error);
+
+    if (error.status === 400) {
+      return NextResponse.json({ error: 'Le fichier fourni ne peut pas être analysé par le modèle IA. Essayez un autre format (JPEG, PNG, PDF, CSV).' }, { status: 400 });
+    }
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json({ error: 'Clé API invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+    }
+    if (error.status === 429) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
