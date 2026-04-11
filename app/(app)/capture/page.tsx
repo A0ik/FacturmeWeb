@@ -157,6 +157,8 @@ export default function CapturePage() {
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const processedFilesRef = useRef<Set<string>>(new Set()); // Track processed files to prevent duplicates
+  const isProcessingRef = useRef(false); // Prevent simultaneous processing
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -373,12 +375,33 @@ export default function CapturePage() {
 
   const processFiles = useCallback(async (files: File[]) => {
     if (!user || files.length === 0) return;
+
+    // Prevent simultaneous processing
+    if (isProcessingRef.current) {
+      console.log('Already processing files, skipping duplicate request');
+      return;
+    }
+
+    isProcessingRef.current = true;
+    try {
     const valid = files.filter(f => ALLOWED_TYPES.includes(f.type) || /\.(jpg|jpeg|png|webp|pdf|heic|heif)$/i.test(f.name));
     if (valid.length === 0) return;
 
     let finalFiles: File[] = [];
+    const processedFiles = processedFilesRef.current;
 
     for (const f of valid) {
+      // Create unique key based on name and size to prevent duplicates
+      const fileKey = `${f.name}-${f.size}`;
+
+      // Skip if this exact file has already been processed
+      if (processedFiles.has(fileKey)) {
+        console.log(`Skipping duplicate file: ${f.name}`);
+        continue;
+      }
+
+      // Mark this file as processed
+      processedFiles.add(fileKey);
       if (f.type === 'application/pdf') {
         try {
           const arrayBuffer = await f.arrayBuffer();
@@ -393,9 +416,20 @@ export default function CapturePage() {
               newPdf.addPage(copiedPage);
               const pdfBytes = await newPdf.save();
               const baseName = f.name.replace(/\.[^/.]+$/, "");
+              const splitFileName = `${baseName}_p${i + 1}.pdf`;
+
+              // Create unique key for split files to prevent duplicates
+              const splitFileKey = `${splitFileName}-${pdfBytes.length}`;
+              if (processedFiles.has(splitFileKey)) {
+                console.log(`Skipping duplicate split file: ${splitFileName}`);
+                continue;
+              }
+
+              processedFiles.add(splitFileKey);
+
               // Create Blob from Uint8Array with type assertion
               const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-              const newFile = new File([blob], `${baseName}_p${i + 1}.pdf`, { type: 'application/pdf' });
+              const newFile = new File([blob], splitFileName, { type: 'application/pdf' });
               finalFiles.push(newFile);
             }
           } else {
@@ -421,19 +455,30 @@ export default function CapturePage() {
     for (let i = 0; i < items.length; i += BATCH) {
       await Promise.all(items.slice(i, i + BATCH).map(it => processQueueItem(it)));
     }
+
+    // Clean up processed files after 5 minutes to allow re-uploads
+    setTimeout(() => {
+      processedFilesRef.current.clear();
+    }, 5 * 60 * 1000);
+    } finally {
+      isProcessingRef.current = false;
+    }
   }, [user, processQueueItem]);
 
   // ── Drag & drop ────────────────────────────────────────────────────────────
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     processFiles(Array.from(e.dataTransfer.files));
   }, [processFiles]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    processFiles(Array.from(e.target.files || []));
-    e.target.value = '';
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
   };
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
