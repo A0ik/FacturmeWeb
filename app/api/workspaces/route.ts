@@ -17,6 +17,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name and user_id are required' }, { status: 400 });
     }
 
+    // Check user's subscription tier and existing workspace count
+    const { data: profile } = await getSupabaseAdmin()
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user_id)
+      .single();
+
+    const tier = profile?.subscription_tier || 'free';
+
+    // Count existing workspaces owned by this user
+    const { count: workspaceCount } = await getSupabaseAdmin()
+      .from('workspaces')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', user_id);
+
+    // Enforce workspace limits
+    if (tier !== 'pro' && workspaceCount !== null && workspaceCount >= 1) {
+      return NextResponse.json({
+        error: 'Limitation de plan',
+        message: 'La création de plusieurs dossiers nécessite un abonnement Pro. Passez à Pro pour créer plusieurs dossiers d\'entreprise.',
+        tier,
+        currentWorkspaces: workspaceCount,
+        limit: tier === 'pro' ? Infinity : 1
+      }, { status: 403 });
+    }
+
     // Create slug from name
     const slug = name
       .toLowerCase()

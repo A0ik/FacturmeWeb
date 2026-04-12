@@ -25,6 +25,7 @@ const NAV_TOP = [
   { href: '/recurring',      icon: RefreshCw,        label: 'Récurrentes',     badge: null },
   { href: '/expenses',       icon: Receipt,          label: 'Notes de frais',  badge: null },
   { href: '/capture',        icon: Camera,           label: 'Capture',         badge: null },
+  { href: '/suppliers',     icon: Building2,        label: 'Fournisseurs',    badge: null },
   { href: '/connections',    icon: Link2,            label: 'Connexions',     badge: null },
   { href: '/products',       icon: Package,          label: 'Catalogue',       badge: null },
   { href: '/calendar',       icon: Calendar,         label: 'Agenda',          badge: null },

@@ -15,5 +15,8 @@ export function useSubscription() {
     maxInvoices: tier === 'free' ? 3 : Infinity,
     invoiceCount: profile?.invoice_count || 0,
     isAtLimit: tier === 'free' && (profile?.invoice_count || 0) >= 3,
+    // Workspace limits: Pro = unlimited, others = 1
+    maxWorkspaces: tier === 'pro' ? Infinity : 1,
+    canCreateWorkspace: (currentCount: number) => tier === 'pro' || currentCount < 1,
   };
 }
