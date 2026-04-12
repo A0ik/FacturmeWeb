@@ -56,7 +56,7 @@ function detectPDFPageCount(arrayBuffer: ArrayBuffer): number {
 
     // Primary: Find the Pages catalog /Count - look for /Type /Pages followed by /Count
     // This is more specific than matching any /Count
-    const pagesCatalogPattern = /\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/s;
+    const pagesCatalogPattern = /\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/;
     const catalogMatch = text.match(pagesCatalogPattern);
     if (catalogMatch) {
       const count = parseInt(catalogMatch[1]);
