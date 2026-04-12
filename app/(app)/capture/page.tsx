@@ -363,8 +363,8 @@ export default function CapturePage() {
         const ex = data.extracted;
 
         if (ex) {
-          let finalCode: string | null = ex.suggested_account_code || null;
-          let finalName: string | null = null;
+          let finalCode: string | undefined = ex.suggested_account_code || undefined;
+          let finalName: string | undefined = undefined;
 
           if (ex.vendor) {
             const { data: mapping } = await getSupabaseClient().from('vendor_mappings')
