@@ -1457,7 +1457,9 @@ export default function CapturePage() {
                                 {doc.vendor || <span className="text-gray-400 italic font-normal text-xs">Fournisseur non extrait</span>}
                               </p>
                               {doc.needs_review && (
-                                <AlertTriangle size={12} className="text-amber-500 shrink-0" title="Confiance faible — à vérifier" />
+                                <span title="Confiance faible — à vérifier">
+                                  <AlertTriangle size={12} className="text-amber-500 shrink-0" />
+                                </span>
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
