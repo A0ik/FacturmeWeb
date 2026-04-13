@@ -8,6 +8,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Logo } from '@/components/ui/Logo';
 import { ServiceWorkerRegistration } from '@/components/ui/ServiceWorkerRegistration';
 import CommandPalette from '@/components/ui/CommandPalette';
+import { Toaster } from 'sonner';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           if (t === 'dark') document.documentElement.classList.add('dark');
         } catch(e) {}
       ` }} />
+      <Toaster position="top-right" richColors closeButton />
       <ServiceWorkerRegistration />
       <CommandPalette />
       <div className="flex min-h-screen bg-gray-50">

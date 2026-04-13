@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -92,7 +93,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     e.preventDefault();
     setLoading(true);
     try { await updateClient(id, form); setShowEdit(false); }
-    catch (e: any) { alert(e.message); }
+    catch (e: any) { toast.error(e.message); }
     finally { setLoading(false); }
   };
 
@@ -111,7 +112,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     setSavingTags(true);
     try {
       await updateClient(id, { tags: newTags } as any);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setSavingTags(false); setTagInput(''); }
   };
 
@@ -121,7 +122,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     setSavingTags(true);
     try {
       await updateClient(id, { tags: newTags } as any);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setSavingTags(false); }
   };
 
@@ -139,7 +140,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw new Error(error.message);
       setNotes((prev) => [data, ...prev]);
       setNoteInput('');
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setAddingNote(false); }
   };
 
@@ -151,7 +152,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         .eq('id', noteId);
       if (error) throw new Error(error.message);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const handleGeneratePortal = async () => {
@@ -171,7 +172,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       navigator.clipboard.writeText(url).catch(() => {});
       setPortalCopied(true);
       setTimeout(() => setPortalCopied(false), 3000);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setPortalLoading(false); }
   };
 

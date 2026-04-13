@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { useDataStore } from '@/stores/dataStore';
 import { Input } from '@/components/ui/Input';
@@ -83,8 +84,14 @@ export default function ClientsPage() {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (!confirm('Supprimer ce client ?')) return;
-    await deleteClient(id);
+    const client = clients.find((c) => c.id === id);
+    toast('Supprimer ce client ?', {
+      description: client?.name,
+      action: {
+        label: 'Supprimer',
+        onClick: () => deleteClient(id).then(() => toast.success('Client supprimé')).catch((err: any) => toast.error(err.message)),
+      },
+    });
   };
 
   return (
@@ -182,15 +189,17 @@ export default function ClientsPage() {
           <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
             <Users size={28} className="text-gray-200" />
           </div>
-          <p className="font-bold text-gray-400 text-sm">
-            {search ? 'Aucun client trouvé' : 'Aucun client pour l\'instant'}
+          <p className="font-bold text-gray-700 text-sm">
+            {search ? 'Aucun client trouvé' : 'Votre carnet de clients vous attend'}
           </p>
-          <p className="text-xs text-gray-300 mt-1 mb-4">
-            {search ? 'Essayez d\'autres mots-clés' : 'Ajoutez vos premiers clients pour commencer à facturer'}
+          <p className="text-xs text-gray-400 mt-1 mb-4 max-w-xs mx-auto">
+            {search
+              ? 'Essayez d\'autres mots-clés ou vérifiez l\'orthographe'
+              : 'Commencez par ajouter votre premier client — il sera ensuite disponible en un clic lors de la création de vos factures.'}
           </p>
           {!search && (
             <Button icon={<Plus size={14} />} onClick={() => setShowModal(true)}>
-              Ajouter un client
+              Ajouter mon premier client
             </Button>
           )}
         </div>

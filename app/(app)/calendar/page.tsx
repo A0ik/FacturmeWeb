@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDataStore } from '@/stores/dataStore';
@@ -283,7 +284,7 @@ export default function CalendarPage() {
       ));
       setShowForm(false);
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la création');
+      toast.error(e.message || 'Erreur lors de la création');
     } finally {
       setSaving(false);
     }
@@ -297,7 +298,7 @@ export default function CalendarPage() {
       setAppointments((prev) => prev.filter((a) => a.id !== id));
       setDetailAppt(null);
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la suppression');
+      toast.error(e.message || 'Erreur lors de la suppression');
     }
   };
 

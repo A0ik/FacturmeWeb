@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -65,7 +66,7 @@ export default function PaywallPage() {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la création de l\'abonnement');
+      toast.error(e.message || 'Erreur lors de la création de l\'abonnement');
     } finally {
       setLoading(null);
     }

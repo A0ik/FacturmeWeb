@@ -1,10 +1,10 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, FileText, Users, Kanban,
-  RefreshCw, Settings, Zap, ChevronRight,
+  RefreshCw, Settings, Zap, ChevronRight, ChevronDown,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar, Camera,
   Calculator, Activity, Landmark, Search, Link2,
 } from 'lucide-react';
@@ -17,28 +17,33 @@ import { UserDropdown } from '@/components/ui/user-dropdown';
 import { Logo } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
-const NAV_TOP = [
-  { href: '/dashboard',      icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
-  { href: '/invoices',       icon: FileText,         label: 'Factures',        badge: 'overdue' as null | 'overdue' | 'notif' },
-  { href: '/clients',        icon: Users,            label: 'Clients',         badge: null },
-  { href: '/crm',            icon: Kanban,           label: 'Pipeline',        badge: null },
-  { href: '/recurring',      icon: RefreshCw,        label: 'Récurrentes',     badge: null },
-  { href: '/expenses',       icon: Receipt,          label: 'Notes de frais',  badge: null },
-  { href: '/capture',        icon: Camera,           label: 'Capture',         badge: null },
-  { href: '/suppliers',     icon: Building2,        label: 'Fournisseurs',    badge: null },
-  { href: '/connections',    icon: Link2,            label: 'Connexions',     badge: null },
-  { href: '/products',       icon: Package,          label: 'Catalogue',       badge: null },
-  { href: '/calendar',       icon: Calendar,         label: 'Agenda',          badge: null },
-  { href: '/accounting',     icon: Calculator,       label: 'Comptabilité',    badge: null },
-  { href: '/activity',       icon: Activity,         label: 'Activité',        badge: null },
-  { href: '/banking',        icon: Landmark,         label: 'Banque',          badge: null },
+// Items visibles au premier regard — le Core Flow MVP
+const NAV_CORE = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
+  { href: '/invoices',  icon: FileText,        label: 'Factures',        badge: 'overdue' as null | 'overdue' | 'notif' },
+  { href: '/clients',   icon: Users,           label: 'Clients',         badge: null },
+  { href: '/settings',  icon: Settings,        label: 'Paramètres',      badge: null },
+];
+
+// Features avancées — code intact, UI cachée (Progressive Disclosure)
+const NAV_ADVANCED = [
+  { href: '/crm',         icon: Kanban,      label: 'Pipeline CRM' },
+  { href: '/recurring',   icon: RefreshCw,   label: 'Récurrentes' },
+  { href: '/expenses',    icon: Receipt,     label: 'Notes de frais' },
+  { href: '/capture',     icon: Camera,      label: 'Capture & OCR' },
+  { href: '/suppliers',   icon: Building2,   label: 'Fournisseurs' },
+  { href: '/connections', icon: Link2,       label: 'Connexions' },
+  { href: '/products',    icon: Package,     label: 'Catalogue' },
+  { href: '/calendar',    icon: Calendar,    label: 'Agenda' },
+  { href: '/accounting',  icon: Calculator,  label: 'Comptabilité' },
+  { href: '/activity',    icon: Activity,    label: 'Activité' },
+  { href: '/banking',     icon: Landmark,    label: 'Banque' },
 ];
 
 const NAV_BOTTOM = [
   { href: '/workspace',      icon: Building2,        label: 'Workspace',       badge: null as null | 'overdue' | 'notif' },
   { href: '/notifications',  icon: Bell,             label: 'Notifications',   badge: 'notif' as null | 'overdue' | 'notif' },
   { href: '/help',           icon: HelpCircle,       label: 'Aide',            badge: null },
-  { href: '/settings',       icon: Settings,         label: 'Paramètres',      badge: null },
 ];
 
 export default function Sidebar() {
@@ -48,6 +53,7 @@ export default function Sidebar() {
   const { invoices } = useDataStore();
   const { unreadCount, fetchNotifications } = useWorkspaceStore();
   const { isFree } = useSubscription();
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
 
@@ -132,8 +138,9 @@ export default function Sidebar() {
 
       {/* Main nav */}
       <nav className="relative z-10 flex-1 overflow-y-auto px-3 py-3 scrollbar-none">
+        {/* Core MVP items */}
         <div className="space-y-0.5">
-          {NAV_TOP.map((item) => <NavItem key={item.href} {...item} />)}
+          {NAV_CORE.map((item) => <NavItem key={item.href} {...item} />)}
         </div>
 
         {/* Divider + Quick stats */}
@@ -160,6 +167,35 @@ export default function Sidebar() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Outils avancés — repliés par défaut (Progressive Disclosure) */}
+        <div className="mb-3">
+          <button
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold text-gray-600 uppercase tracking-widest hover:text-gray-400 transition-colors"
+          >
+            <span>Outils avancés</span>
+            {showAdvanced ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+          {showAdvanced && (
+            <div className="space-y-0.5 mt-1">
+              {NAV_ADVANCED.map(({ href, icon: Icon, label }) => (
+                <div
+                  key={href}
+                  className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 pointer-events-none select-none"
+                >
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-700 flex-shrink-0">
+                    <Icon size={16} strokeWidth={1.8} />
+                  </span>
+                  <span className="flex-1 font-medium">{label}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-500 border border-gray-700 uppercase tracking-wide flex-shrink-0">
+                    Bientôt
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Secondary nav */}

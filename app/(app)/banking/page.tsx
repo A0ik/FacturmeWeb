@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useRef, useMemo } from 'react';
 import { useDataStore } from '@/stores/dataStore';
@@ -142,7 +143,7 @@ export default function BankingPage() {
       setMatchedMap(autoMatch(txs));
       setImportedCount(txs.length);
     } catch (err) {
-      alert('Erreur lors de la lecture du fichier CSV');
+      toast.error('Erreur lors de la lecture du fichier CSV');
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = '';

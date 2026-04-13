@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { useCrmStore, Opportunity, OpportunityInput, OpportunityStage } from '@/stores/crmStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -122,7 +123,7 @@ export default function CrmPage() {
       if (editOpp) await updateOpportunity(editOpp.id, form as Partial<OpportunityInput>);
       else await createOpportunity(form as OpportunityInput);
       setShowModal(false);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setLoading(false); }
   };
 
@@ -153,7 +154,7 @@ export default function CrmPage() {
         [oppId]: [...(prev[oppId] || []), data],
       }));
       setNewTaskTitle('');
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setAddingTask(false); }
   };
 

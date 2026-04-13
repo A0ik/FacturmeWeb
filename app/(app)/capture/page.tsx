@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
@@ -734,7 +735,7 @@ export default function CapturePage() {
 
         // Handle tier-specific error
         if (res.status === 403 && errorData.tier !== 'pro') {
-          alert(`${errorData.message}\n\nVotre plan actuel: ${errorData.tier === 'free' ? 'Gratuit' : 'Solo'}\nDossiers existants: ${errorData.currentWorkspaces}\n\nPassez à Pro pour créer plusieurs dossiers.`);
+          toast.error(`${errorData.message}\n\nVotre plan actuel: ${errorData.tier === 'free' ? 'Gratuit' : 'Solo'}\nDossiers existants: ${errorData.currentWorkspaces}\n\nPassez à Pro pour créer plusieurs dossiers.`);
           return;
         }
 
@@ -746,7 +747,7 @@ export default function CapturePage() {
       setSelectedWorkspace(workspace.id);
       setNewWsName(''); setNewWsDesc(''); setShowCreateWs(false);
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de la création du dossier');
+      toast.error(err.message || 'Erreur lors de la création du dossier');
     } finally {
       setCreatingWs(false);
     }

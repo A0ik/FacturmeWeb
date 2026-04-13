@@ -388,13 +388,13 @@ export default function InvoicesPage() {
             <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
               <FileText size={28} className="text-gray-200" />
             </div>
-            <p className="font-bold text-gray-400 text-sm">
-              {search || statusFilter || typeFilter ? 'Aucun résultat trouvé' : 'Aucun document pour l\'instant'}
+            <p className="font-bold text-gray-700 text-sm">
+              {search || statusFilter || typeFilter ? 'Aucun résultat trouvé' : 'Prêt à envoyer votre première facture ?'}
             </p>
-            <p className="text-xs text-gray-300 mt-1 mb-4">
+            <p className="text-xs text-gray-400 mt-1 mb-4 max-w-xs mx-auto">
               {search || statusFilter || typeFilter
                 ? 'Essayez de modifier vos critères de recherche'
-                : 'Créez votre première facture en quelques secondes'}
+                : 'Créez une facture en moins d\'une minute et envoyez-la directement à votre client par email.'}
             </p>
             {!search && !statusFilter && !typeFilter && (
               <div className="flex items-center justify-center gap-2">

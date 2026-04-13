@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { use, useEffect, useRef, useState, useCallback } from 'react';
 import { formatCurrency, formatDate, DOC_LABELS } from '@/lib/utils';
@@ -120,7 +121,7 @@ export default function SharePage({ params }: { params: Promise<{ invoiceId: str
         signed_by: signerName || 'Client',
       }));
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setIsSigning(false);
     }

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { useState, useEffect, useRef } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -134,7 +135,7 @@ export default function ExpensesPage() {
         handleOCR(file);
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setUploadingReceipt(false);
     }
@@ -218,7 +219,7 @@ export default function ExpensesPage() {
       }
       setShowModal(false);
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setSaving(false);
     }

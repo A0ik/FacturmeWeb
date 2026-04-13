@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -145,7 +146,7 @@ export default function ProductsPage() {
       }
       setShowModal(false);
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setSaving(false);
     }

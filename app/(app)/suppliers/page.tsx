@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
@@ -139,7 +140,7 @@ export default function SuppliersPage() {
       });
 
     if (error) {
-      alert(`Erreur: ${error.message}`);
+      toast.error(`Erreur: ${error.message}`);
       return;
     }
 
@@ -161,7 +162,7 @@ export default function SuppliersPage() {
       .eq('id', editingMapping.id);
 
     if (error) {
-      alert(`Erreur: ${error.message}`);
+      toast.error(`Erreur: ${error.message}`);
       return;
     }
 
@@ -179,7 +180,7 @@ export default function SuppliersPage() {
       .eq('id', id);
 
     if (error) {
-      alert(`Erreur: ${error.message}`);
+      toast.error(`Erreur: ${error.message}`);
       return;
     }
 

@@ -70,7 +70,15 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
   updateInvoice: async (id, updates) => {
     let u: any = { ...updates, updated_at: new Date().toISOString() };
-    if (updates.items) { const items = updates.items.map((i) => ({ ...i, total: i.quantity * i.unit_price })); const subtotal = items.reduce((s, i) => s + i.total, 0); const vat = items.reduce((s, i) => s + i.total * (i.vat_rate / 100), 0); u = { ...u, items, subtotal, vat_amount: vat, total: subtotal + vat }; }
+    if (updates.items) {
+      const items = updates.items.map((i) => ({ ...i, total: i.quantity * i.unit_price }));
+      const subtotal = items.reduce((s, i) => s + i.total, 0);
+      const vat = items.reduce((s, i) => s + i.total * (i.vat_rate / 100), 0);
+      const existing = get().invoices.find((inv) => inv.id === id);
+      const discPct = updates.discount_percent ?? existing?.discount_percent ?? 0;
+      const discAmt = discPct > 0 ? (subtotal + vat) * (discPct / 100) : 0;
+      u = { ...u, items, subtotal, vat_amount: vat, discount_percent: discPct || null, discount_amount: discAmt || null, total: subtotal + vat - discAmt };
+    }
     const { data, error } = await getSupabaseClient().from('invoices').update(u).eq('id', id).select('*, client:clients(*)').single();
     if (error) throw error;
     set((s) => ({ invoices: s.invoices.map((inv) => (inv.id === id ? data : inv)) })); get().computeStats();

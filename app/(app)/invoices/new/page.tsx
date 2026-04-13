@@ -312,10 +312,21 @@ export default function NewInvoicePage() {
         >
           <ArrowLeft size={16} />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-black text-gray-900">Nouveau document</h1>
           <p className="text-xs text-gray-400 mt-0.5">Remplissez les informations ci-dessous</p>
         </div>
+        {saving && (
+          <span className="flex items-center gap-1.5 text-xs text-gray-400 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-ping" />
+            Enregistrement...
+          </span>
+        )}
+        {success && (
+          <span className="flex items-center gap-1.5 text-xs text-primary font-medium">
+            <CheckCircle2 size={13} /> Sauvegardé
+          </span>
+        )}
       </div>
 
       {/* Document type selector */}

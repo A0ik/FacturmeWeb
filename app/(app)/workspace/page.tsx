@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore, WorkspaceRole } from '@/stores/workspaceStore';
 import { getInitials, cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ export default function WorkspacePage() {
     try {
       await createWorkspace(createForm.name.trim(), createForm.description);
       setShowCreateModal(false);
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message || 'Erreur lors de la création'); }
     finally { setCreateLoading(false); }
   };
 
@@ -96,7 +97,7 @@ export default function WorkspacePage() {
     try {
       await updateWorkspace({ name: settingsForm.name, description: settingsForm.description || null });
       setShowSettingsModal(false);
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message || 'Erreur lors de la mise à jour'); }
   };
 
   const handleCopyInviteLink = (token: string) => {
@@ -117,7 +118,7 @@ export default function WorkspacePage() {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 3000);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Erreur lors de la génération du lien');
     } finally {
       setGeneratingLink(false);
     }

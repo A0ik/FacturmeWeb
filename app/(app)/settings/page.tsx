@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -175,8 +176,8 @@ export default function SettingsPage() {
       const res = await fetch('/api/stripe/connect', { method: 'POST' });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else alert(data.error || 'Impossible de lancer la connexion Stripe');
-    } catch (e: any) { alert(e.message); }
+      else toast.error(data.error || 'Impossible de lancer la connexion Stripe');
+    } catch (e: any) { toast.error(e.message || 'Erreur de connexion Stripe'); }
     finally { setStripeConnectLoading(false); }
   };
 
@@ -190,9 +191,9 @@ export default function SettingsPage() {
         setStripeStatus(null);
       } else {
         const data = await res.json();
-        alert(data.error || 'Erreur lors de la déconnexion');
+        toast.error(data.error || 'Erreur lors de la déconnexion');
       }
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur de déconnexion'); }
     finally { setStripeConnectLoading(false); }
   };
 
@@ -223,7 +224,7 @@ export default function SettingsPage() {
       setSumupStatus('connected');
     } catch (e: any) {
       setSumupStatus('error');
-      alert(e.message);
+      toast.error(e.message || 'Erreur de connexion SumUp');
     } finally {
       setSumupLoading(false);
     }
@@ -240,7 +241,7 @@ export default function SettingsPage() {
         setSumupMerchantCode('');
         setSumupStatus(null);
       }
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de la déconnexion SumUp'); }
     finally { setSumupLoading(false); }
   };
 
@@ -277,9 +278,9 @@ export default function SettingsPage() {
       const res = await fetch('/api/stripe/portal', { method: 'POST' });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else alert(data.error || 'Impossible d\'accéder au portail');
+      else toast.error(data.error || 'Impossible d\'accéder au portail');
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message || 'Erreur portail');
     } finally {
       setPortalLoading(false);
     }
@@ -317,7 +318,7 @@ export default function SettingsPage() {
       }
       await signOut();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message || 'Erreur lors de la suppression du compte');
       setDeleting(false);
     }
   };
@@ -345,7 +346,7 @@ export default function SettingsPage() {
       setWebhooks((prev) => [data, ...prev]);
       setShowWebhookModal(false);
       setWebhookForm({ url: '', events: [] });
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de la sauvegarde'); }
     finally { setSavingWebhook(false); }
   };
 
@@ -368,7 +369,7 @@ export default function SettingsPage() {
         .eq('id', id);
       if (error) throw new Error(error.message);
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de la suppression'); }
     finally { setDeletingWebhookId(null); }
   };
 

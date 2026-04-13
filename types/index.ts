@@ -114,6 +114,8 @@ export interface Invoice {
   items: InvoiceItem[];
   subtotal: number;
   vat_amount: number;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
   total: number;
   notes?: string;
   pdf_url?: string;

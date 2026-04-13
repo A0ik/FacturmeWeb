@@ -14,7 +14,8 @@
       "mcp__claude_ai_Supabase__search_docs",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__execute_sql",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

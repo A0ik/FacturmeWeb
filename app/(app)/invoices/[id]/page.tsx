@@ -12,6 +12,7 @@ import { downloadInvoicePdf } from '@/lib/pdf';
 import { InvoiceStatus } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase';
 import { Download, Send, CheckCircle, Trash2, Copy, Eye, Link2, MoreVertical, Bell, Share2, Paperclip, Upload, File, X as XIcon, Plus, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PartialPayment {
   id: string;
@@ -116,7 +117,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
       const url = getSupabaseClient().storage.from('assets').getPublicUrl(path).data.publicUrl;
       setAttachments((prev) => [...prev.filter((a) => a.name !== file.name), { name: file.name, size: file.size, url }]);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de l\'upload'); }
     finally { setUploadingFile(false); if (attachRef.current) attachRef.current.value = ''; }
   };
 
@@ -155,7 +156,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       if (totalPaid >= invoice.total && invoice.status !== 'paid') {
         await updateInvoiceStatus(invoice.id, 'paid');
       }
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de l\'enregistrement'); }
     finally { setPaymentSaving(false); }
   };
 
@@ -200,7 +201,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     try {
       const dup = await duplicateInvoice(invoice.id, profile);
       router.push(`/invoices/${dup.id}`);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de la duplication'); }
   };
 
   const handleSendEmail = async (e: React.FormEvent) => {
@@ -248,9 +249,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         body: JSON.stringify({ invoiceId: invoice.id }),
       });
       const data = await res.json();
-      if (data.error) { alert(data.error); return; }
+      if (data.error) { toast.error(data.error); return; }
       if (data.url) { setSumupLink(data.url); navigator.clipboard.writeText(data.url).catch(() => {}); }
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur SumUp'); }
     finally { setSumupLinkLoading(false); }
   };
 
@@ -261,7 +262,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleReminder = async () => {
     const email = invoice.client?.email;
-    if (!email) return alert('Ce client n\'a pas d\'adresse email.');
+    if (!email) { toast.error('Ce client n\'a pas d\'adresse email.'); return; }
     setReminderLoading(true);
     try {
       const res = await fetch('/api/send-reminder', {
@@ -273,7 +274,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       if (!res.ok) throw new Error(data.error);
       setReminderSent(true);
       setTimeout(() => setReminderSent(false), 4000);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message || 'Erreur lors de l\'envoi du rappel'); }
     finally { setReminderLoading(false); }
   };
 
@@ -288,7 +289,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleSepaCharge = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!invoice.client_id) return alert('Client introuvable');
+    if (!invoice.client_id) { toast.error('Client introuvable'); return; }
     setSepaLoading(true); setSepaResult(null);
     try {
       const res = await fetch('/api/stripe/sepa', {
