@@ -30,7 +30,7 @@ const GRADIENT_PAIRS = [
 ];
 
 export default function ClientsPage() {
-  const { clients, invoices, createClient, deleteClient } = useDataStore();
+  const { clients, invoices, createClient, bulkCreateClients, deleteClient } = useDataStore();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -411,20 +411,18 @@ export default function ClientsPage() {
         open={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={async (companies) => {
-          for (const c of companies) {
-            await createClient({
-              name: c.name,
-              email: c.email || '',
-              phone: c.phone || '',
-              address: c.address || '',
-              city: c.city || '',
-              postal_code: c.postal_code || '',
-              country: c.country || 'France',
-              siret: c.siret || '',
-              vat_number: c.vat_number || '',
-              website: c.website || '',
-            } as any);
-          }
+          await bulkCreateClients(companies.map((c) => ({
+            name: c.name,
+            email: c.email || '',
+            phone: c.phone || '',
+            address: c.address || '',
+            city: c.city || '',
+            postal_code: c.postal_code || '',
+            country: c.country || 'France',
+            siret: c.siret || '',
+            vat_number: c.vat_number || '',
+            website: c.website || '',
+          } as any)));
         }}
       />
     </div>

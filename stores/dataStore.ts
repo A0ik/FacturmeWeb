@@ -6,7 +6,7 @@ import { generateId } from '@/lib/utils';
 
 interface DataState {
   clients: Client[]; invoices: Invoice[]; recurringInvoices: RecurringInvoice[]; loading: boolean; stats: DashboardStats | null;
-  fetchClients: () => Promise<void>; createClient: (data: Omit<Client, 'id'|'user_id'|'created_at'|'updated_at'>) => Promise<Client>; updateClient: (id: string, data: Partial<Client>) => Promise<void>; deleteClient: (id: string) => Promise<void>;
+  fetchClients: () => Promise<void>; createClient: (data: Omit<Client, 'id'|'user_id'|'created_at'|'updated_at'>) => Promise<Client>; bulkCreateClients: (items: Omit<Client, 'id'|'user_id'|'created_at'|'updated_at'>[]) => Promise<Client[]>; updateClient: (id: string, data: Partial<Client>) => Promise<void>; deleteClient: (id: string) => Promise<void>;
   fetchInvoices: () => Promise<void>; createInvoice: (data: InvoiceFormData, profile: any) => Promise<Invoice>; updateInvoice: (id: string, data: Partial<Invoice>) => Promise<void>; updateInvoiceStatus: (id: string, status: InvoiceStatus) => Promise<void>; deleteInvoice: (id: string) => Promise<void>; duplicateInvoice: (id: string, profile: any) => Promise<Invoice>; getNextInvoiceNumber: (prefix: string, count: number) => string;
   fetchRecurringInvoices: () => Promise<void>; createRecurringInvoice: (data: Omit<RecurringInvoice, 'id'|'user_id'|'created_at'|'updated_at'>) => Promise<RecurringInvoice>; updateRecurringInvoice: (id: string, data: Partial<RecurringInvoice>) => Promise<void>; deleteRecurringInvoice: (id: string) => Promise<void>;
   computeStats: () => void; clearData: () => void;
@@ -28,6 +28,14 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (error) throw error;
     set((s) => ({ clients: [...s.clients, data].sort((a, b) => a.name.localeCompare(b.name)) }));
     return data;
+  },
+  bulkCreateClients: async (items) => {
+    const { data: { session } } = await getSupabaseClient().auth.getSession();
+    const user = session?.user; if (!user) throw new Error('Non authentifié');
+    const { data, error } = await getSupabaseClient().from('clients').insert(items.map((c) => ({ ...c, user_id: user.id }))).select();
+    if (error) throw error;
+    set((s) => ({ clients: [...s.clients, ...(data || [])].sort((a, b) => a.name.localeCompare(b.name)) }));
+    return data || [];
   },
   updateClient: async (id, updates) => {
     const { data, error } = await getSupabaseClient().from('clients').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
