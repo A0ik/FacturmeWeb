@@ -16,7 +16,11 @@
       "mcp__claude_ai_Supabase__execute_sql",
       "Bash(xargs grep:*)",
       "Bash(npm install:*)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(curl -s \"https://openrouter.ai/api/v1/models\" -H \"Authorization: Bearer $\\(grep OPENROUTER_API_KEY C:/Users/salma/Desktop/FacturmeWeb-main/.env.local)",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); d.data.filter\\(m=>m.id.includes\\('gpt-4o'\\)||m.id.includes\\('gemini'\\)||m.id.includes\\('claude-3'\\)\\).forEach\\(m=>console.log\\(m.id\\)\\)\")",
+      "Bash(curl -s \"https://openrouter.ai/api/v1/models\")",
+      "Bash(node -e \" const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); const models = d.data .filter\\(m => m.id.includes\\('gpt-4o'\\) || m.id.includes\\('gemini-flash'\\) || m.id.includes\\('claude-3-haiku'\\) || m.id.includes\\('claude-3-5-haiku'\\)\\) .map\\(m => m.id\\); console.log\\(models.join\\('\\\\n'\\)\\); \")"
     ]
   }
 }

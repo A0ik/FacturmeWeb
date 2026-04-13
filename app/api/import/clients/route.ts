@@ -74,13 +74,15 @@ function extractJSON(raw: string): any {
   return { companies: [] };
 }
 
-// ── Vision model (images) ─────────────────────────────────────────────────────
+// ── Single model for everything: gpt-4o-mini ─────────────────────────────────
+// Reliable on OpenRouter, supports vision + text + response_format json_object
+
+const MODEL = 'openai/gpt-4o-mini';
 
 async function analyzeWithVision(base64: string, mimeType: string): Promise<any> {
-  // gemini-2.0-flash is stable and supports vision via OpenRouter
-  // Do NOT pass response_format — not universally supported for vision
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'qwen/qwen-2.5-vl-72b-instruct',
+    model: MODEL,
+    response_format: { type: 'json_object' },
     messages: [
       {
         role: 'user',
@@ -100,11 +102,10 @@ async function analyzeWithVision(base64: string, mimeType: string): Promise<any>
   return extractJSON(raw);
 }
 
-// ── Text model (CSV, TXT, JSON…) ─────────────────────────────────────────────
-
 async function analyzeText(text: string): Promise<any> {
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'qwen/qwen-2.5-vl-72b-instruct',
+    model: MODEL,
+    response_format: { type: 'json_object' },
     messages: [
       {
         role: 'user',
