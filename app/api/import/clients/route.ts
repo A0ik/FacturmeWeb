@@ -52,7 +52,7 @@ function extractJSON(raw: string): any {
   // Try direct parse first
   try {
     return JSON.parse(cleaned);
-  } catch {}
+  } catch { }
 
   // Find the first { ... } block
   const start = cleaned.indexOf('{');
@@ -60,7 +60,7 @@ function extractJSON(raw: string): any {
   if (start !== -1 && end !== -1 && end > start) {
     try {
       return JSON.parse(cleaned.slice(start, end + 1));
-    } catch {}
+    } catch { }
   }
 
   // Last resort: try to find a "companies" array
@@ -68,7 +68,7 @@ function extractJSON(raw: string): any {
   if (arrMatch) {
     try {
       return { companies: JSON.parse(arrMatch[1]) };
-    } catch {}
+    } catch { }
   }
 
   return { companies: [] };
@@ -80,7 +80,7 @@ async function analyzeWithVision(base64: string, mimeType: string): Promise<any>
   // gemini-2.0-flash is stable and supports vision via OpenRouter
   // Do NOT pass response_format — not universally supported for vision
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'google/gemini-2.0-flash',
+    model: 'qwen/qwen-2.5-vl-72b-instruct',
     messages: [
       {
         role: 'user',
@@ -104,7 +104,7 @@ async function analyzeWithVision(base64: string, mimeType: string): Promise<any>
 
 async function analyzeText(text: string): Promise<any> {
   const completion = await getOpenRouter().chat.completions.create({
-    model: 'google/gemini-2.0-flash',
+    model: 'qwen/qwen-2.5-vl-72b-instruct',
     messages: [
       {
         role: 'user',
