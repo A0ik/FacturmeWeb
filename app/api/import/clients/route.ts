@@ -177,26 +177,44 @@ export async function POST(req: NextRequest) {
       result = await analyzeWithVision(base64, effectiveMime);
     }
 
-    // ── PDF → extract text first (fast + cheap), fallback to vision ──
+    // ── PDF → extract text, multiple strategies ──
     else if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
-      let textExtracted = false;
+      let textForAnalysis = '';
+
+      // Strategy 1: pdf-parse (best for text-based PDFs)
       try {
-        // pdf-parse may not be installed — dynamic import with fallback
         const pdfParse = require('pdf-parse');
         const pdfData = await pdfParse(buffer);
-        const text = pdfData.text?.trim() || '';
-        if (text.length > 30) {
-          result = await analyzeText(text);
-          textExtracted = true;
+        const extracted = pdfData.text?.trim() || '';
+        if (extracted.length > 10) {
+          textForAnalysis = extracted;
         }
       } catch {
-        // pdf-parse not available or PDF is scanned
+        // pdf-parse failed (scanned PDF or corrupted)
       }
-      if (!textExtracted) {
-        // Send as image (first page render isn't possible server-side without canvas,
-        // so we send the raw PDF bytes as base64 with the correct MIME type)
-        const base64 = buffer.toString('base64');
-        result = await analyzeWithVision(base64, 'application/pdf');
+
+      // Strategy 2: raw binary text extraction (works even on scanned PDFs —
+      // PDFs embed metadata, creator info, font names, sometimes OCR text)
+      if (!textForAnalysis) {
+        const rawLatin = buffer.toString('latin1');
+        // Extract readable ASCII strings of 4+ chars
+        const strings = rawLatin.match(/[\x20-\x7E]{4,}/g) || [];
+        const raw = strings.join(' ').replace(/\s+/g, ' ').trim();
+        if (raw.length > 50) {
+          textForAnalysis = raw.slice(0, 60000);
+        }
+      }
+
+      if (textForAnalysis) {
+        result = await analyzeText(textForAnalysis);
+      } else {
+        // Last resort: try vision with JPEG mime (some OpenRouter models tolerate it)
+        try {
+          const base64 = buffer.toString('base64');
+          result = await analyzeWithVision(base64, 'image/jpeg');
+        } catch {
+          result = { companies: [], summary: 'PDF non lisible — essayez une capture d\'écran PNG ou JPEG' };
+        }
       }
     }
 
@@ -255,13 +273,10 @@ export async function POST(req: NextRequest) {
     console.error('[import/clients] error:', error?.message, error?.status);
 
     if (error?.status === 401 || error?.status === 403) {
-      return NextResponse.json({ error: 'Clé API OpenRouter invalide. Vérifiez OPENROUTER_API_KEY.' }, { status: 500 });
+      return NextResponse.json({ error: 'Clé API OpenRouter invalide. Vérifiez OPENROUTER_API_KEY dans vos variables d\'environnement.' }, { status: 500 });
     }
     if (error?.status === 429) {
       return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
-    }
-    if (error?.status === 400) {
-      return NextResponse.json({ error: 'Format de fichier non supporté par l\'IA. Essayez un JPEG, PNG, PDF ou CSV.' }, { status: 400 });
     }
 
     return NextResponse.json({ error: error?.message || 'Erreur serveur inattendue' }, { status: 500 });
