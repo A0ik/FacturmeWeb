@@ -28,7 +28,9 @@
       "Bash(node -e \"const sharp = require\\('sharp'\\); console.log\\('sharp available'\\)\")",
       "Bash(node --check \"C:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-main\\\\app\\\\\\(app\\)\\\\clients\\\\[id]\\\\page.tsx\")",
       "mcp__ide__getDiagnostics",
-      "mcp__claude_ai_Supabase__get_advisors"
+      "mcp__claude_ai_Supabase__get_advisors",
+      "Bash(cat)",
+      "Read(//tmp/**)"
     ]
   }
 }

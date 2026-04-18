@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
-import { generateInvoicePdfBuffer } from '@/lib/pdf-server';
+import { renderToBuffer } from '@react-pdf/renderer';
+import React from 'react';
+import { PdfDocument } from '@/components/pdf-document';
 
 const safe = (s: unknown) => String(s ?? '').replace(/[^\x00-\xFF]/g, '?');
 
@@ -174,9 +176,10 @@ export async function POST(req: NextRequest) {
     console.log('[send-invoice] Génération PDF...');
     let pdfBase64: string;
     try {
-      const pdfBytes = await generateInvoicePdfBuffer(invoice, profile);
+      const element = React.createElement(PdfDocument, { invoice, profile });
+      const pdfBytes = await renderToBuffer(element as any);
       pdfBase64 = Buffer.from(pdfBytes).toString('base64');
-      console.log('[send-invoice] PDF généré, taille:', pdfBytes.length, 'bytes');
+      console.log('[send-invoice] PDF généré via @react-pdf/renderer, taille:', pdfBytes.length, 'bytes');
     } catch (pdfErr: any) {
       console.log('[send-invoice] ERREUR génération PDF:', pdfErr.message, pdfErr.stack);
       return NextResponse.json({ error: `Erreur génération PDF: ${pdfErr.message}` }, { status: 500 });

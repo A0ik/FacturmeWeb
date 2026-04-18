@@ -61,7 +61,7 @@ export default function ClientPortalPage({ params }: { params: Promise<{ token: 
 
   const handleDownload = async (inv: any) => {
     const { downloadInvoicePdf } = await import('@/lib/pdf');
-    downloadInvoicePdf(inv, profile);
+    await downloadInvoicePdf(inv, profile);
   };
 
   return (

@@ -1,750 +1,661 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
-import Header from '@/components/layout/Header';
-import Button from '@/components/ui/Button';
-import { Input, Select, Textarea } from '@/components/ui/Input';
-import { formatCurrency, generateId } from '@/lib/utils';
-import { InvoiceItem, DocumentType } from '@/types';
-import {
-  Mic, MicOff, Plus, Trash2, Zap, FileText, Clipboard,
-  RefreshCw, ChevronUp, ChevronDown, Sparkles, Calendar,
-  User, AlignLeft, Receipt, AlertCircle,
-  ArrowLeft, ShoppingCart, Truck, Banknote, Wand2, Percent,
-} from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
+import { downloadInvoicePdf } from '@/lib/pdf';
+import { Invoice, InvoiceStatus } from '@/types';
 import { cn } from '@/lib/utils';
+import {
+  ArrowLeft, Edit2, Download, Mail, CreditCard, Copy, CheckCircle,
+  Clock, AlertTriangle, FileText, Send, Trash2, MoreVertical,
+  Receipt, ShoppingCart, Truck, RefreshCw, Banknote, Check,
+  ExternalLink, X, Loader2, Building2, Calendar, Hash,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-const DOC_TYPES = [
-  { value: 'invoice', label: 'Facture', description: 'Document de facturation standard', icon: Receipt, color: 'text-primary', bg: 'bg-primary-light', activeBg: 'bg-primary', border: 'border-primary' },
-  { value: 'quote', label: 'Devis', description: 'Proposition commerciale', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', activeBg: 'bg-blue-600', border: 'border-blue-500' },
-  { value: 'purchase_order', label: 'Bon de commande', description: "Commande d'achat officielle", icon: ShoppingCart, color: 'text-amber-600', bg: 'bg-amber-50', activeBg: 'bg-amber-600', border: 'border-amber-500' },
-  { value: 'delivery_note', label: 'Bon de livraison', description: 'Confirmation de livraison', icon: Truck, color: 'text-cyan-600', bg: 'bg-cyan-50', activeBg: 'bg-cyan-600', border: 'border-cyan-500' },
-  { value: 'credit_note', label: 'Avoir', description: 'Note de credit ou remboursement', icon: RefreshCw, color: 'text-purple-600', bg: 'bg-purple-50', activeBg: 'bg-purple-600', border: 'border-purple-500' },
-  { value: 'deposit', label: 'Acompte', description: "Facture d'acompte partielle", icon: Banknote, color: 'text-emerald-600', bg: 'bg-emerald-50', activeBg: 'bg-emerald-600', border: 'border-emerald-500' },
-];
+const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bg: string; icon: any }> = {
+  draft:    { label: 'Brouillon',  color: 'text-gray-500',   bg: 'bg-gray-100',   icon: FileText },
+  sent:     { label: 'Envoyée',    color: 'text-blue-600',   bg: 'bg-blue-50',    icon: Send },
+  paid:     { label: 'Payée',      color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle },
+  overdue:  { label: 'En retard', color: 'text-red-600',    bg: 'bg-red-50',     icon: AlertTriangle },
+  accepted: { label: 'Accepté',   color: 'text-teal-600',   bg: 'bg-teal-50',    icon: Check },
+  refused:  { label: 'Refusé',    color: 'text-orange-600', bg: 'bg-orange-50',  icon: X },
+};
 
-const VAT_RATES = [
-  { value: '0', label: '0% — Exonéré' },
-  { value: '5.5', label: '5.5% — Réduit' },
-  { value: '10', label: '10% — Intermédiaire' },
-  { value: '20', label: '20% — Normal' },
-];
+const DOC_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  invoice:        { label: 'Facture',           icon: Receipt,      color: 'text-primary' },
+  quote:          { label: 'Devis',             icon: FileText,     color: 'text-blue-600' },
+  purchase_order: { label: 'Bon de commande',   icon: ShoppingCart, color: 'text-amber-600' },
+  delivery_note:  { label: 'Bon de livraison',  icon: Truck,        color: 'text-cyan-600' },
+  credit_note:    { label: 'Avoir',             icon: RefreshCw,    color: 'text-purple-600' },
+  deposit:        { label: "Facture d'acompte", icon: Banknote,     color: 'text-emerald-600' },
+};
 
-export default function NewInvoicePage() {
+export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const params = useSearchParams();
+  const searchParams = useSearchParams();
   const { profile } = useAuthStore();
-  const { clients, createInvoice } = useDataStore();
+  const { invoices, updateInvoiceStatus, deleteInvoice, duplicateInvoice } = useDataStore();
 
-  const initType = (params.get('type') || 'invoice') as DocumentType;
-  const initMode = params.get('mode') || 'manual';
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
+  const [generatingSumUpLink, setGeneratingSumUpLink] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  const [docType, setDocType] = useState<DocumentType>(initType);
-  const [mode, setMode] = useState<'voice' | 'ai' | 'manual'>('manual');
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  useEffect(() => {
+    const found = invoices.find((inv) => inv.id === id);
+    if (found) setInvoice(found);
+  }, [invoices, id]);
 
-  // Voice recording
-  const [recording, setRecording] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [voiceError, setVoiceError] = useState('');
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  // Handle ?paid=true redirect from Stripe
+  useEffect(() => {
+    if (searchParams.get('paid') === 'true' && invoice && invoice.status !== 'paid') {
+      updateInvoiceStatus(id, 'paid').then(() => {
+        toast.success('Paiement reçu ! La facture a été marquée comme payée.', { duration: 5000 });
+      });
+    }
+  }, [searchParams, invoice?.id]);
 
-  // AI generation
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
+  // Pre-fill email from client
+  useEffect(() => {
+    if (invoice?.client?.email) setEmailTo(invoice.client.email);
+    else if (invoice?.client_name_override) setEmailTo('');
+  }, [invoice?.id]);
 
-  // Form state
-  const [clientName, setClientName] = useState('');
-  const [clientId, setClientId] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  if (!invoice) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <Loader2 size={32} className="animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Chargement de la facture...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const [items, setItems] = useState<Omit<InvoiceItem, 'total'>[]>([
-    { id: generateId(), description: '', quantity: 1, unit_price: 0, vat_rate: 20 }
-  ]);
+  const status = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
+  const StatusIcon = status.icon;
+  const docCfg = DOC_CONFIG[invoice.document_type] || DOC_CONFIG.invoice;
+  const DocIcon = docCfg.icon;
+  const clientName = invoice.client?.name || invoice.client_name_override || 'Client inconnu';
+  const clientEmail = invoice.client?.email || '';
 
-  const [notes, setNotes] = useState('');
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [dueDays, setDueDays] = useState<number>(30);
+  const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-  const vatAmount = items.reduce((s, i) => s + i.quantity * i.unit_price * (i.vat_rate / 100), 0);
-  const discountAmount = discountPercent > 0 ? (subtotal + vatAmount) * (discountPercent / 100) : 0;
-  const total = subtotal + vatAmount - discountAmount;
-
-  const getDueDate = () => {
-    if (dueDays <= 0) return '';
-    const d = new Date(issueDate);
-    d.setDate(d.getDate() + dueDays);
-    return d.toISOString().split('T')[0];
+  const handleDownloadPdf = async () => {
+    await downloadInvoicePdf(invoice, profile);
   };
 
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return;
-    setAiLoading(true); setAiError('');
+  const handleSendEmail = async () => {
+    if (!emailTo.trim()) return toast.error('Entrez une adresse email.');
+    setSendingEmail(true);
     try {
-      const res = await fetch('/api/ai/generate-invoice', {
+      const res = await fetch('/api/send-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt }),
+        body: JSON.stringify({ invoiceId: invoice.id, email: emailTo.trim(), profile }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      const { parsed } = data;
-      if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
-      if (parsed?.items?.length) {
-        setItems(parsed.items.map((item: any) => ({
-          id: generateId(),
-          description: item.description || '',
-          quantity: Number(item.quantity) || 1,
-          unit_price: Number(item.unit_price) || 0,
-          vat_rate: Number(item.vat_rate) || 20,
-        })));
-      }
-      if (parsed?.notes) setNotes(parsed.notes);
-      if (parsed?.due_days !== undefined) setDueDays(parsed.due_days);
-      setAiPrompt('');
-      setMode('manual');
+      if (invoice.status === 'draft') await updateInvoiceStatus(id, 'sent');
+      toast.success(`Facture envoyée à ${emailTo} !`);
+      setShowEmailModal(false);
     } catch (e: any) {
-      setAiError(e.message || 'Erreur lors de la génération IA');
+      toast.error(e.message || "Erreur lors de l'envoi.");
     } finally {
-      setAiLoading(false);
+      setSendingEmail(false);
     }
   };
 
-  // Voice recording
-  const startRecording = async () => {
-    setVoiceError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        processVoiceBlob();
-      };
-      mediaRecorderRef.current = mr;
-      mr.start();
-      setRecording(true);
-    } catch {
-      setVoiceError('Accès au microphone refusé. Vérifiez les permissions dans votre navigateur.');
+  const handleCreatePaymentLink = async () => {
+    if (!profile?.stripe_connect_id && !process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      toast.error('Stripe non connecté. Configurez votre compte dans les paramètres.');
+      return;
     }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
-    setLoading(true);
-  };
-
-  const processVoiceBlob = async () => {
+    setGeneratingPaymentLink(true);
     try {
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-      const formData = new FormData();
-      formData.append('audio', blob);
-
-      const res = await fetch('/api/process-voice', {
+      const res = await fetch('/api/stripe/payment-link', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          amount: invoice.total,
+          description: `${docCfg.label} ${invoice.number}`,
+          stripeConnectId: profile?.stripe_connect_id,
+        }),
       });
-
-      if (!res.ok) throw new Error('Erreur de traitement');
-
-      const result = await res.json();
-      setTranscript(result.transcript || '');
-      const parsed = result.parsed;
-
-      if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
-      if (parsed?.items?.length) {
-        setItems(parsed.items.map((item: any) => ({
-          id: generateId(),
-          description: item.description || '',
-          quantity: Number(item.quantity) || 1,
-          unit_price: Number(item.unit_price) || 0,
-          vat_rate: Number(item.vat_rate) || 20,
-        })));
-      }
-      if (parsed?.notes) setNotes(parsed.notes);
-      if (parsed?.due_days !== undefined) setDueDays(parsed.due_days);
-      setMode('manual');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Lien de paiement créé ! Ouverture dans un nouvel onglet.');
+      window.open(data.url, '_blank');
     } catch (e: any) {
-      setVoiceError(e.message || 'Erreur lors du traitement vocal');
+      toast.error(e.message || 'Erreur lors de la création du lien.');
     } finally {
-      setLoading(false);
+      setGeneratingPaymentLink(false);
     }
   };
 
-  // Form handlers
-  const updateItem = (id: string, field: string, value: string | number) => {
-    setItems((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value } : item));
-  };
-
-  const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { id: generateId(), description: '', quantity: 1, unit_price: 0, vat_rate: 20 }
-    ]);
-  };
-
-  const removeItem = (id: string) => {
-    if (items.length <= 1) return;
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const moveItem = (id: string, direction: 'up' | 'down') => {
-    setItems((prev) => {
-      const index = prev.findIndex((item) => item.id === id);
-      if (index === -1) return prev;
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
-      const newItems = [...prev];
-      const [movedItem] = newItems.splice(index, 1);
-      newItems.splice(newIndex, 0, movedItem);
-      return newItems;
-    });
-  };
-
-  const handleSave = async () => {
-    if (!clientName && items.filter((i) => i.description).length === 0) {
-      setError('Renseignez au moins un client ou une prestation.');
-      return;
-    }
-
-    if (!items.some((i) => i.quantity > 0 && i.unit_price > 0)) {
-      setError('Ajoutez au moins une prestation avec un montant.');
-      return;
-    }
-
-    setSaving(true);
-    setError('');
+  const handleSumUpLink = async () => {
+    setGeneratingSumUpLink(true);
     try {
-      const newInvoice = await createInvoice(
-        {
-          client_id: clientId || undefined,
-          client_name_override: clientId ? undefined : clientName || undefined,
-          document_type: docType,
-          issue_date: issueDate,
-          due_date: getDueDate() || undefined,
-          items: items,
-          notes: notes || undefined,
-          discount_percent: discountPercent > 0 ? discountPercent : undefined,
-        },
-        profile
-      );
-      router.push(`/invoices/${newInvoice.id}`);
+      const res = await fetch('/api/sumup/payment-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Lien SumUp créé !');
+      window.open(data.url, '_blank');
     } catch (e: any) {
-      setError(e.message || 'Erreur lors de la création.');
+      toast.error(e.message || 'Erreur lors de la création du lien SumUp.');
     } finally {
-      setSaving(false);
+      setGeneratingSumUpLink(false);
     }
   };
 
-  const handleVoice = () => {
-    setMode('voice');
+  const handleMarkPaid = async () => {
+    setStatusLoading(true);
+    try {
+      await updateInvoiceStatus(id, 'paid');
+      toast.success('Facture marquée comme payée !');
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur.');
+    } finally {
+      setStatusLoading(false);
+    }
   };
 
-  const handleAi = () => {
-    setMode('ai');
+  const handleMarkSent = async () => {
+    setStatusLoading(true);
+    try {
+      await updateInvoiceStatus(id, 'sent');
+      toast.success('Facture marquée comme envoyée.');
+    } finally {
+      setStatusLoading(false);
+    }
   };
 
-  const handleManual = () => {
-    setMode('manual');
+  const handleDuplicate = async () => {
+    try {
+      const dup = await duplicateInvoice(id, profile);
+      toast.success('Facture dupliquée !');
+      router.push(`/invoices/${dup.id}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur lors de la duplication.');
+    }
   };
 
-  const docConfig = DOC_TYPES.find((d) => d.value === docType)!;
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteInvoice(id);
+      toast.success('Facture supprimée.');
+      router.push('/invoices');
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur lors de la suppression.');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const discountAmount = invoice.discount_amount || 0;
 
   return (
-    <div className="max-w-4xl space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <h1 className="text-2xl font-black text-gray-900">Nouveau document</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Remplissez les informations ci-dessous pour créer votre document.</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="max-w-4xl space-y-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/invoices')}
-            className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-50 transition-colors"
+            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
           >
-            Annuler
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <DocIcon size={16} className={docCfg.color} />
+              <h1 className="text-xl font-black text-gray-900">{invoice.number}</h1>
+              <span className={cn('inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full', status.bg, status.color)}>
+                <StatusIcon size={11} />
+                {status.label}
+              </span>
+            </div>
+            <p className="text-sm text-gray-400 mt-0.5">{docCfg.label} · {clientName}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Download PDF */}
+          <button
+            onClick={handleDownloadPdf}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition-colors"
+          >
+            <Download size={15} />
+            PDF
+          </button>
+
+          {/* Send email */}
+          <button
+            onClick={() => setShowEmailModal(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
+          >
+            <Mail size={15} />
+            Envoyer
+          </button>
+
+          {/* Payment link Stripe */}
+          {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
+            <button
+              onClick={handleCreatePaymentLink}
+              disabled={generatingPaymentLink}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {generatingPaymentLink ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
+              Stripe
+            </button>
+          )}
+
+          {/* Payment link SumUp */}
+          {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
+            <button
+              onClick={handleSumUpLink}
+              disabled={generatingSumUpLink}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {generatingSumUpLink ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
+              SumUp
+            </button>
+          )}
+
+          {/* Edit */}
+          <button
+            onClick={() => router.push(`/invoices/${id}/edit`)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-all shadow-sm"
+          >
+            <Edit2 size={15} />
+            Modifier
+          </button>
+
+          {/* More actions */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+            >
+              <MoreVertical size={16} />
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-40 w-52 overflow-hidden">
+                  {invoice.status !== 'paid' && (
+                    <button
+                      onClick={() => { setShowMenu(false); handleMarkPaid(); }}
+                      disabled={statusLoading}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors"
+                    >
+                      <CheckCircle size={16} />
+                      Marquer comme payée
+                    </button>
+                  )}
+                  {invoice.status === 'draft' && (
+                    <button
+                      onClick={() => { setShowMenu(false); handleMarkSent(); }}
+                      disabled={statusLoading}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
+                    >
+                      <Send size={16} />
+                      Marquer comme envoyée
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setShowMenu(false); handleDuplicate(); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Copy size={16} />
+                    Dupliquer
+                  </button>
+                  <div className="h-px bg-gray-100 mx-4" />
+                  <button
+                    onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    Supprimer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Paid banner */}
+      {invoice.status === 'paid' && (
+        <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+          <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-emerald-800">Facture payée {invoice.paid_at ? `le ${fmtDate(invoice.paid_at)}` : ''}</p>
+            <p className="text-xs text-emerald-600">Le paiement a bien été reçu et enregistré.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Overdue banner */}
+      {invoice.status === 'overdue' && (
+        <div className="flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-red-800">Facture en retard</p>
+              <p className="text-xs text-red-600">Échéance dépassée le {fmtDate(invoice.due_date)}.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowEmailModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors flex-shrink-0"
+          >
+            <Mail size={13} />
+            Relancer
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Document type selector */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {DOC_TYPES.map((dt) => {
-          const Icon = dt.icon;
-          const active = docType === dt.value;
-          return (
-            <button
-              key={dt.value}
-              onClick={() => setDocType(dt.value as DocumentType)}
-              className={cn(
-                'relative flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border-2 text-center transition-all',
-                active
-                  ? `${dt.activeBg} text-white shadow-md`
-                  : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50',
-              )}
-            >
-              <div className={cn(
-                'w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
-                active ? dt.bg : 'bg-gray-100',
-              )}>
-                <Icon size={19} className={active ? dt.color : 'text-gray-400'} />
-              </div>
-              <div className="text-[10px] font-bold mt-1">{dt.label}</div>
-              {active && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
-              )}
-              <p className={cn('text-[10px] mt-0.5 hidden sm:block transition-opacity', active ? 'opacity-100' : 'opacity-0')}>
-                {dt.description}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Mode toggle */}
-      <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl">
-        <button
-          onClick={handleVoice}
-          disabled={loading}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            mode === 'voice' ? 'bg-primary text-white' : 'text-gray-600 hover:text-gray-700',
-          )}
-        >
-          <MicOff size={14} />
-          Dicée vocale
-        </button>
-        <button
-          onClick={handleAi}
-          disabled={loading}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            mode === 'ai' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:text-gray-700',
-          )}
-        >
-          <Wand2 size={14} />
-          Générer par IA
-        </button>
-        <button
-          onClick={handleManual}
-          disabled={loading}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            mode === 'manual' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-700',
-          )}
-        >
-          <FileText size={14} />
-          Saisie manuelle
-        </button>
-      </div>
-
-      {/* Voice recorder */}
-      {mode === 'voice' && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center space-y-6">
-          {!loading && (
-            <>
-              <p className="text-sm text-gray-500 mb-4">Cliquez sur le bouton pour commencer à dicter.</p>
-              <div className="flex flex-wrap justify-center gap-4">
-                {[15, 30, 45, 60].map((days) => (
-                  <button
-                    key={days}
-                    onClick={() => setDueDays(days)}
-                    className="text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary hover:bg-primary-light transition-all"
-                  >
-                    J+{days}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          {recording && (
-            <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mb-8">
-              <div className="absolute inset-0 rounded-full bg-white/10 animate-ping" />
-              <button
-                onClick={stopRecording}
-                className="w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-xl"
-              >
-                <Mic size={32} className="text-white" />
-              </button>
-            </div>
-          )}
-          {loading && (
-            <p className="text-lg text-gray-500 animate-pulse">L'IA écoute votre enregistrement...</p>
-          )}
-          {transcript && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-4 text-left">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles size={16} className="text-purple-500 flex-shrink-0" />
-                <p className="text-sm text-gray-700 font-medium">Transcription IA</p>
-              </div>
-              <p className="text-xs text-gray-500">{transcript}</p>
-            </div>
-          )}
-          {voiceError && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-left">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Main content */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Invoice header card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600">{voiceError}</p>
+                <DocIcon size={15} className={docCfg.color} />
+                <span className="text-sm font-bold text-gray-700">{docCfg.label}</span>
               </div>
+              <span className="text-sm font-black text-gray-900">{invoice.number}</span>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* AI generator */}
-      {mode === 'ai' && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-          {!loading && (
-            <>
-              <p className="text-sm text-gray-500 mb-4">
-                Décrivez votre facture en langage naturel. L'IA analysera votre demande et remplira automatiquement tous les champs.
-              </p>
-              <Textarea
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                rows={4}
-                placeholder="Ex: 'Facture pour Entreprise XYZ pour développement web site, 5 jours à 2000€ HT, TVA 20%'"
-                className="flex-1"
-              />
-              <p className="text-[11px] text-gray-300 mt-1">Appuyez sur Entrée pour générer.</p>
-              {aiError && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
-                    <p className="text-sm text-red-600">{aiError}</p>
-                  </div>
+            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-5">
+              <div>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Client</p>
+                <p className="text-sm font-bold text-gray-900">{clientName}</p>
+                {clientEmail && <p className="text-xs text-gray-400 mt-0.5">{clientEmail}</p>}
+                {invoice.client?.address && <p className="text-xs text-gray-400 mt-0.5">{invoice.client.address}</p>}
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Date d'émission</p>
+                <p className="text-sm font-bold text-gray-900">{fmtDate(invoice.issue_date)}</p>
+              </div>
+              {invoice.due_date && (
+                <div>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Échéance</p>
+                  <p className={cn('text-sm font-bold', invoice.status === 'overdue' ? 'text-red-600' : 'text-gray-900')}>
+                    {fmtDate(invoice.due_date)}
+                  </p>
                 </div>
               )}
-              <button
-                onClick={handleAiGenerate}
-                disabled={aiLoading || !aiPrompt.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-lg shadow-purple-500/20"
-              >
-                {aiLoading ? (
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Wand2 size={16} className="text-white" />
-                    Générer
-                  </>
-                )}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Manual form */}
-      {mode === 'manual' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: form */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Client section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-50 bg-gray-50/50">
-                <User size={14} className="text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-700">Client</h3>
-              </div>
-              <div className="p-4">
-                <Input
-                  placeholder="Nom du client ou de l'entreprise"
-                  value={clientName}
-                  onChange={(e) => { setClientName(e.target.value); setClientId(null); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                />
-                {showSuggestions && clientName.length > 0 && clients.length > 0 && (
-                  <div className="relative">
-                    <div className="absolute left-0 right-0 top-full bg-white border border-gray-200 rounded-xl shadow-lg z-20 w-64 max-h-48 overflow-y-auto">
-                      {clients.slice(0, 5).map((client) => (
-                        <button
-                          key={client.id}
-                          onMouseDown={() => { setClientName(client.name); setClientId(client.id); setShowSuggestions(false); }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                              {client.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">{client.name}</p>
-                              <p className="text-xs text-gray-400">{client.email || ''}</p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
+          </div>
 
-            {/* Dates section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-50 bg-gray-50/50">
-                <Calendar size={14} className="text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-700">Dates & Conditions</h3>
-              </div>
-              <div className="p-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Date d'émission</label>
-                    <input
-                      type="date"
-                      value={issueDate}
-                      onChange={(e) => setIssueDate(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Échéance</label>
-                    <input
-                      type="date"
-                      value={dueDays > 0 ? getDueDate() : ''}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const today = new Date();
-                          const selected = new Date(e.target.value);
-                          const diffTime = Math.ceil((selected.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                          setDueDays(diffTime > 0 ? diffTime : 0);
-                        } else {
-                          setDueDays(0);
-                        }
-                      }}
-                      min={issueDate}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[0, 15, 30, 45, 60, 90].map((days) => (
-                    <button
-                      key={days}
-                      onClick={() => setDueDays(days)}
-                      className={cn(
-                        "text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary hover:bg-primary-light transition-all",
-                        dueDays === days && "bg-primary text-white border-primary"
-                      )}
-                    >
-                      {days === 0 ? "Comptant" : `À ${days} jours`}
-                    </button>
+          {/* Items table */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-gray-50 bg-gray-50/50">
+              <h3 className="text-sm font-bold text-gray-700">Prestations</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wide px-5 py-2.5">Description</th>
+                    <th className="text-center text-xs font-bold text-gray-400 uppercase tracking-wide px-3 py-2.5 w-16">Qté</th>
+                    <th className="text-right text-xs font-bold text-gray-400 uppercase tracking-wide px-3 py-2.5 w-28">Prix HT</th>
+                    <th className="text-right text-xs font-bold text-gray-400 uppercase tracking-wide px-3 py-2.5 w-16">TVA</th>
+                    <th className="text-right text-xs font-bold text-gray-400 uppercase tracking-wide px-5 py-2.5 w-28">Total HT</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {invoice.items.map((item, i) => (
+                    <tr key={item.id || i} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-5 py-3.5 text-sm text-gray-900">{item.description || '—'}</td>
+                      <td className="px-3 py-3.5 text-sm text-gray-600 text-center">{item.quantity}</td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 text-right tabular-nums">{formatCurrency(item.unit_price)}</td>
+                      <td className="px-3 py-3.5 text-xs text-gray-400 text-right">{item.vat_rate}%</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 text-right tabular-nums">
+                        {formatCurrency(item.quantity * item.unit_price)}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
 
-            {/* Items section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 bg-gray-50/50">
-                <div className="flex items-center gap-2">
-                  <AlignLeft size={14} className="text-gray-400" />
-                  <h3 className="text-sm font-bold text-gray-700">Prestations</h3>
+            {/* Totals */}
+            <div className="border-t border-gray-100 px-5 py-4">
+              <div className="ml-auto max-w-xs space-y-2">
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Sous-total HT</span>
+                  <span className="font-semibold text-gray-900 tabular-nums">{formatCurrency(invoice.subtotal)}</span>
                 </div>
-                <span className="text-[11px] text-gray-300 font-medium">{items.length} ligne{items.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="p-4 space-y-3">
-                {items.map((item, idx) => (
-                  <div key={item.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4 group">
-                    {/* Line controls */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] text-gray-300 font-medium">#{idx + 1}</span>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => moveItem(item.id, 'up')}
-                          disabled={idx === 0}
-                          className="p-1 rounded text-gray-300 hover:text-gray-600 disabled:opacity-30 transition-colors"
-                        >
-                          <ChevronUp size={12} />
-                        </button>
-                        <button
-                          onClick={() => moveItem(item.id, 'down')}
-                          disabled={idx === items.length - 1}
-                          className="p-1 rounded text-gray-300 hover:text-gray-600 disabled:opacity-30 transition-colors"
-                        >
-                          <ChevronDown size={12} />
-                        </button>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          disabled={items.length === 1}
-                          className="p-1 rounded text-red-300 hover:text-red-600 disabled:opacity-30 transition-colors"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Line content */}
-                    <Input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                      placeholder="Description de la prestation"
-                      className="flex-1"
-                    />
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      <Input
-                        type="number"
-                        label="Qté"
-                        min="0"
-                        step="0.5"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value) || 0)}
-                      />
-                      <Input
-                        type="number"
-                        label="Prix HT"
-                        min="0"
-                        step="0.01"
-                        value={item.unit_price}
-                        onChange={(e) => updateItem(item.id, 'unit_price', Number(e.target.value) || 0)}
-                      />
-                      <Select
-                        value={String(item.vat_rate)}
-                        options={VAT_RATES}
-                        onChange={(e) => updateItem(item.id, 'vat_rate', Number(e.target.value) || 20)}
-                      />
-                    </div>
-                    <div className="mt-2">
-                      <Input
-                        type="number"
-                        label="Total TTC"
-                        readOnly
-                        value={item.quantity * item.unit_price * (1 + item.vat_rate / 100)}
-                        className="text-center font-bold bg-gray-900 text-white"
-                      />
-                    </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>TVA</span>
+                  <span className="font-semibold text-gray-900 tabular-nums">{formatCurrency(invoice.vat_amount)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-600">
+                    <span>Remise ({invoice.discount_percent}%)</span>
+                    <span className="font-semibold tabular-nums">−{formatCurrency(discountAmount)}</span>
                   </div>
-                ))}
-              </div>
-
-              <div className="border-t border-gray-100 pt-3 px-4">
-                <button
-                  onClick={addItem}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-primary/40 hover:text-primary transition-all"
-                >
-                  <Plus size={16} />
-                  Ajouter une ligne
-                </button>
-              </div>
-            </div>
-
-            {/* Notes section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-50 bg-gray-50/50">
-                <AlignLeft size={14} className="text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-700">Notes</h3>
-              </div>
-              <div className="p-4">
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Notes ou conditions de paiement..."
-                  className="flex-1"
-                />
-              </div>
-            </div>
-
-            {/* Discount section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-50 bg-gray-50/50">
-                <Percent size={14} className="text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-700">Remise globale</h3>
-              </div>
-              <div className="p-4 flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                  placeholder="0"
-                  className="w-20 px-3 py-2 rounded-xl border border-gray-200 text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                />
-                <span className="text-gray-500">%</span>
-                {[5, 10, 15, 20].map((pct) => (
-                  <button
-                    key={pct}
-                    onClick={() => setDiscountPercent(pct)}
-                    className={cn(
-                      "text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors",
-                      discountPercent === pct && "bg-primary text-white"
-                    )}
-                  >
-                    {pct}%
-                  </button>
-                ))}
+                )}
+                <div className="h-px bg-gray-200" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-gray-900">Total TTC</span>
+                  <span className="text-2xl font-black text-gray-900 tabular-nums">{formatCurrency(invoice.total)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right: summary */}
-          <div className="lg:col-span-1 space-y-3">
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm sticky top-4">
-              <h3 className="text-sm font-bold text-gray-700 mb-3">Récapitulatif</h3>
-              <p className="text-xs text-gray-400 mb-1">Sous-total HT</p>
-              <p className="text-2xl font-black tabular-nums text-gray-900">{formatCurrency(subtotal)}</p>
-
-              <div className="h-px bg-gray-200 rounded-full overflow-hidden my-4"></div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>TVA :</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(vatAmount)}</span>
-                </div>
-
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Remise :</span>
-                    <span className="font-bold">{formatCurrency(discountAmount)}</span>
-                  </div>
-                )}
-
-                <div className="h-px bg-gray-200 rounded-full overflow-hidden"></div>
-
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-xs text-gray-400">Total TTC</p>
-                    <p className="text-2xl font-black tabular-nums text-gray-900">{formatCurrency(total)}</p>
-                  </div>
-                </div>
-              </div>
+          {/* Notes */}
+          {invoice.notes && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-2">Notes</h3>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{invoice.notes}</p>
             </div>
+          )}
+        </div>
 
-            {/* CTA */}
-            <div className="sticky bottom-0 left-1/2 -translate-x-1/2 z-50 pb-4">
+        {/* Right panel */}
+        <div className="space-y-4">
+          {/* Total card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Montant total</p>
+            <p className="text-4xl font-black text-gray-900 tabular-nums">{formatCurrency(invoice.total)}</p>
+            <div className={cn('inline-flex items-center gap-1.5 mt-3 text-xs font-bold px-3 py-1.5 rounded-full', status.bg, status.color)}>
+              <StatusIcon size={12} />
+              {status.label}
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Actions rapides</h3>
+
+            <button
+              onClick={() => setShowEmailModal(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
+            >
+              <Mail size={16} />
+              Envoyer par e-mail
+            </button>
+
+            {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (<>
               <button
-                onClick={handleSave}
-                disabled={saving || loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-bold hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                onClick={handleCreatePaymentLink}
+                disabled={generatingPaymentLink}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold transition-colors disabled:opacity-50"
               >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <FileText size={16} className="text-white" />
-                    Créer le document
-                  </>
-                )}
+                {generatingPaymentLink ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
+                Lien de paiement Stripe
               </button>
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
-                  <AlertCircle size={14} className="text-red-500 mx-auto mb-1" />
-                  <p className="text-sm text-red-600">{error}</p>
+
+              <button
+                onClick={handleSumUpLink}
+                disabled={generatingSumUpLink}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {generatingSumUpLink ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
+                Lien de paiement SumUp
+              </button>
+            </>)}
+
+            <button
+              onClick={handleDownloadPdf}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold transition-colors"
+            >
+              <Download size={16} />
+              Télécharger en PDF
+            </button>
+
+            {invoice.status !== 'paid' && (
+              <button
+                onClick={handleMarkPaid}
+                disabled={statusLoading}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {statusLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                Marquer comme payée
+              </button>
+            )}
+
+            <button
+              onClick={() => router.push(`/invoices/${id}/edit`)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary-light text-sm font-semibold transition-colors"
+            >
+              <Edit2 size={16} />
+              Modifier la facture
+            </button>
+          </div>
+
+          {/* Metadata */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Informations</h3>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex items-center gap-2 text-gray-500">
+                <Hash size={14} className="text-gray-300" />
+                <span className="text-xs">Numéro :</span>
+                <span className="font-semibold text-gray-900 ml-auto">{invoice.number}</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-500">
+                <Calendar size={14} className="text-gray-300" />
+                <span className="text-xs">Créée le :</span>
+                <span className="font-semibold text-gray-900 ml-auto">{fmtDate(invoice.created_at)}</span>
+              </div>
+              {invoice.sent_at && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Send size={14} className="text-gray-300" />
+                  <span className="text-xs">Envoyée le :</span>
+                  <span className="font-semibold text-gray-900 ml-auto">{fmtDate(invoice.sent_at)}</span>
                 </div>
               )}
+              {invoice.client?.siret && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Building2 size={14} className="text-gray-300" />
+                  <span className="text-xs">SIRET :</span>
+                  <span className="font-semibold text-gray-900 ml-auto">{invoice.client.siret}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Email modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-gray-900">Envoyer par e-mail</h2>
+              <button onClick={() => setShowEmailModal(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-500">Facture <strong>{invoice.number}</strong> · {formatCurrency(invoice.total)}</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                Adresse e-mail du destinataire
+              </label>
+              <input
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="client@entreprise.com"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleSendEmail()}
+              />
+            </div>
+
+            <p className="text-xs text-gray-400">
+              Le PDF de la facture sera joint automatiquement à l'e-mail.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailTo.trim()}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {sendingEmail ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                Envoyer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h2 className="text-lg font-black text-gray-900">Supprimer la facture ?</h2>
+              <p className="text-sm text-gray-500 mt-1">Cette action est irréversible. La facture <strong>{invoice.number}</strong> sera définitivement supprimée.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+              >
+                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Supprimer
+              </button>
             </div>
           </div>
         </div>

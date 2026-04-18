@@ -129,7 +129,7 @@ export default function SharePage({ params }: { params: Promise<{ invoiceId: str
 
   const handleDownload = async () => {
     const { downloadInvoicePdf } = await import('@/lib/pdf');
-    downloadInvoicePdf(invoice, profile);
+    await downloadInvoicePdf(invoice, profile);
   };
 
   if (loading) return (
