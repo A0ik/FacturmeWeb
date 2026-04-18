@@ -1,0 +1,605 @@
+'use client';
+import React from 'react';
+import { toast } from 'sonner';
+import { use, useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useDataStore } from '@/stores/dataStore';
+import { useAuthStore } from '@/stores/authStore';
+import Header from '@/components/layout/Header';
+import Button from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { StatusBadge } from '@/components/ui/Badge';
+import Modal from '@/components/ui/Modal';
+import { formatCurrency, formatDateShort, getInitials } from '@/lib/utils';
+import { getSupabaseClient } from '@/lib/supabase';
+import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check, Star, TrendingUp, Clock, Upload, Camera } from 'lucide-react';
+
+const TAG_COLORS = [
+  'bg-blue-100 text-blue-700',
+  'bg-purple-100 text-purple-700',
+  'bg-green-100 text-green-700',
+  'bg-amber-100 text-amber-700',
+  'bg-pink-100 text-pink-700',
+  'bg-cyan-100 text-cyan-700',
+  'bg-orange-100 text-orange-700',
+  'bg-indigo-100 text-indigo-700',
+];
+
+interface ClientNote {
+  id: string;
+  client_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { clients, invoices, updateClient, deleteClient } = useDataStore();
+  const { user } = useAuthStore();
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [portalUrl, setPortalUrl] = useState('');
+  const [portalCopied, setPortalCopied] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  // Logo upload state
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Tags state
+  const [tagInput, setTagInput] = useState('');
+  const [savingTags, setSavingTags] = useState(false);
+
+  // Notes state
+  const [notes, setNotes] = useState<ClientNote[]>([]);
+  const [noteInput, setNoteInput] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+
+  const client = clients.find((c) => c.id === id);
+
+  const [form, setForm] = useState({
+    name: client?.name ?? '',
+    email: client?.email ?? '',
+    phone: client?.phone ?? '',
+    address: client?.address ?? '',
+    city: client?.city ?? '',
+    postal_code: client?.postal_code ?? '',
+    country: client?.country ?? 'France',
+    siret: client?.siret ?? '',
+    vat_number: client?.vat_number ?? '',
+  });
+
+  // Fetch notes on mount — must be before early return (Rules of Hooks)
+  useEffect(() => {
+    const fetchNotes = async () => {
+      setLoadingNotes(true);
+      try {
+        const { data, error } = await getSupabaseClient()
+          .from('client_notes')
+          .select('*')
+          .eq('client_id', id)
+          .order('created_at', { ascending: false });
+        if (!error && data) setNotes(data);
+      } catch (e) {
+        // silently fail
+      } finally {
+        setLoadingNotes(false);
+      }
+    };
+    fetchNotes();
+  }, [id]);
+
+  if (!client) return (
+    <div className="text-center py-20">
+      <p className="text-gray-500">Client introuvable</p>
+      <Link href="/clients" className="mt-3 text-primary font-semibold text-sm hover:underline block">Retour</Link>
+    </div>
+  );
+
+  const clientInvoices = invoices.filter((inv) => inv.client_id === id);
+  const totalRevenue = clientInvoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+  const setField = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try { await updateClient(id, form); setShowEdit(false); }
+    catch (e: any) { toast.error(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleDelete = async () => {
+    await deleteClient(id);
+    router.push('/clients');
+  };
+
+  // Logo upload handler
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 2 Mo.');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image valide (JPG, PNG, etc.).');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Non authentifié');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}.${fileExt}`;
+      const filePath = `client-logos/${session.user.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('client-logos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-logos')
+        .getPublicUrl(filePath);
+
+      // Update client record
+      await updateClient(id, { logo_url: publicUrl } as any);
+      toast.success('Logo mis à jour avec succès !');
+    } catch (e: any) {
+      console.error('Logo upload error:', e);
+      toast.error(e.message || 'Erreur lors du téléchargement du logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  // Tag handlers
+  const handleAddTag = async (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    const currentTags: string[] = (client as any).tags || [];
+    if (currentTags.includes(trimmed)) { setTagInput(''); return; }
+    const newTags = [...currentTags, trimmed];
+    setSavingTags(true);
+    try {
+      await updateClient(id, { tags: newTags } as any);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingTags(false); setTagInput(''); }
+  };
+
+  const handleRemoveTag = async (tag: string) => {
+    const currentTags: string[] = (client as any).tags || [];
+    const newTags = currentTags.filter((t) => t !== tag);
+    setSavingTags(true);
+    try {
+      await updateClient(id, { tags: newTags } as any);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingTags(false); }
+  };
+
+  // Note handlers
+  const handleAddNote = async () => {
+    const content = noteInput.trim();
+    if (!content || !user) return;
+    setAddingNote(true);
+    try {
+      const { data, error } = await getSupabaseClient()
+        .from('client_notes')
+        .insert({ client_id: id, user_id: user.id, content })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      setNotes((prev) => [data, ...prev]);
+      setNoteInput('');
+    } catch (e: any) { toast.error(e.message); }
+    finally { setAddingNote(false); }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      const { error } = await getSupabaseClient()
+        .from('client_notes')
+        .delete()
+        .eq('id', noteId);
+      if (error) throw new Error(error.message);
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const handleGeneratePortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      if (!session) throw new Error('Non authentifié');
+      const res = await fetch('/api/client-portal/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ clientId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const url = `${window.location.origin}/client/${data.token}`;
+      setPortalUrl(url);
+      navigator.clipboard.writeText(url).catch(() => {});
+      setPortalCopied(true);
+      setTimeout(() => setPortalCopied(false), 3000);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setPortalLoading(false); }
+  };
+
+  const clientTags: string[] = (client as any).tags || [];
+
+  // Scoring client
+  const paidInvoices = clientInvoices.filter((i) => i.status === 'paid' && i.paid_at && i.due_date);
+  const avgPaymentDays = paidInvoices.length > 0
+    ? paidInvoices.reduce((s, inv) => {
+        const paid = new Date(inv.paid_at!).getTime();
+        const due = new Date(inv.due_date!).getTime();
+        return s + Math.max(0, (paid - due) / (1000 * 60 * 60 * 24));
+      }, 0) / paidInvoices.length
+    : null;
+  const paymentRate = clientInvoices.length > 0
+    ? (clientInvoices.filter((i) => i.status === 'paid').length / clientInvoices.filter((i) => i.status !== 'draft').length) * 100
+    : null;
+  const clientScore = (() => {
+    if (clientInvoices.filter((i) => i.status !== 'draft').length === 0) return null;
+    let score = 100;
+    if (avgPaymentDays !== null) score -= Math.min(40, avgPaymentDays * 2);
+    if (paymentRate !== null) score -= (100 - paymentRate) * 0.5;
+    if (clientInvoices.some((i) => i.status === 'overdue')) score -= 15;
+    return Math.max(0, Math.round(score));
+  })();
+  const scoreColor = clientScore === null ? '' : clientScore >= 80 ? 'text-green-600' : clientScore >= 60 ? 'text-amber-600' : 'text-red-600';
+  const scoreBg = clientScore === null ? '' : clientScore >= 80 ? 'bg-green-50 border-green-100' : clientScore >= 60 ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100';
+  const scoreLabel = clientScore === null ? '—' : clientScore >= 80 ? 'Excellent' : clientScore >= 60 ? 'Moyen' : 'Risqué';
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <Header
+        title={client.name}
+        back="/clients"
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={portalLoading}
+              icon={portalCopied ? <Check size={14} className="text-green-500" /> : <Globe size={14} />}
+              onClick={handleGeneratePortal}
+            >
+              {portalCopied ? 'Lien copié !' : 'Portail client'}
+            </Button>
+            <Button variant="secondary" size="sm" icon={<Pencil size={14} />} onClick={() => setShowEdit(true)}>Modifier</Button>
+            <Button variant="danger" size="sm" icon={<Trash2 size={14} />} onClick={() => setShowDelete(true)}>Supprimer</Button>
+          </div>
+        }
+      />
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-2xl font-black text-gray-900">{clientInvoices.length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Factures</p>
+        </div>
+        <div className="bg-primary rounded-2xl p-4 text-center">
+          <p className="text-xl font-black text-white">{formatCurrency(totalRevenue)}</p>
+          <p className="text-xs text-primary-light/80 mt-0.5">CA encaissé</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-2xl font-black text-gray-900">{clientInvoices.filter((i) => i.status === 'sent').length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">En attente</p>
+        </div>
+      </div>
+
+      {/* Client score */}
+      {clientScore !== null && (
+        <div className={`bg-white rounded-2xl border p-4 ${scoreBg}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Star size={15} className={scoreColor} />
+              <h3 className="font-bold text-gray-900 text-sm">Score client</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-black ${scoreColor}`}>{clientScore}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${scoreBg} ${scoreColor}`}>{scoreLabel}</span>
+            </div>
+          </div>
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${clientScore >= 80 ? 'bg-green-500' : clientScore >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+              style={{ width: `${clientScore}%` }}
+            />
+          </div>
+          <div className="flex gap-4 mt-3 text-xs text-gray-500">
+            {avgPaymentDays !== null && (
+              <span className="flex items-center gap-1">
+                <Clock size={11} />
+                Paiement moyen : <strong className="text-gray-900">{Math.round(avgPaymentDays)}j après échéance</strong>
+              </span>
+            )}
+            {paymentRate !== null && (
+              <span className="flex items-center gap-1">
+                <TrendingUp size={11} />
+                Taux de paiement : <strong className="text-gray-900">{Math.round(paymentRate)}%</strong>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Portal URL banner */}
+      {portalUrl && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+          <Globe size={16} className="text-green-600 flex-shrink-0" />
+          <p className="text-xs text-green-700 truncate flex-1 font-medium">{portalUrl}</p>
+          <button
+            onClick={() => { navigator.clipboard.writeText(portalUrl); setPortalCopied(true); setTimeout(() => setPortalCopied(false), 2000); }}
+            className="flex items-center gap-1 text-xs font-bold text-green-700 hover:text-green-900 transition-colors flex-shrink-0"
+          >
+            {portalCopied ? <Check size={13} /> : <Copy size={13} />}
+            {portalCopied ? 'Copié' : 'Copier'}
+          </button>
+        </div>
+      )}
+
+      {/* Logo section */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            {client.logo_url ? (
+              <img
+                src={client.logo_url}
+                alt={`Logo ${client.name}`}
+                className="w-16 h-16 rounded-xl object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white text-xl font-black">
+                {getInitials(client.name)}
+              </div>
+            )}
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Modifier le logo"
+            >
+              {uploadingLogo ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera size={10} />
+              )}
+            </button>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-gray-900">Logo du client</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {client.logo_url
+                ? 'Cliquez sur l\'icône caméra pour remplacer le logo'
+                : 'Ajoutez un logo pour personnaliser les factures de ce client'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <h3 className="font-bold text-gray-900 mb-3">Coordonnées</h3>
+        {[
+          { label: 'Email', value: client.email },
+          { label: 'Téléphone', value: client.phone },
+          { label: 'Adresse', value: [client.address, client.postal_code, client.city].filter(Boolean).join(', ') },
+          { label: 'SIRET', value: client.siret },
+          { label: 'N° TVA', value: client.vat_number },
+        ].map(({ label, value }) => value ? (
+          <div key={label} className="flex gap-3 text-sm">
+            <span className="text-gray-400 w-24 flex-shrink-0">{label}</span>
+            <span className="text-gray-900 font-medium">{value}</span>
+          </div>
+        ) : null)}
+      </div>
+
+      {/* Tags */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Tag size={15} className="text-gray-400" />
+          <h3 className="font-bold text-gray-900">Tags</h3>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {clientTags.length === 0 && (
+            <p className="text-xs text-gray-400">Aucun tag. Ajoutez-en ci-dessous.</p>
+          )}
+          {clientTags.map((tag, i) => (
+            <button
+              key={tag}
+              onClick={() => handleRemoveTag(tag)}
+              disabled={savingTags}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-70 ${TAG_COLORS[i % TAG_COLORS.length]}`}
+              title="Cliquer pour supprimer"
+            >
+              {tag}
+              <X size={11} />
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(tagInput); } }}
+            placeholder="Nouveau tag... (Entrée pour ajouter)"
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+          />
+          <button
+            onClick={() => handleAddTag(tagInput)}
+            disabled={!tagInput.trim() || savingTags}
+            className="px-3 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-40"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Invoices */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+          <h3 className="font-bold text-gray-900">Documents</h3>
+          <Link href={`/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}`} className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
+            <Plus size={14} />Nouvelle facture
+          </Link>
+        </div>
+        {clientInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <FileText size={28} className="text-gray-200 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Aucune facture</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {clientInvoices.map((inv) => (
+              <Link key={inv.id} href={`/invoices/${inv.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{inv.number}</p>
+                  <p className="text-xs text-gray-400">{formatDateShort(inv.issue_date)}</p>
+                </div>
+                <div className="text-right flex-shrink-0 space-y-0.5">
+                  <p className="text-sm font-bold text-gray-900">{formatCurrency(inv.total)}</p>
+                  <StatusBadge status={inv.status} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Notes timeline */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare size={15} className="text-gray-400" />
+          <h3 className="font-bold text-gray-900">Notes & suivi</h3>
+        </div>
+
+        {/* Add note */}
+        <div className="space-y-2 mb-5">
+          <textarea
+            value={noteInput}
+            onChange={(e) => setNoteInput(e.target.value)}
+            placeholder="Ajouter une note ou un suivi..."
+            rows={3}
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all resize-none"
+          />
+          <Button
+            onClick={handleAddNote}
+            loading={addingNote}
+            disabled={!noteInput.trim()}
+            size="sm"
+            icon={<Plus size={14} />}
+          >
+            Ajouter une note
+          </Button>
+        </div>
+
+        {/* Notes list */}
+        {loadingNotes ? (
+          <div className="flex justify-center py-6">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="text-center py-6">
+            <MessageSquare size={24} className="text-gray-200 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Aucune note pour ce client</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notes.map((note) => (
+              <div key={note.id} className="flex gap-3 group">
+                {/* Date column */}
+                <div className="flex-shrink-0 w-20 pt-1">
+                  <p className="text-[10px] font-semibold text-gray-400 leading-tight">
+                    {new Date(note.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                  </p>
+                  <p className="text-[10px] text-gray-300">
+                    {new Date(note.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                {/* Vertical line */}
+                <div className="flex-shrink-0 flex flex-col items-center">
+                  <div className="w-2 h-2 rounded-full bg-primary/40 mt-1.5" />
+                  <div className="w-px flex-1 bg-gray-100 mt-1" />
+                </div>
+                {/* Content */}
+                <div className="flex-1 pb-2">
+                  <div className="bg-gray-50 rounded-xl p-3 relative">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
+                      title="Supprimer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Edit modal */}
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Modifier le client" size="lg">
+        <form onSubmit={handleUpdate} className="space-y-3">
+          <Input label="Nom *" value={form.name} onChange={(e) => setField('name', e.target.value)} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Email" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
+            <Input label="Téléphone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+          </div>
+          <Input label="Adresse" value={form.address} onChange={(e) => setField('address', e.target.value)} />
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Code postal" value={form.postal_code} onChange={(e) => setField('postal_code', e.target.value)} />
+            <Input label="Ville" value={form.city} onChange={(e) => setField('city', e.target.value)} className="col-span-2" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="SIRET" value={form.siret} onChange={(e) => setField('siret', e.target.value)} />
+            <Input label="N° TVA" value={form.vat_number} onChange={(e) => setField('vat_number', e.target.value)} />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowEdit(false)}>Annuler</Button>
+            <Button type="submit" className="flex-1" loading={loading}>Enregistrer</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete modal */}
+      <Modal open={showDelete} onClose={() => setShowDelete(false)} title="Supprimer ce client">
+        <p className="text-gray-600 mb-4">Êtes-vous sûr de vouloir supprimer <strong>{client.name}</strong> ? Cette action est irréversible.</p>
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => setShowDelete(false)}>Annuler</Button>
+          <Button variant="danger" className="flex-1" onClick={handleDelete}>Supprimer</Button>
+        </div>
+      </Modal>
+    </div>
+  );
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Factu.me – Facturation intelligente",
+  "short_name": "Factu.me",
+  "description": "Créez des factures, devis et avoirs en quelques secondes",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1D9E75",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Nouvelle facture",
+      "url": "/invoices/new?type=invoice",
+      "description": "Créer une nouvelle facture"
+    },
+    {
+      "name": "Nouveau devis",
+      "url": "/invoices/new?type=quote",
+      "description": "Créer un nouveau devis"
+    }
+  ]
+}
