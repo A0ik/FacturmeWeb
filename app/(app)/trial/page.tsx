@@ -6,8 +6,8 @@ import {
   Zap, FileText, BarChart3, Shield, Clock, Star,
   CheckCircle2, ArrowRight, Sparkles, TrendingUp
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { TiltCard } from "@/components/ui/TiltCard";
+import Button from "@/components/ui/Button";
+import TiltCard from "@/components/ui/TiltCard";
 
 export default function TrialPage() {
   const [isActivating, setIsActivating] = React.useState(false);

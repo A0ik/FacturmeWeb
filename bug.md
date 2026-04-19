@@ -44,29 +44,33 @@ Implémentation d'un système d'essai gratuit de 4 jours pour FacturmeWeb-ESPOIR
 - **`components/layout/Sidebar.tsx`**: Lien vers essai gratuit pour les utilisateurs gratuits
 - **`app/(app)/paywall/page.tsx`**: Bannière promotionnelle pour l'essai gratuit
 
-## Problème Actuel ⚠️
+## Problèmes Résolus ✅
 
-### Migration SQL Échoue
-La migration `017_add_trial_fields.sql` échoue avec l'erreur:
-```
-ERROR: 42P01: relation "v_current_tier" does not exist
-```
+### 1. Migration SQL Appliquée avec Succès (2026-04-19)
+Les changements suivants ont été appliqués via MCP Supabase :
 
-**Note**: Cette erreur est étrange car la dernière version du SQL n'utilise plus de variables `DECLARE` ni `v_current_tier`.
+**✓ Colonnes ajoutées à `profiles` :**
+- `trial_start_date` (timestamptz)
+- `trial_end_date` (timestamptz)
+- `is_trial_active` (boolean, default: false)
 
-### Tentatives de Correction
-1. Première version avec bloc `DECLARE` → Échec
-2. Seconde version simplifiée → Toujours la même erreur
-3. Version finale sans variables, avec `FOUND` → À tester
+**✓ Index créé :** `idx_profiles_trial_active`
 
-### Projet Supabase
-- **Project Ref**: `ggrwyfhptxwpahwkeoyj`
-- **MCP URL**: `https://mcp.supabase.com/mcp?project_ref=ggrwyfhptxwpahwkeoyj&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage`
+**✓ Fonctions créées :**
+- `public.activate_trial(uuid)` - active l'essai de 4 jours
+- `public.expire_trials()` - expire les essais terminés
 
-### Commande MCP à Exécuter
-```bash
-claude mcp add --scope project --transport http supabase "https://mcp.supabase.com/mcp?project_ref=ggrwyfhptxwpahwkeoyj&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
-```
+**✓ Permissions accordées :**
+- `authenticated` peut exécuter `activate_trial`
+- `service_role` peut exécuter `expire_trials`
+
+**✓ CHECK constraint corrigé :** `subscription_tier` inclut maintenant `'trial'`
+
+### 2. Imports Corrigés (2026-04-19)
+Les erreurs de compilation ont été corrigées :
+- `Button` est un export par défaut → `import Button from ...`
+- `TiltCard` est un export par défaut → `import TiltCard from ...`
+- `createServerClient` → `createServerSupabaseClient`
 
 ## Solution de Secours
 
