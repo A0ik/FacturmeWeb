@@ -105,13 +105,14 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (!user) throw new Error('Non authentifié');
 
     // Récupérer le profil pour vérifier le plan
-    const { data: profile } = await getSupabaseClient().from('profiles').select('subscription_tier, monthly_invoice_count, invoice_month').eq('id', user.id).single();
+    const { data: profile } = await getSupabaseClient().from('profiles').select('subscription_tier, is_trial_active, monthly_invoice_count, invoice_month').eq('id', user.id).single();
 
     if (!profile) throw new Error('Profil introuvable');
 
-    // Empêcher la suppression pour les utilisateurs gratuits
-    if (profile.subscription_tier === 'free') {
-      throw new Error('Les utilisateurs du plan gratuit ne peuvent pas supprimer de factures. Cette fonctionnalité est disponible avec les plans payants.');
+    // Empêcher la suppression pour les utilisateurs gratuits (sauf ceux en essai)
+    const canDelete = profile.subscription_tier !== 'free' || profile.is_trial_active;
+    if (!canDelete) {
+      throw new Error('Les utilisateurs du plan gratuit ne peuvent pas supprimer de factures. Activez votre essai gratuit ou passez à un plan payant pour débloquer cette fonctionnalité.');
     }
 
     const { error } = await getSupabaseClient().from('invoices').delete().eq('id', id);

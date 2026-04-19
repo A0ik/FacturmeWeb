@@ -1,21 +1,28 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import { Logo } from '@/components/ui/Logo';
 import { ServiceWorkerRegistration } from '@/components/ui/ServiceWorkerRegistration';
 import CommandPalette from '@/components/ui/CommandPalette';
+import { TrialCountdown } from '@/components/ui/trial-countdown';
+import { InvoiceCounter } from '@/components/ui/invoice-counter';
+import { UpgradeBanner } from '@/components/ui/upgrade-banner';
 import { Toaster } from 'sonner';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, initialized } = useAuthStore();
-  const { fetchInvoices, fetchClients } = useDataStore();
+  const { user, initialized, profile } = useAuthStore();
+  const { fetchInvoices, fetchClients, invoices } = useDataStore();
+  const { isFree, isTrialActive, invoiceCount } = useSubscription();
   const pathname = usePathname();
+  const [showTrialBanner, setShowTrialBanner] = useState(true);
+  const [showInvoiceCounter, setShowInvoiceCounter] = useState(true);
 
   useEffect(() => {
     if (!initialized) return;
@@ -23,6 +30,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     fetchInvoices();
     fetchClients();
   }, [initialized, user]);
+
+  // Hide banners on paywall and trial pages
+  const hideBanners = pathname === '/paywall' || pathname === '/trial';
 
   if (!initialized) {
     return (
@@ -49,6 +59,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Toaster position="top-right" richColors closeButton />
       <ServiceWorkerRegistration />
       <CommandPalette />
+
+      {/* Trial Countdown Banner - shows for active trial users */}
+      {isTrialActive && showTrialBanner && !hideBanners && (
+        <TrialCountdown onClose={() => setShowTrialBanner(false)} />
+      )}
+
+      {/* Invoice Counter - shows for free users */}
+      {isFree && showInvoiceCounter && !hideBanners && (
+        <InvoiceCounter
+          invoiceCount={invoiceCount}
+          maxInvoices={5}
+          onClose={() => setShowInvoiceCounter(false)}
+        />
+      )}
+
+      {/* Upgrade Banner - shows for free users on specific pages */}
+      {isFree && !hideBanners && pathname === '/invoices' && (
+        <div className="container mx-auto px-4 lg:px-8 pt-4">
+          <UpgradeBanner
+            type="limit"
+            buttonText="Activer l'essai gratuit"
+            description="4 jours d'accès complet à toutes les fonctionnalités"
+            onClick={() => router.push('/trial')}
+            onClose={() => setShowInvoiceCounter(false)}
+          />
+        </div>
+      )}
+
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
         <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">

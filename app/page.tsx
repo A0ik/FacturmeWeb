@@ -13,14 +13,17 @@ function ParticlesCanvas() {
     const cvs = canvasRef.current; if (!cvs) return;
     const ctx = cvs.getContext('2d'); if (!ctx) return;
     const isMobile = window.innerWidth < 768;
-    const count = isMobile ? 20 : 45; const connections = !isMobile;
+    const isXL = window.innerWidth >= 1280;
+    const is2XL = window.innerWidth >= 1536;
+    const count = isMobile ? 20 : isXL ? (is2XL ? 80 : 65) : 45;
+    const connections = !isMobile;
     let w = 0, h = 0;
     const resize = () => { const p = cvs.parentElement; if (p) { w = cvs.width = p.offsetWidth; h = cvs.height = p.offsetHeight; } };
     resize();
     const ro = new ResizeObserver(resize); if (cvs.parentElement) ro.observe(cvs.parentElement);
     const ps: { x: number; y: number; s: number; vx: number; vy: number; o: number; l: number; ml: number }[] = [];
-    for (let i = 0; i < count; i++) { const l = Math.random() * 200 + 100; ps.push({ x: Math.random() * w, y: Math.random() * h, s: Math.random() * 1.5 + 0.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, o: Math.random() * 0.4 + 0.1, l, ml: l }); }
-    const reset = (p: typeof ps[0]) => { p.x = Math.random() * w; p.y = Math.random() * h; p.s = Math.random() * 1.5 + 0.5; p.vx = (Math.random() - 0.5) * 0.3; p.vy = (Math.random() - 0.5) * 0.3; p.o = Math.random() * 0.4 + 0.1; p.l = Math.random() * 200 + 100; p.ml = p.l; };
+    for (let i = 0; i < count; i++) { const l = Math.random() * 200 + 100; ps.push({ x: Math.random() * w, y: Math.random() * h, s: Math.random() * (isXL ? 2.5 : 1.5) + 0.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, o: Math.random() * 0.4 + 0.1, l, ml: l }); }
+    const reset = (p: typeof ps[0]) => { p.x = Math.random() * w; p.y = Math.random() * h; p.s = Math.random() * (isXL ? 2.5 : 1.5) + 0.5; p.vx = (Math.random() - 0.5) * 0.3; p.vy = (Math.random() - 0.5) * 0.3; p.o = Math.random() * 0.4 + 0.1; p.l = Math.random() * 200 + 100; p.ml = p.l; };
     let raf: number;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
@@ -29,7 +32,7 @@ function ParticlesCanvas() {
         if (p.l <= 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) reset(p);
         const a = (p.l / p.ml) * p.o;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fillStyle = `rgba(52,211,153,${a})`; ctx.fill();
-        if (connections) { for (let j = i + 1; j < ps.length; j++) { const dx = p.x - ps[j].x, dy = p.y - ps[j].y, d = Math.sqrt(dx * dx + dy * dy); if (d < 120) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ps[j].x, ps[j].y); ctx.strokeStyle = `rgba(52,211,153,${0.05 * (1 - d / 120)})`; ctx.lineWidth = 0.5; ctx.stroke(); } } }
+        if (connections) { for (let j = i + 1; j < ps.length; j++) { const dx = p.x - ps[j].x, dy = p.y - ps[j].y, d = Math.sqrt(dx * dx + dy * dy); if (d < (isXL ? 150 : 120)) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ps[j].x, ps[j].y); ctx.strokeStyle = `rgba(52,211,153,${0.05 * (1 - d / (isXL ? 150 : 120))})`; ctx.lineWidth = isXL ? 0.75 : 0.5; ctx.stroke(); } } }
       });
       raf = requestAnimationFrame(draw);
     };
@@ -45,13 +48,17 @@ function Card3D({ children, className = '' }: { children: React.ReactNode; class
   useEffect(() => {
     if (typeof window !== 'undefined' && 'ontouchstart' in window) return;
     const el = ref.current; if (!el) return;
+    const isXL = window.innerWidth >= 1280;
+    const is2XL = window.innerWidth >= 1536;
+    const tiltAmount = is2XL ? 10 : isXL ? 8 : 7;
+    const scaleAmount = is2XL ? 1.03 : 1.02;
     const onMove = (e: MouseEvent) => {
       const r = el.getBoundingClientRect();
-      const rx = ((e.clientY - r.top - r.height / 2) / (r.height / 2)) * -7;
-      const ry = ((e.clientX - r.left - r.width / 2) / (r.width / 2)) * 7;
-      el.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg) scale3d(1.02,1.02,1)`;
+      const rx = ((e.clientY - r.top - r.height / 2) / (r.height / 2)) * -tiltAmount;
+      const ry = ((e.clientX - r.left - r.width / 2) / (r.width / 2)) * tiltAmount;
+      el.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) scale3d(${scaleAmount},${scaleAmount},1)`;
     };
-    const onLeave = () => { el.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1,1,1)'; };
+    const onLeave = () => { el.style.transform = 'perspective(1200px) rotateX(0) rotateY(0) scale3d(1,1,1)'; };
     el.addEventListener('mousemove', onMove); el.addEventListener('mouseleave', onLeave);
     return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
   }, []);
@@ -168,28 +175,28 @@ export default function LandingPage() {
       </div>
 
       {/* ═══════════ NAVBAR ═══════════ */}
-      <nav className={`fixed top-2 sm:top-3 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto z-50 backdrop-blur-2xl bg-white/90 rounded-full border transition-all duration-300 sm:max-w-[680px] px-3 sm:px-5 py-2 sm:py-2.5 ${scrolled ? 'border-brand-200/60 shadow-lg shadow-brand-500/8' : 'border-brand-100/30 shadow-md shadow-black/[0.03]'}`}>
+      <nav className={`fixed top-2 sm:top-3 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto z-50 backdrop-blur-2xl bg-white/90 rounded-full border transition-all duration-300 sm:max-w-[680px] lg:max-w-[800px] xl:max-w-[900px] px-3 sm:px-5 py-2 sm:py-2.5 ${scrolled ? 'border-brand-200/60 shadow-lg shadow-brand-500/8' : 'border-brand-100/30 shadow-md shadow-black/[0.03]'}`}>
         <div className="flex items-center justify-between gap-2">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center"><Zap className="w-4 h-4 text-white" /></div>
-            <span className="text-base font-bold tracking-tight">Factu<span className="text-brand-500">.me</span></span>
+            <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-brand-500 rounded-lg flex items-center justify-center"><Zap className="w-4 h-4 sm:w-4.5 sm:h-4.5 lg:w-5 lg:h-5 text-white" /></div>
+            <span className="text-base sm:text-lg lg:text-xl font-bold tracking-tight">Factu<span className="text-brand-500">.me</span></span>
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-6">
-            <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="text-[13px] font-medium text-slate-500 hover:text-brand-600 transition-colors">Fonctionnalités</a>
-            <a href="#ai" onClick={(e) => scrollTo(e, '#ai')} className="text-[13px] font-medium text-slate-500 hover:text-brand-600 transition-colors">IA</a>
-            <a href="#tarifs" onClick={(e) => scrollTo(e, '#tarifs')} className="text-[13px] font-medium text-slate-500 hover:text-brand-600 transition-colors">Tarifs</a>
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
+            <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="text-[13px] sm:text-sm lg:text-base font-medium text-slate-500 hover:text-brand-600 transition-colors">Fonctionnalités</a>
+            <a href="#ai" onClick={(e) => scrollTo(e, '#ai')} className="text-[13px] sm:text-sm lg:text-base font-medium text-slate-500 hover:text-brand-600 transition-colors">IA</a>
+            <a href="#tarifs" onClick={(e) => scrollTo(e, '#tarifs')} className="text-[13px] sm:text-sm lg:text-base font-medium text-slate-500 hover:text-brand-600 transition-colors">Tarifs</a>
           </div>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <Link href="/login" className="hidden sm:inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-600 hover:text-brand-600 transition-colors px-2.5 py-1.5 rounded-full hover:bg-brand-50">
-              <LogIn className="w-3.5 h-3.5" /><span>Connexion</span>
+            <Link href="/login" className="hidden sm:inline-flex items-center gap-1.5 text-[13px] sm:text-sm lg:text-base font-medium text-slate-600 hover:text-brand-600 transition-colors px-2.5 py-1.5 rounded-full hover:bg-brand-50">
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Connexion</span>
             </Link>
-            <Link href="/register" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-600 px-3.5 py-1.5 rounded-full transition-all shadow-md shadow-brand-500/20 active:scale-[0.97]">
-              <span className="hidden sm:inline">Essai gratuit</span><span className="sm:hidden">Essai</span><ArrowRight className="w-3.5 h-3.5" />
+            <Link href="/register" className="inline-flex items-center gap-1.5 text-[13px] sm:text-sm lg:text-base font-semibold text-white bg-brand-500 hover:bg-brand-600 px-3.5 py-1.5 rounded-full transition-all shadow-md shadow-brand-500/20 active:scale-[0.97]">
+              <span className="hidden sm:inline">Essai gratuit</span><span className="sm:hidden">Essai</span><ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Link>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-1.5 rounded-full hover:bg-brand-50 transition-colors">
               <Menu className="w-4.5 h-4.5 text-slate-600" />
@@ -215,54 +222,58 @@ export default function LandingPage() {
       )}
 
       {/* ═══════════ HERO ═══════════ */}
-      <section className="relative min-h-[100dvh] flex items-center overflow-hidden bg-brand-950 pt-24 pb-16 sm:pt-0 sm:pb-0">
+      <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden bg-brand-950 pt-24 pb-16 sm:pt-0 sm:pb-0">
         <div className="absolute inset-0">
-          {/* Blob 1 — top left, MASSIVE */}
-          <div className="absolute top-[-30%] left-[-20%] w-[120vw] sm:w-[900px] md:w-[1200px] lg:w-[1600px] h-[120vw] sm:h-[900px] md:h-[1200px] lg:h-[1600px] bg-brand-500/12 rounded-full blur-[150px] sm:blur-[200px] animate-[blob_15s_ease-in-out_infinite]" />
-          {/* Blob 2 — bottom right, MASSIVE */}
-          <div className="absolute bottom-[-30%] right-[-20%] w-[100vw] sm:w-[800px] md:w-[1100px] lg:w-[1400px] h-[100vw] sm:h-[800px] md:h-[1100px] lg:h-[1400px] bg-brand-400/10 rounded-full blur-[130px] sm:blur-[180px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-5s' }} />
-          {/* Blob 3 — center glow */}
-          <div className="absolute top-[30%] left-[30%] w-[60vw] sm:w-[600px] md:w-[800px] h-[60vw] sm:h-[600px] md:h-[800px] bg-brand-500/6 rounded-full blur-[100px] sm:blur-[150px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-10s' }} />
+          {/* Blob 1 — top left, ULTRA MASSIVE for 4K */}
+          <div className="absolute top-[-40%] left-[-30%] w-[140vw] sm:w-[1100px] md:w-[1500px] lg:w-[2000px] xl:w-[2400px] 2xl:w-[2800px] h-[140vw] sm:h-[1100px] md:h-[1500px] lg:h-[2000px] xl:h-[2400px] 2xl:h-[2800px] bg-brand-500/15 rounded-full blur-[180px] sm:blur-[250px] lg:blur-[300px] animate-[blob_15s_ease-in-out_infinite]" />
+          {/* Blob 2 — bottom right, ULTRA MASSIVE for 4K */}
+          <div className="absolute bottom-[-40%] right-[-30%] w-[120vw] sm:w-[1000px] md:w-[1400px] lg:w-[1800px] xl:w-[2200px] 2xl:w-[2600px] h-[120vw] sm:h-[1000px] md:h-[1400px] lg:h-[1800px] xl:h-[2200px] 2xl:h-[2600px] bg-brand-400/12 rounded-full blur-[160px] sm:blur-[220px] lg:blur-[280px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-5s' }} />
+          {/* Blob 3 — center glow, ULTRA MASSIVE for 4K */}
+          <div className="absolute top-[25%] left-[25%] w-[70vw] sm:w-[700px] md:w-[1000px] lg:w-[1400px] xl:w-[1800px] 2xl:w-[2200px] h-[70vw] sm:h-[700px] md:h-[1000px] lg:h-[1400px] xl:h-[1800px] 2xl:h-[2200px] bg-brand-500/8 rounded-full blur-[120px] sm:blur-[180px] lg:blur-[250px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-10s' }} />
+          {/* Blob 4 — extra glow for 4K impact */}
+          <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[40vw] sm:w-[500px] md:w-[800px] lg:w-[1200px] xl:w-[1600px] h-[40vw] sm:h-[500px] md:h-[800px] lg:h-[1200px] xl:h-[1600px] bg-brand-400/5 rounded-full blur-[100px] sm:blur-[150px] lg:blur-[200px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-2s' }} />
+          {/* Gradient overlay for extra depth */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-950/20 to-brand-950/40" />
           {/* Grid overlay */}
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)', backgroundSize: '50px 50px' }} />
           <ParticlesCanvas />
         </div>
 
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-4 sm:py-16 lg:py-0 relative z-10 w-full">
-          <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-20 items-center">
+        <div className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-5 sm:px-8 lg:px-10 xl:px-12 py-4 sm:py-8 lg:py-10 xl:py-12 relative z-10 w-full">
+          <div className="grid lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-12 xl:gap-14 2xl:gap-16 items-center">
             {/* Text */}
-            <div className="space-y-4 sm:space-y-6 lg:space-y-8 order-2 lg:order-1 text-center lg:text-left">
+            <div className="lg:col-span-7 space-y-5 sm:space-y-7 lg:space-y-8 xl:space-y-9 order-2 lg:order-1 text-center lg:text-left">
               <ScrollReveal direction="down">
-                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium text-brand-300">
-                  <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-brand-400" /></span>
-                  100% Français <Zap className="w-3 h-3 text-brand-400" />
+                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3 sm:px-4 xl:px-5 py-1.5 sm:py-2 xl:py-2.5 text-[11px] sm:text-sm xl:text-base font-medium text-brand-300">
+                  <span className="relative flex h-2 w-2 xl:h-2.5 xl:w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 xl:h-2.5 xl:w-2.5 bg-brand-400" /></span>
+                  100% Français <Zap className="w-3 h-3 sm:w-4 sm:h-4 xl:w-5 xl:h-5 text-brand-400" />
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.1}>
-                <h1 className="text-[1.85rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight">
+                <h1 className="text-[1.85rem] leading-[1.1] sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-extrabold tracking-tight">
                   <span className="text-white">La facturation</span><br />
                   <span className="gradient-text-light">propulsée</span>
                   <span className="text-white"> par</span><br />
                   <span className="gradient-text-light">l&apos;IA</span>
-                  <Zap className="inline-block w-5 h-5 sm:w-8 sm:h-8 md:w-10 md:h-10 text-brand-400 ml-1 sm:ml-2 animate-[wiggle_2s_ease-in-out_infinite]" />
+                  <Zap className="inline-block w-5 h-5 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 xl:w-12 xl:h-12 text-brand-400 ml-1 sm:ml-2 md:ml-3 lg:ml-3 animate-[wiggle_2s_ease-in-out_infinite]" />
                 </h1>
               </ScrollReveal>
 
               <ScrollReveal delay={0.2}>
-                <div className="space-y-3 sm:space-y-4">
-                  <p className="text-sm sm:text-lg md:text-xl lg:text-2xl text-brand-200/70 leading-relaxed max-w-lg mx-auto lg:mx-0">Créez vos factures en dictant à voix haute. L&apos;IA fait tout le reste.</p>
+                <div className="space-y-4 sm:space-y-5 xl:space-y-6">
+                  <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-200/70 leading-relaxed max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto lg:mx-0">Créez vos factures en dictant à voix haute. L&apos;IA fait tout le reste.</p>
                   {/* Voice bars */}
-                  <div className="flex items-center justify-center gap-3 sm:gap-4 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-3 sm:py-4 max-w-[280px] sm:max-w-xs mx-auto lg:mx-0 backdrop-blur">
-                    <div className="flex items-end gap-[2px] sm:gap-[3px] h-[22px] sm:h-[26px] overflow-hidden">
-                      {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="w-[2.5px] sm:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 10}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }} />
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 lg:gap-2.5 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-3.5 lg:px-4 py-3 sm:py-4 lg:py-5 max-w-[280px] sm:max-w-[320px] lg:max-w-[360px] mx-auto lg:mx-0 backdrop-blur">
+                    <div className="flex items-end gap-[1.5px] sm:gap-2 lg:gap-[2px] h-[22px] sm:h-[26px] lg:h-[32px] overflow-hidden">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 16}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.08}s` }} />
                       ))}
                     </div>
-                    <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400 flex-shrink-0" />
-                    <div className="flex items-end gap-[2px] sm:gap-[3px] h-[22px] sm:h-[26px] overflow-hidden">
-                      {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="w-[2.5px] sm:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 10}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.12}s` }} />
+                    <Mic className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-brand-400 flex-shrink-0" />
+                    <div className="flex items-end gap-[1.5px] sm:gap-2 lg:gap-[2px] h-[22px] sm:h-[26px] lg:h-[32px] overflow-hidden">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 16}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.08}s` }} />
                       ))}
                     </div>
                   </div>
@@ -270,100 +281,157 @@ export default function LandingPage() {
               </ScrollReveal>
 
               <ScrollReveal delay={0.3}>
-                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 mx-auto lg:mx-0 max-w-sm sm:max-w-none">
-                  <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-5 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-[13px] sm:text-base relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 lg:gap-5 mx-auto lg:mx-0 max-w-sm sm:max-w-none">
+                  <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-5 py-3 sm:px-8 sm:py-4 lg:px-10 lg:py-4.5 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-[13px] sm:text-base lg:text-lg relative overflow-hidden">
                     <span className="relative z-10">Commencer gratuitement</span>
-                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 relative z-10 group-hover:translate-x-1 transition-transform" />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-in-out]" />
                   </Link>
-                  <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-5 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-[13px] sm:text-base backdrop-blur">
-                    <PlayCircle className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400" />Voir la démo
+                  <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-5 py-3 sm:px-8 sm:py-4 lg:px-10 lg:py-4.5 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-[13px] sm:text-base lg:text-lg backdrop-blur">
+                    <PlayCircle className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-brand-400" />Voir la démo
                   </a>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.4}>
-                <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 text-[10px] sm:text-[11px] text-brand-200/30">
-                  <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" />France</span>
-                  <span className="flex items-center gap-1"><Lock className="w-3 h-3" />SSL</span>
-                  <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />RGPD</span>
+                <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 lg:gap-5 text-[10px] sm:text-[11px] lg:text-[12px] text-brand-200/30">
+                  <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 lg:w-4 lg:h-4" />France</span>
+                  <span className="flex items-center gap-1"><Lock className="w-3 h-3 lg:w-4 lg:h-4" />SSL</span>
+                  <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 lg:w-4 lg:h-4" />RGPD</span>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.5}>
-                <div className="flex items-center gap-3 sm:gap-5 pt-1 justify-center lg:justify-start">
+                <div className="flex items-center gap-3 sm:gap-5 lg:gap-6 pt-1 justify-center lg:justify-start">
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map((i) => (
-                      <img key={i} src={`https://picsum.photos/seed/face${i}/36/36.jpg`} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-brand-950 object-cover" alt="" />
+                      <img key={i} src={`https://picsum.photos/seed/face${i}/36/36.jpg`} className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-full border-2 border-brand-950 object-cover" alt="" />
                     ))}
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-brand-950 bg-brand-500/20 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-brand-300">+2k</div>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-full border-2 border-brand-950 bg-brand-500/20 flex items-center justify-center text-[9px] sm:text-[10px] lg:text-[11px] font-bold text-brand-300">+2k</div>
                   </div>
                   <div>
-                    <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white fill-white" />)}</div>
-                    <div className="text-[10px] sm:text-[11px] text-brand-300/40 mt-0.5">2 000+ entrepreneurs</div>
+                    <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5 text-white fill-white" />)}</div>
+                    <div className="text-[10px] sm:text-[11px] lg:text-[12px] text-brand-300/40 mt-0.5">2 000+ entrepreneurs</div>
                   </div>
                 </div>
               </ScrollReveal>
             </div>
 
-            {/* 3D Invoice */}
-            <div className="relative order-1 lg:order-2 flex justify-center">
+            {/* 3D Invoice V2 */}
+            <div className="lg:col-span-5 relative order-1 lg:order-2 flex justify-center items-center px-2 sm:px-0">
               <ScrollReveal direction="scale" delay={0.3}>
-                <div className="relative w-full max-w-[260px] sm:max-w-[360px] md:max-w-[420px] lg:max-w-[480px]">
-                  <div className="absolute w-[80%] h-[80%] bg-brand-500/15 rounded-3xl blur-[40px] sm:blur-[60px] animate-[blob_15s_ease-in-out_infinite]" />
+                <div className="relative w-full max-w-[280px] sm:max-w-[380px] md:max-w-[450px] lg:max-w-[500px] xl:max-w-[550px] 2xl:max-w-[600px]">
+                  {/* Background glow */}
+                  <div className="absolute -inset-3 sm:-inset-4 md:-inset-5 lg:-inset-6 bg-brand-500/10 rounded-[2rem] blur-[30px] sm:blur-[40px] md:blur-[50px] lg:blur-[60px] animate-[blob_15s_ease-in-out_infinite]" />
 
-                  <div className="relative animate-[heroFloat_8s_ease-in-out_infinite]" style={{ boxShadow: '0 0 80px rgba(16,185,129,.3), 0 0 160px rgba(16,185,129,.12)', transformStyle: 'preserve-3d' }}>
-                    <div className="bg-white rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden" style={{ transform: 'rotateY(-14deg) rotateX(2deg)' }}>
-                      {/* Browser bar */}
-                      <div className="bg-brand-900 px-2.5 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 flex items-center gap-1.5 sm:gap-2">
-                        <div className="flex gap-1 sm:gap-1.5">
-                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-red-400/80" />
-                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-amber-400/80" />
-                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-green-400/80" />
+                  {/* Main floating wrapper */}
+                  <div className="relative animate-[heroFloat_8s_ease-in-out_infinite]" style={{ transformStyle: 'preserve-3d', filter: 'drop-shadow(0 0 60px rgba(16,185,129,.25)) drop-shadow(0 30px 60px rgba(0,0,0,.15))' }}>
+
+                    {/* The invoice card */}
+                    <div className="relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden" style={{ transform: 'perspective(1200px) rotateY(-12deg) rotateX(3deg)' }}>
+
+                      {/* Accent bar top */}
+                      <div className="h-1 sm:h-1.5 lg:h-2 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600" />
+
+                      {/* Browser chrome */}
+                      <div className="bg-gradient-to-b from-slate-800 to-slate-900 px-3 sm:px-4 lg:px-5 py-1.5 sm:py-2 lg:py-2.5 flex items-center gap-2 sm:gap-2.5 lg:gap-3">
+                        <div className="flex gap-1.5 sm:gap-2">
+                          <div className="w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-[#FF5F57]" />
+                          <div className="w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-[#FEBC2E]" />
+                          <div className="w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-[#28C840]" />
                         </div>
-                        <div className="flex-1 bg-brand-800 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[7px] sm:text-[10px] md:text-[11px] text-brand-300 font-mono flex items-center gap-0.5 sm:gap-1 truncate">
-                          <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 flex-shrink-0" />factu.me/invoice/FACT-2026-0042
+                        <div className="flex-1 bg-slate-700/80 rounded-md sm:rounded-lg px-2 sm:px-2.5 lg:px-3 py-0.5 sm:py-0.75 lg:py-1 flex items-center gap-1 sm:gap-1.25">
+                          <Lock className="w-[9px] h-[9px] sm:w-[11px] sm:h-[11px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5 text-green-400 flex-shrink-0" />
+                          <span className="text-[8px] sm:text-[10px] md:text-[11px] lg:text-[11px] text-slate-400 font-mono truncate">factu.me/invoice/FACT-2026-0042</span>
                         </div>
                       </div>
 
-                      {/* Invoice content */}
-                      <div className="p-2.5 sm:p-4 md:p-5 space-y-2 sm:space-y-3 md:space-y-4">
-                        <div className="flex justify-between items-start gap-1.5 sm:gap-2">
-                          <div className="min-w-0">
-                            <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Émetteur</div>
-                            <div className="font-bold text-[10px] sm:text-xs md:text-sm text-slate-800 truncate">Martin Consulting</div>
-                            <div className="text-[8px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">12 rue de la Paix, 75002 Paris</div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="inline-flex items-center gap-0.5 sm:gap-1 bg-brand-50 text-brand-700 text-[8px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 md:px-2.5 py-0.5 rounded-full border border-brand-200">
-                              <CheckCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />Payée
+                      {/* Invoice body */}
+                      <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-2.5 sm:space-y-3 md:space-y-4 lg:space-y-5 bg-gradient-to-b from-white to-slate-50/50">
+
+                        {/* Header row */}
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-center gap-2 sm:gap-2.5">
+                            <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 bg-brand-500 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                              <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-5.5 lg:h-5.5 text-white" />
                             </div>
-                            <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 mt-1">FACT-2026-0042</div>
-                          </div>
-                        </div>
-                        <div className="border-t border-slate-100 pt-1.5 sm:pt-2.5 md:pt-3">
-                          <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Client</div>
-                          <div className="font-semibold text-[10px] sm:text-xs md:text-sm text-slate-800">Dupont Consulting SAS</div>
-                          <div className="text-[8px] sm:text-[10px] md:text-[11px] text-slate-400 truncate">8 av. Champs-Élysées, 75008</div>
-                        </div>
-                        <div className="overflow-hidden rounded-md sm:rounded-lg border border-slate-100">
-                          <div className="bg-slate-50 px-1.5 sm:px-2.5 md:px-3 py-1 sm:py-1.5 md:py-2 grid grid-cols-4 text-[6px] sm:text-[8px] md:text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                            <span>Desc.</span><span className="text-right">Qté</span><span className="text-right">Prix</span><span className="text-right">Total</span>
-                          </div>
-                          <div className="divide-y divide-slate-50">
-                            <div className="px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 grid grid-cols-4 text-[8px] sm:text-[10px] md:text-[12px]">
-                              <span className="text-slate-700 truncate pr-0.5 sm:pr-1">Dév. web</span><span className="text-right text-slate-400">5j</span><span className="text-right text-slate-400">600€</span><span className="text-right font-semibold">3 000€</span>
-                            </div>
-                            <div className="px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 grid grid-cols-4 text-[8px] sm:text-[10px] md:text-[12px]">
-                              <span className="text-slate-700 truncate pr-0.5 sm:pr-1">Conseil UX</span><span className="text-right text-slate-400">2j</span><span className="text-right text-slate-400">400€</span><span className="text-right font-semibold">800€</span>
+                            <div>
+                              <div className="font-bold text-[10px] sm:text-xs md:text-sm lg:text-sm text-slate-800">Martin Consulting</div>
+                              <div className="text-[7px] sm:text-[9px] md:text-[10px] lg:text-xs text-slate-400">12 rue de la Paix, 75002</div>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <div className="text-[7px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Facture</div>
+                            <div className="text-[8px] sm:text-[10px] md:text-[11px] lg:text-xs font-mono text-slate-600 font-semibold">FACT-2026-0042</div>
+                            <div className="text-[7px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 mt-0.5">19 avril 2026</div>
+                          </div>
                         </div>
+
+                        {/* Client + Status row */}
+                        <div className="flex justify-between items-center bg-slate-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 lg:p-3">
+                          <div>
+                            <div className="text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Client</div>
+                            <div className="font-semibold text-[9px] sm:text-[11px] md:text-[13px] lg:text-sm text-slate-800">Dupont Consulting SAS</div>
+                          </div>
+                          <div className="inline-flex items-center gap-0.5 sm:gap-1 bg-green-50 text-green-700 text-[7px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-0.75 lg:py-1 rounded-full border border-green-200">
+                            <CheckCircle className="w-[9px] h-[9px] sm:w-[11px] sm:h-[11px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5" />Payée
+                          </div>
+                        </div>
+
+                        {/* Line items */}
+                        <div className="overflow-hidden rounded-lg sm:rounded-xl border border-slate-200/80">
+                          <div className="bg-slate-800 px-2 sm:px-3 md:px-4 lg:px-5 py-1.5 sm:py-2 lg:py-2 grid grid-cols-12 gap-1">
+                            <span className="col-span-5 text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Description</span>
+                            <span className="col-span-2 text-right text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Qté</span>
+                            <span className="col-span-2 text-right text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Prix</span>
+                            <span className="col-span-3 text-right text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400 uppercase tracking-wider font-semibold">Total</span>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            <div className="px-2 sm:px-3 md:px-4 lg:px-5 py-2 sm:py-2.5 md:py-3 lg:py-3 grid grid-cols-12 gap-1 items-center bg-white">
+                              <div className="col-span-5">
+                                <div className="text-[8px] sm:text-[11px] md:text-[13px] lg:text-sm font-medium text-slate-800">Développement web</div>
+                                <div className="text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400">Site vitrine React</div>
+                              </div>
+                              <span className="col-span-2 text-right text-[8px] sm:text-[10px] md:text-[12px] lg:text-sm text-slate-500">5 j</span>
+                              <span className="col-span-2 text-right text-[8px] sm:text-[10px] md:text-[12px] lg:text-sm text-slate-500">600 €</span>
+                              <span className="col-span-3 text-right text-[8px] sm:text-[11px] md:text-[13px] lg:text-base font-bold text-slate-800">3 000 €</span>
+                            </div>
+                            <div className="px-2 sm:px-3 md:px-4 lg:px-5 py-2 sm:py-2.5 md:py-3 lg:py-3 grid grid-cols-12 gap-1 items-center bg-white">
+                              <div className="col-span-5">
+                                <div className="text-[8px] sm:text-[11px] md:text-[13px] lg:text-sm font-medium text-slate-800">Conseil UX/UI</div>
+                                <div className="text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-400">Design système</div>
+                              </div>
+                              <span className="col-span-2 text-right text-[8px] sm:text-[10px] md:text-[12px] lg:text-sm text-slate-500">2 j</span>
+                              <span className="col-span-2 text-right text-[8px] sm:text-[10px] md:text-[12px] lg:text-sm text-slate-500">400 €</span>
+                              <span className="col-span-3 text-right text-[8px] sm:text-[11px] md:text-[13px] lg:text-base font-bold text-slate-800">800 €</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Totals */}
                         <div className="flex justify-end">
-                          <div className="bg-brand-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 space-y-0.5 min-w-[120px] sm:min-w-[150px] md:min-w-[180px] border border-brand-100">
-                            <div className="flex justify-between text-[8px] sm:text-[10px] md:text-[11px]"><span className="text-slate-400">Total HT</span><span className="font-medium">3 800€</span></div>
-                            <div className="flex justify-between text-[8px] sm:text-[10px] md:text-[11px]"><span className="text-slate-400">TVA 20%</span><span className="font-medium">760€</span></div>
-                            <div className="flex justify-between text-[9px] sm:text-xs md:text-sm font-bold border-t border-brand-200 pt-0.5 sm:pt-1 mt-0.5"><span>Total TTC</span><span className="text-brand-600">4 560€</span></div>
+                          <div className="w-[55%] sm:w-[50%] lg:w-[45%] space-y-0.5 sm:space-y-1">
+                            <div className="flex justify-between text-[7px] sm:text-[10px] md:text-[11px] lg:text-xs text-slate-400 px-1"><span>Total HT</span><span className="text-slate-600">3 800,00 €</span></div>
+                            <div className="flex justify-between text-[7px] sm:text-[10px] md:text-[11px] lg:text-xs text-slate-400 px-1"><span>TVA 20%</span><span className="text-slate-600">760,00 €</span></div>
+                            <div className="flex justify-between items-center bg-brand-500 text-white rounded-lg sm:rounded-xl px-2 sm:px-3 lg:px-3.5 py-1.5 sm:py-2 lg:py-2.5 mt-1">
+                              <span className="text-[8px] sm:text-[11px] md:text-[13px] lg:text-sm font-bold">Total TTC</span>
+                              <span className="text-[10px] sm:text-sm md:text-base lg:text-lg font-extrabold">4 560 €</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                          <div className="flex items-center gap-1 text-[6px] sm:text-[8px] md:text-[9px] lg:text-xs text-slate-300">
+                            <ShieldCheck className="w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-3 md:h-3 lg:w-3.5 lg:h-3.5" />Paiement sécurisé
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="h-3 sm:h-4 md:h-5 lg:h-5.5 px-1 sm:px-1.5 bg-slate-800 rounded-[2px] sm:rounded-[3px] flex items-center justify-center">
+                              <span className="text-[5px] sm:text-[7px] md:text-[8px] lg:text-[9px] font-bold text-white tracking-wider">VISA</span>
+                            </div>
+                            <div className="h-3 sm:h-4 md:h-5 lg:h-5.5 px-1 sm:px-1.5 bg-brand-500 rounded-[2px] sm:rounded-[3px] flex items-center justify-center">
+                              <span className="text-[4px] sm:text-[6px] md:text-[7px] lg:text-[8px] font-bold text-white">stripe</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -371,18 +439,36 @@ export default function LandingPage() {
                   </div>
 
                   {/* Floating badge: IA Active */}
-                  <div className="absolute -top-2 -right-0 sm:-top-4 sm:-right-4 md:-top-5 md:-right-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '0.5s' }}>
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl shadow-brand-500/10 px-2 py-1.5 sm:px-3.5 sm:py-2.5 flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-brand-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0"><Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-brand-600" /></div>
-                      <div><div className="text-[8px] sm:text-[10px] md:text-[11px] font-bold text-slate-800">IA Active</div><div className="text-[7px] sm:text-[9px] md:text-[10px] text-brand-500 font-medium">Générée en 3s</div></div>
+                  <div className="absolute -top-2 -right-1 sm:-top-3 sm:-right-3 md:-top-4 md:-right-4 lg:-top-5 lg:-right-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '0.5s' }}>
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl shadow-brand-500/15 px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5 flex items-center gap-2 sm:gap-2.5 border border-brand-100/50">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:w-8 lg:w-9 lg:h-9 bg-gradient-to-br from-brand-400 to-brand-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-brand-500/30">
+                        <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-4.5 lg:h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold text-slate-800">IA Active</div>
+                        <div className="text-[6px] sm:text-[7px] md:text-[8px] lg:text-[9px] text-brand-500 font-semibold">Générée en 3s</div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Floating badge: Envoyée et payée */}
-                  <div className="absolute -bottom-1.5 -left-0 sm:-bottom-3 sm:-left-4 md:-bottom-4 md:-left-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '1.5s' }}>
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl shadow-brand-500/10 px-2 py-1.5 sm:px-3.5 sm:py-2.5 flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-brand-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0"><MailCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-brand-600" /></div>
-                      <div><div className="text-[8px] sm:text-[10px] md:text-[11px] font-bold text-slate-800">Envoyée et payée</div><div className="text-[7px] sm:text-[9px] md:text-[10px] text-brand-500 font-medium">via Stripe</div></div>
+                  {/* Floating badge: Payée */}
+                  <div className="absolute -bottom-2 -left-1 sm:-bottom-3 sm:-left-3 md:-bottom-4 md:-left-4 lg:-bottom-5 lg:-left-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '1.5s' }}>
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl shadow-brand-500/15 px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5 flex items-center gap-2 sm:gap-2.5 border border-brand-100/50">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:w-8 lg:w-9 lg:h-9 bg-gradient-to-br from-green-400 to-green-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-green-500/30">
+                        <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-4.5 lg:h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold text-slate-800">Payée</div>
+                        <div className="text-[6px] sm:text-[7px] md:text-[8px] lg:text-[9px] text-green-500 font-semibold">via Stripe</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Floating badge: Amount (desktop only) */}
+                  <div className="hidden sm:block absolute top-1/2 -translate-y-1/2 -right-2 md:-right-3 lg:-right-4 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '2.5s' }}>
+                    <div className="bg-brand-950/90 backdrop-blur-sm rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-3 sm:py-2 lg:px-3.5 lg:py-2.5 border border-brand-800/50 shadow-xl shadow-brand-500/10">
+                      <div className="text-[8px] sm:text-[9px] lg:text-[10px] text-brand-300/60 font-medium">Montant</div>
+                      <div className="text-xs sm:text-sm md:text-base lg:text-lg font-extrabold text-white">4 560€</div>
                     </div>
                   </div>
                 </div>
@@ -398,16 +484,16 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ STATS ═══════════ */}
-      <section className="py-6 sm:py-10 bg-white relative z-10">
-        <div className="max-w-7xl mx-auto px-5 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+      <section className="py-6 sm:py-10 lg:py-12 bg-white relative z-10">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-5 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
             {[{ target: 6, label: 'Types de documents' }, { target: 6, label: 'Templates PDF' }].map((s, i) => (
               <div key={i} className="text-center">
-                <ScrollReveal delay={i * 0.1}><div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight"><Counter target={s.target} /></div><div className="text-xs sm:text-sm text-slate-400 mt-1 font-medium">{s.label}</div></ScrollReveal>
+                <ScrollReveal delay={i * 0.1}><div className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-slate-900 tracking-tight"><Counter target={s.target} /></div><div className="text-xs sm:text-sm lg:text-base xl:text-lg text-slate-400 mt-1 font-medium">{s.label}</div></ScrollReveal>
               </div>
             ))}
-            <div className="text-center"><ScrollReveal delay={0.2}><div className="text-3xl sm:text-4xl font-extrabold text-brand-500 tracking-tight">3<span className="text-base sm:text-lg">s</span></div><div className="text-xs sm:text-sm text-slate-400 mt-1 font-medium">Facturation par IA</div></ScrollReveal></div>
-            <div className="text-center"><ScrollReveal delay={0.3}><div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight"><Counter target={100} suffix="%" /></div><div className="text-xs sm:text-sm text-slate-400 mt-1 font-medium">Conforme droit FR</div></ScrollReveal></div>
+            <div className="text-center"><ScrollReveal delay={0.2}><div className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-brand-500 tracking-tight">3<span className="text-base sm:text-lg lg:text-xl xl:text-2xl">s</span></div><div className="text-xs sm:text-sm lg:text-base xl:text-lg text-slate-400 mt-1 font-medium">Facturation par IA</div></ScrollReveal></div>
+            <div className="text-center"><ScrollReveal delay={0.3}><div className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-slate-900 tracking-tight"><Counter target={100} suffix="%" /></div><div className="text-xs sm:text-sm lg:text-base xl:text-lg text-slate-400 mt-1 font-medium">Conforme droit FR</div></ScrollReveal></div>
           </div>
         </div>
       </section>
@@ -427,22 +513,22 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ PROBLEM ═══════════ */}
-      <section className="py-16 sm:py-24 bg-slate-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <section className="py-16 sm:py-24 lg:py-32 bg-slate-50">
+        <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
             <ScrollReveal>
-              <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-red-600 mb-4"><AlertTriangle className="w-4 h-4" />Le problème</div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-4">Vous perdez des heures sur l&apos;administratif</h2>
-              <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Jusqu&apos;à <span className="font-bold text-slate-800">5 heures par semaine</span> sur des tâches qui ne génèrent aucun revenu.</p>
+              <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-red-600 mb-4"><AlertTriangle className="w-4 h-4 lg:w-5 lg:h-5" />Le problème</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-4">Vous perdez des heures sur l&apos;administratif</h2>
+              <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-slate-500 max-w-2xl mx-auto">Jusqu&apos;à <span className="font-bold text-slate-800">5 heures par semaine</span> sur des tâches qui ne génèrent aucun revenu.</p>
             </ScrollReveal>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {[{ icon: Clock, value: '5h', unit: '/sem', label: 'Perdues sur l\'administratif' }, { icon: TrendingDown, value: '25%', unit: '', label: 'De factures impayées à temps' }, { icon: Puzzle, value: '5', unit: '', label: 'Outils différents nécessaires' }].map((item, i) => (
               <ScrollReveal key={i} delay={i * 0.1}>
-                <Card3D><div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-100 h-full hover:shadow-lg">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><item.icon className="w-6 h-6 sm:w-7 sm:h-7 text-brand-500" /></div>
-                  <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-1 text-center">{item.value}<span className="text-brand-400">{item.unit}</span></div>
-                  <div className="text-sm text-slate-500 text-center">{item.label}</div>
+                <Card3D><div className="bg-white rounded-2xl p-6 sm:p-8 lg:p-10 border border-slate-100 h-full hover:shadow-lg">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><item.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-brand-500" /></div>
+                  <div className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 mb-1 text-center">{item.value}<span className="text-brand-400">{item.unit}</span></div>
+                  <div className="text-sm lg:text-base text-slate-500 text-center">{item.label}</div>
                 </div></Card3D>
               </ScrollReveal>
             ))}
@@ -451,22 +537,22 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ HOW IT WORKS ═══════════ */}
-      <section className="py-16 sm:py-24 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <section className="py-16 sm:py-24 lg:py-32 bg-white">
+        <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
             <ScrollReveal>
-              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4"><Rocket className="w-4 h-4" />Comment ça marche</div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Opérationnel en 3 étapes</h2>
+              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-700 mb-4"><Rocket className="w-4 h-4 lg:w-5 lg:h-5" />Comment ça marche</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-3">Opérationnel en 3 étapes</h2>
             </ScrollReveal>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 relative">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 relative">
             <div className="hidden sm:block absolute top-10 left-[16%] right-[16%] h-px bg-brand-200" />
             {[{ num: 1, title: 'Créez votre compte', desc: 'Inscription en 2 minutes. Choisissez votre template de facture préféré.' }, { num: 2, title: 'Décrivez votre facture', desc: 'Dites-la à voix haute ou tapez-la. L\'IA fait le reste.' }, { num: 3, title: 'Recevez votre paiement', desc: 'Envoyez par e-mail, votre client paie en un clic.' }].map((step, i) => (
               <ScrollReveal key={i} delay={0.05 + i * 0.1}>
                 <div className="text-center relative">
-                  <div className="w-20 h-20 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/20 relative z-10"><span className="text-2xl font-extrabold text-white">{step.num}</span></div>
-                  <h3 className="font-bold text-base sm:text-lg mb-2">{step.title}</h3>
-                  <p className="text-sm text-slate-500 max-w-[240px] mx-auto">{step.desc}</p>
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/20 relative z-10"><span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white">{step.num}</span></div>
+                  <h3 className="font-bold text-base sm:text-lg lg:text-xl mb-2">{step.title}</h3>
+                  <p className="text-sm lg:text-base text-slate-500 max-w-[240px] lg:max-w-[280px] mx-auto">{step.desc}</p>
                 </div>
               </ScrollReveal>
             ))}
@@ -508,33 +594,33 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ FEATURES ═══════════ */}
-      <section id="features" className="py-16 sm:py-24 lg:py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <section id="features" className="py-16 sm:py-24 lg:py-32 xl:py-40 bg-white">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-16">
             <ScrollReveal>
-              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4"><Layers className="w-4 h-4" />Fonctionnalités</div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Tout en un seul endroit</h2>
-              <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Remplacez vos 5 outils par une seule plateforme.</p>
+              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-700 mb-4"><Layers className="w-4 h-4 lg:w-5 lg:h-5" />Fonctionnalités</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-3">Tout en un seul endroit</h2>
+              <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-slate-500 max-w-2xl mx-auto">Remplacez vos 5 outils par une seule plateforme.</p>
             </ScrollReveal>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8">
             {features.slice(0, 6).map((f, i) => (
               <ScrollReveal key={i} delay={i * 0.05}>
-                <Card3D><div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full hover:shadow-lg">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4"><f.icon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-500" /></div>
-                  <h3 className="text-base sm:text-lg font-bold mb-2">{f.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                <Card3D><div className="bg-white rounded-2xl p-6 sm:p-7 lg:p-8 border border-slate-100 h-full hover:shadow-lg">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-brand-50 rounded-xl flex items-center justify-center mb-4"><f.icon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-brand-500" /></div>
+                  <h3 className="text-base sm:text-lg lg:text-xl font-bold mb-2">{f.title}</h3>
+                  <p className="text-sm lg:text-base text-slate-500 leading-relaxed">{f.desc}</p>
                 </div></Card3D>
               </ScrollReveal>
             ))}
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {features.slice(6, 10).map((f, i) => (
               <ScrollReveal key={i} delay={i * 0.05}>
-                <Card3D><div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 h-full hover:shadow-lg">
-                  <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center mb-3"><f.icon className="w-5 h-5 text-brand-500" /></div>
-                  <h3 className="text-sm font-bold mb-1">{f.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">{f.desc}</p>
+                <Card3D><div className="bg-white rounded-2xl p-5 sm:p-6 lg:p-7 border border-slate-100 h-full hover:shadow-lg">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-brand-50 rounded-xl flex items-center justify-center mb-3"><f.icon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-brand-500" /></div>
+                  <h3 className="text-sm sm:text-base lg:text-lg font-bold mb-1">{f.title}</h3>
+                  <p className="text-xs sm:text-sm lg:text-base text-slate-500 leading-relaxed">{f.desc}</p>
                 </div></Card3D>
               </ScrollReveal>
             ))}
@@ -543,35 +629,35 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ AI SECTION ═══════════ */}
-      <section id="ai" className="py-16 sm:py-24 lg:py-32 bg-brand-950 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[400px] sm:w-[500px] h-[400px] sm:h-[500px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[120px] animate-[blob_15s_ease-in-out_infinite]" />
+      <section id="ai" className="py-16 sm:py-24 lg:py-32 xl:py-40 bg-brand-950 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[400px] sm:w-[500px] lg:w-[700px] xl:w-[900px] h-[400px] sm:h-[500px] lg:h-[700px] xl:h-[900px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[120px] lg:blur-[150px] animate-[blob_15s_ease-in-out_infinite]" />
         <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)', backgroundSize: '50px 50px' }} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 xl:gap-20 items-center">
             <div className="order-2 lg:order-1">
               <ScrollReveal direction="left">
                 <div className="bg-brand-900/80 backdrop-blur rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl shadow-brand-500/10 border border-brand-800/50">
-                  <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-brand-900 border-b border-brand-800/50">
-                    <div className="flex gap-1.5"><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/60" /><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400/60" /><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/60" /></div>
-                    <span className="ml-2 text-[10px] sm:text-xs text-brand-400 font-medium">Factu.me AI</span>
+                  <div className="flex items-center gap-2 px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 lg:py-4 bg-brand-900 border-b border-brand-800/50">
+                    <div className="flex gap-1.5"><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-red-400/60" /><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-amber-400/60" /><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5 rounded-full bg-green-400/60" /></div>
+                    <span className="ml-2 text-[10px] sm:text-xs lg:text-sm text-brand-400 font-medium">Factu.me AI</span>
                   </div>
-                  <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 font-mono text-xs sm:text-sm">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-400" /></div>
-                      <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-3 text-brand-200 max-w-[92%] border border-brand-700/30 text-[11px] sm:text-[13px]">
+                  <div className="p-4 sm:p-6 lg:p-8 space-y-3 sm:space-y-4 lg:space-y-5 font-mono text-xs sm:text-sm lg:text-base">
+                    <div className="flex items-start gap-2 sm:gap-3 lg:gap-4">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 text-brand-400" /></div>
+                      <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-3 lg:px-5 lg:py-4 text-brand-200 max-w-[92%] border border-brand-700/30 text-[11px] sm:text-[13px] lg:text-sm">
                         &quot;Facture pour Dupont, 5 jours de dev à 600€ HT, TVA 20%, ajoute 2 jours conseil à 400€&quot;
                       </div>
                     </div>
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-400" /></div>
+                    <div className="flex items-start gap-2 sm:gap-3 lg:gap-4">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 text-brand-400" /></div>
                       <div className="space-y-2 max-w-[92%]">
-                        <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-2.5 text-brand-300 border border-brand-700/30 text-[11px] sm:text-[13px]"><span className="text-brand-400">Analyse...</span></div>
-                        <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2.5 sm:px-4 sm:py-3 text-brand-200 space-y-1.5 sm:space-y-2 border border-brand-700/30 text-[10px] sm:text-xs">
-                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3" />Client : Dupont Consulting SAS</div>
-                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3" />Développement — 5j x 600€</div>
-                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3" />Conseil — 2j x 400€</div>
-                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3" />TVA 20% appliquée</div>
-                          <div className="flex items-center gap-1.5 text-brand-300 font-semibold pt-1 border-t border-brand-700/30"><Zap className="w-3 h-3 text-brand-400" /> FACT-2026-0042 créée</div>
+                        <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-2.5 lg:px-5 lg:py-3 text-brand-300 border border-brand-700/30 text-[11px] sm:text-[13px] lg:text-sm"><span className="text-brand-400">Analyse...</span></div>
+                        <div className="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2.5 sm:px-4 sm:py-3 lg:px-5 lg:py-4 text-brand-200 space-y-1.5 sm:space-y-2 lg:space-y-2.5 border border-brand-700/30 text-[10px] sm:text-xs lg:text-sm">
+                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3 lg:w-4 lg:h-4" />Client : Dupont Consulting SAS</div>
+                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3 lg:w-4 lg:h-4" />Développement — 5j x 600€</div>
+                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3 lg:w-4 lg:h-4" />Conseil — 2j x 400€</div>
+                          <div className="flex items-center gap-1.5 text-green-400"><Check className="w-3 h-3 lg:w-4 lg:h-4" />TVA 20% appliquée</div>
+                          <div className="flex items-center gap-1.5 text-brand-300 font-semibold pt-1 border-t border-brand-700/30"><Zap className="w-3 h-3 lg:w-4 lg:h-4 text-brand-400" /> FACT-2026-0042 créée</div>
                         </div>
                       </div>
                     </div>
@@ -579,15 +665,15 @@ export default function LandingPage() {
                 </div>
               </ScrollReveal>
             </div>
-            <div className="space-y-5 sm:space-y-7 order-1 lg:order-2">
+            <div className="space-y-5 sm:space-y-7 lg:space-y-8 order-1 lg:order-2">
               <ScrollReveal direction="right">
-                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-300"><Sparkles className="w-4 h-4" />Propulsé par l&apos;IA</div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Dites-le, l&apos;IA<br />le fait pour vous</h2>
-                <div className="space-y-4 sm:space-y-5">
+                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-300"><Sparkles className="w-4 h-4 lg:w-5 lg:h-5" />Propulsé par l&apos;IA</div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">Dites-le, l&apos;IA<br />le fait pour vous</h2>
+                <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                   {[{ icon: Mic, title: 'Dictée vocale', desc: 'Parlez naturellement, l\'IA remplit tous les champs.' }, { icon: Type, title: 'Génération textuelle', desc: 'Tapez en langage naturel, descriptions professionnelles automatiques.' }, { icon: Pencil, title: 'Modification intelligente', desc: '"Ajoute 2 jours" — l\'IA comprend et modifie en conséquence.' }].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0"><item.icon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400" /></div>
-                      <div><h3 className="font-bold text-sm sm:text-base mb-1">{item.title}</h3><p className="text-xs sm:text-sm text-brand-200/60">{item.desc}</p></div>
+                    <div key={i} className="flex items-start gap-3 sm:gap-4 lg:gap-5">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0"><item.icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-brand-400" /></div>
+                      <div><h3 className="font-bold text-sm sm:text-base lg:text-lg mb-1">{item.title}</h3><p className="text-xs sm:text-sm lg:text-base text-brand-200/60">{item.desc}</p></div>
                     </div>
                   ))}
                 </div>
@@ -855,35 +941,35 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ PRICING ═══════════ */}
-      <section id="tarifs" className="py-16 sm:py-24 lg:py-32 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <section id="tarifs" className="py-16 sm:py-24 lg:py-32 xl:py-40 bg-slate-50">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
             <ScrollReveal>
-              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4"><Tag className="w-4 h-4" />Tarifs transparents</div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Choisissez votre plan</h2>
-              <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Sans engagement. Évoluez quand vous voulez.</p>
+              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-700 mb-4"><Tag className="w-4 h-4 lg:w-5 lg:h-5" />Tarifs transparents</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-3">Choisissez votre plan</h2>
+              <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-slate-500 max-w-2xl mx-auto">Sans engagement. Évoluez quand vous voulez.</p>
             </ScrollReveal>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {plans.map((plan, i) => (
               <ScrollReveal key={i} delay={i * 0.05}>
                 <div className={`relative ${plan.popular ? 'pricing-popular' : ''}`}>
                   <Card3D>
-                    <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-100 h-full flex flex-col hover:shadow-lg relative z-10">
+                    <div className="bg-white rounded-2xl p-5 sm:p-7 lg:p-8 border border-slate-100 h-full flex flex-col hover:shadow-lg relative z-10">
                       <div className="mb-5">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="text-base sm:text-lg font-bold">{plan.name}</h3>
-                          {plan.popular && <span className="bg-brand-500 text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full">Populaire</span>}
+                          <h3 className="text-base sm:text-lg lg:text-xl font-bold">{plan.name}</h3>
+                          {plan.popular && <span className="bg-brand-500 text-white text-[10px] sm:text-xs lg:text-sm font-bold px-2.5 py-0.5 lg:px-3 lg:py-1 rounded-full">Populaire</span>}
                         </div>
-                        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight">{plan.price}<span className="text-xs sm:text-sm text-slate-400 ml-1">{plan.period}</span></div>
-                        {plan.name === 'Gratuit' && <div className="text-xs sm:text-sm text-slate-400">Pour toujours</div>}
+                        <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">{plan.price}<span className="text-xs sm:text-sm lg:text-base text-slate-400 ml-1">{plan.period}</span></div>
+                        {plan.name === 'Gratuit' && <div className="text-xs sm:text-sm lg:text-base text-slate-400">Pour toujours</div>}
                       </div>
                       <ul className="space-y-2.5 mb-6 flex-grow">
                         {plan.features.map((f, j) => (
-                          <li key={j} className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-brand-500 flex-shrink-0" /><span className="text-slate-600">{f}</span></li>
+                          <li key={j} className="flex items-center gap-2 text-sm lg:text-base"><Check className="w-4 h-4 lg:w-5 lg:h-5 text-brand-500 flex-shrink-0" /><span className="text-slate-600">{f}</span></li>
                         ))}
                       </ul>
-                      <Link href={`/register${plan.name !== 'Gratuit' ? `?plan=${plan.name.toLowerCase()}` : ''}`} className={`block text-center font-semibold py-2.5 rounded-xl transition-all text-sm active:scale-[0.97] ${plan.popular ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-md shadow-brand-500/25' : plan.name === 'Gratuit' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}>
+                      <Link href={`/register${plan.name !== 'Gratuit' ? `?plan=${plan.name.toLowerCase()}` : ''}`} className={`block text-center font-semibold py-2.5 rounded-xl transition-all text-sm lg:text-base active:scale-[0.97] ${plan.popular ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-md shadow-brand-500/25' : plan.name === 'Gratuit' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}>
                         {plan.name === 'Gratuit' ? 'Commencer' : `Choisir ${plan.name}`}
                       </Link>
                     </div>
@@ -893,92 +979,92 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="text-center mt-6 sm:mt-8">
-            <ScrollReveal><p className="text-xs text-slate-400 flex items-center justify-center gap-3"><ShieldCheck className="w-3.5 h-3.5 text-brand-500" />Données hébergées en France · Connexion sécurisée · Annulation en un clic</p></ScrollReveal>
+            <ScrollReveal><p className="text-xs sm:text-sm lg:text-base text-slate-400 flex items-center justify-center gap-3"><ShieldCheck className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-brand-500" />Données hébergées en France · Connexion sécurisée · Annulation en un clic</p></ScrollReveal>
           </div>
         </div>
       </section>
 
       {/* ═══════════ FAQ ═══════════ */}
-      <section className="py-16 sm:py-24 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+      <section className="py-16 sm:py-24 lg:py-32 bg-white">
+        <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
             <ScrollReveal>
-              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4"><HelpCircle className="w-4 h-4" />Questions fréquentes</div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Tout ce que vous voulez savoir</h2>
+              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-700 mb-4"><HelpCircle className="w-4 h-4 lg:w-5 lg:h-5" />Questions fréquentes</div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">Tout ce que vous voulez savoir</h2>
             </ScrollReveal>
           </div>
           <ScrollReveal>
-            <div className="space-y-3 sm:space-y-4">{faqItems.map((item, i) => <FAQItem key={i} question={item.q} answer={item.a} />)}</div>
+            <div className="space-y-3 sm:space-y-4 lg:space-y-5">{faqItems.map((item, i) => <FAQItem key={i} question={item.q} answer={item.a} />)}</div>
           </ScrollReveal>
         </div>
       </section>
 
       {/* ═══════════ FINAL CTA ═══════════ */}
-      <section className="py-16 sm:py-24 lg:py-32 bg-brand-950 text-white relative overflow-hidden">
-        <div className="absolute inset-0"><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[800px] h-[500px] sm:h-[800px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[150px] animate-[blob_15s_ease-in-out_infinite]" /></div>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
+      <section className="py-16 sm:py-24 lg:py-32 xl:py-40 bg-brand-950 text-white relative overflow-hidden">
+        <div className="absolute inset-0"><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[800px] lg:w-[1000px] xl:w-[1200px] h-[500px] sm:h-[800px] lg:h-[1000px] xl:h-[1200px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[150px] lg:blur-[200px] animate-[blob_15s_ease-in-out_infinite]" /></div>
+        <div className="max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 text-center relative z-10">
           <ScrollReveal direction="scale">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-brand-500 rounded-2xl sm:rounded-3xl mb-6 sm:mb-8 animate-[float_6s_ease-in-out_infinite] shadow-2xl shadow-brand-500/30"><Zap className="w-7 h-7 sm:w-8 sm:h-8 text-white" /></div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-5 sm:mb-6">Prêt à en finir avec<br /><span className="gradient-text-light">la paperasse ?</span></h2>
-            <p className="text-base sm:text-lg text-brand-200/60 max-w-2xl mx-auto mb-8 sm:mb-10">Rejoignez les 2 000+ entrepreneurs qui ont repris le contrôle de leur facturation.</p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-sm sm:text-base relative overflow-hidden">
-                <span className="relative z-10">Commencer gratuitement</span><ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-brand-500 rounded-2xl sm:rounded-3xl mb-6 sm:mb-8 animate-[float_6s_ease-in-out_infinite] shadow-2xl shadow-brand-500/30"><Zap className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white" /></div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-extrabold tracking-tight mb-5 sm:mb-6 lg:mb-8">Prêt à en finir avec<br /><span className="gradient-text-light">la paperasse ?</span></h2>
+            <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-brand-200/60 max-w-2xl xl:max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12">Rejoignez les 2 000+ entrepreneurs qui ont repris le contrôle de leur facturation.</p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-5 justify-center">
+              <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-6 py-3.5 sm:px-8 sm:py-4 lg:px-10 lg:py-5 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-sm sm:text-base lg:text-lg relative overflow-hidden">
+                <span className="relative z-10">Commencer gratuitement</span><ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 relative z-10 group-hover:translate-x-1 transition-transform" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-in-out]" />
               </Link>
-              <Link href="/login" className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-sm sm:text-base backdrop-blur">
-                <LogIn className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400" />Se connecter
+              <Link href="/login" className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-6 py-3.5 sm:px-8 sm:py-4 lg:px-10 lg:py-5 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-sm sm:text-base lg:text-lg backdrop-blur">
+                <LogIn className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-brand-400" />Se connecter
               </Link>
             </div>
-            <p className="text-xs sm:text-sm text-brand-200/30 mt-5 sm:mt-6">Sans carte bancaire · Sans engagement · Annulation en un clic</p>
+            <p className="text-xs sm:text-sm lg:text-base text-brand-200/30 mt-5 sm:mt-6 lg:mt-8">Sans carte bancaire · Sans engagement · Annulation en un clic</p>
           </ScrollReveal>
         </div>
       </section>
 
       {/* ═══════════ FOOTER ═══════════ */}
-      <footer className="bg-brand-950 text-white border-t border-brand-900 py-12 sm:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <footer className="bg-brand-950 text-white border-t border-brand-900 py-12 sm:py-16 lg:py-20">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 mb-10 sm:mb-12">
             <div className="col-span-2">
               <Link href="/" className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-brand-500 rounded-xl flex items-center justify-center"><Zap className="w-[18px] h-[18px] text-white" /></div>
-                <span className="text-lg sm:text-xl font-bold">Factu<span className="text-brand-400">.me</span></span>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-brand-500 rounded-xl flex items-center justify-center"><Zap className="w-[18px] h-[18px] sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" /></div>
+                <span className="text-lg sm:text-xl lg:text-2xl font-bold">Factu<span className="text-brand-400">.me</span></span>
               </Link>
-              <p className="text-xs sm:text-sm text-brand-200/40 leading-relaxed max-w-xs mb-4">La plateforme de facturation 100% française, propulsée par l&apos;IA.</p>
+              <p className="text-xs sm:text-sm lg:text-base text-brand-200/40 leading-relaxed max-w-xs lg:max-w-sm mb-4">La plateforme de facturation 100% française, propulsée par l&apos;IA.</p>
               <div className="flex items-center gap-2 sm:gap-3">
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60" /></a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60" /></a>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Github className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60" /></a>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Twitter className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-brand-300/60" /></a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Linkedin className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-brand-300/60" /></a>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><Github className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-brand-300/60" /></a>
               </div>
             </div>
             <div>
-              <h4 className="font-bold text-xs sm:text-sm mb-3 text-brand-200">Produit</h4>
+              <h4 className="font-bold text-xs sm:text-sm lg:text-base mb-3 text-brand-200">Produit</h4>
               <ul className="space-y-2">
-                <li><a href="#features" onClick={(e) => scrollTo(e, '#features')} className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Fonctionnalités</a></li>
-                <li><a href="#tarifs" onClick={(e) => scrollTo(e, '#tarifs')} className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Tarifs</a></li>
-                <li><a href="#ai" onClick={(e) => scrollTo(e, '#ai')} className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">IA</a></li>
+                <li><a href="#features" onClick={(e) => scrollTo(e, '#features')} className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Fonctionnalités</a></li>
+                <li><a href="#tarifs" onClick={(e) => scrollTo(e, '#tarifs')} className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Tarifs</a></li>
+                <li><a href="#ai" onClick={(e) => scrollTo(e, '#ai')} className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">IA</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-xs sm:text-sm mb-3 text-brand-200">Ressources</h4>
+              <h4 className="font-bold text-xs sm:text-sm lg:text-base mb-3 text-brand-200">Ressources</h4>
               <ul className="space-y-2">
-                <li><Link href="/legal/mentions-legales" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Mentions légales</Link></li>
-                <li><Link href="/legal/cgu" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">CGU</Link></li>
-                <li><Link href="/legal/confidentialite" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Confidentialité</Link></li>
+                <li><Link href="/legal/mentions-legales" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Mentions légales</Link></li>
+                <li><Link href="/legal/cgu" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">CGU</Link></li>
+                <li><Link href="/legal/confidentialite" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Confidentialité</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-xs sm:text-sm mb-3 text-brand-200">Légal</h4>
+              <h4 className="font-bold text-xs sm:text-sm lg:text-base mb-3 text-brand-200">Légal</h4>
               <ul className="space-y-2">
-                <li><Link href="/legal/mentions-legales" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Mentions légales</Link></li>
-                <li><Link href="/legal/cgu" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">CGU</Link></li>
-                <li><Link href="/legal/confidentialite" className="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Confidentialité</Link></li>
+                <li><Link href="/legal/mentions-legales" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Mentions légales</Link></li>
+                <li><Link href="/legal/cgu" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">CGU</Link></li>
+                <li><Link href="/legal/confidentialite" className="text-xs sm:text-sm lg:text-base text-brand-200/40 hover:text-brand-400 transition-colors">Confidentialité</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-brand-900 pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs sm:text-sm text-brand-200/30">2026 Factu.me. Fait avec <Zap className="w-3 h-3 inline text-brand-400" /> en France.</p>
-            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-brand-200/30"><span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-brand-500 rounded-full animate-pulse" />Opérationnel</div>
+            <p className="text-xs sm:text-sm lg:text-base text-brand-200/30">2026 Factu.me. Fait avec <Zap className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 inline text-brand-400" /> en France.</p>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs lg:text-sm text-brand-200/30"><span className="w-1.5 h-1.5 sm:w-2 sm:h-2 lg:w-2.5 lg:h-2.5 bg-brand-500 rounded-full animate-pulse" />Opérationnel</div>
           </div>
         </div>
       </footer>

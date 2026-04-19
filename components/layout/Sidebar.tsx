@@ -211,7 +211,7 @@ export default function Sidebar() {
       {profile?.subscription_tier !== 'business' && (
         <div className="relative z-10 px-3 mb-2 flex-shrink-0">
           <Link
-            href="/paywall"
+            href={profile?.subscription_tier === 'free' ? '/trial' : '/paywall'}
             className="group flex items-center gap-2.5 p-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/8 to-transparent hover:border-primary/35 hover:from-primary/20 transition-all duration-200"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/25 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/35 group-hover:scale-110 transition-all">
@@ -219,12 +219,12 @@ export default function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-white">
-                {profile?.subscription_tier === 'free'   ? 'Passer à Solo' :
+                {profile?.subscription_tier === 'free'   ? 'Essai gratuit 4 jours' :
                  profile?.subscription_tier === 'solo'   ? 'Passer à Pro'  :
                                                            'Passer à Business'}
               </p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                {profile?.subscription_tier === 'free'   ? 'Illimité · Email · Paiement' :
+                {profile?.subscription_tier === 'free'   ? 'Accès complet · Sans engagement' :
                  profile?.subscription_tier === 'solo'   ? 'IA · FEC · CRM'             :
                                                            'Multi-comptes · Webhooks'}
               </p>

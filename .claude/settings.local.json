@@ -31,7 +31,16 @@
       "mcp__claude_ai_Supabase__get_advisors",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Bash(claude mcp *)"
+      "Bash(claude mcp *)",
+      "Bash(npx skills add:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

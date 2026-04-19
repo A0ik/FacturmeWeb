@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
@@ -134,87 +135,128 @@ export default function PaywallPage() {
 
       {/* ALERTE POUR LES UTILISATEURS GRATUITS */}
       {sub.isFree && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto mb-10 max-w-3xl"
-        >
-          <div className={cn(
-            "relative overflow-hidden rounded-2xl border-2 p-6",
-            remainingInvoices > 0
-              ? "border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5"
-              : "border-red-200 bg-gradient-to-r from-red-50 via-orange-50 to-red-50"
-          )}>
-            {/* Background pattern */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }} />
+        <>
+          {/* Trial Banner - Prominent for free users */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto mb-8 max-w-3xl"
+          >
+            <Link href="/trial" className="block group">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 p-6 shadow-lg shadow-amber-200/50 hover:shadow-xl hover:shadow-amber-300/50 transition-all">
+                <div className="absolute inset-0 opacity-[0.03]" style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                }} />
 
-            <div className="relative flex items-start gap-4">
-              <div className={cn(
-                "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl",
-                remainingInvoices > 0 ? "bg-primary/10" : "bg-red-100"
-              )}>
-                {remainingInvoices > 0 ? (
-                  <Zap size={24} className="text-primary" />
-                ) : (
-                  <Lock size={24} className="text-red-500" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className={cn(
-                  "text-lg font-bold mb-1",
-                  remainingInvoices > 0 ? "text-primary" : "text-red-700"
-                )}>
-                  {remainingInvoices > 0 ? 'Plan Gratuit' : 'Limite atteinte'}
-                </h3>
-                <p className="text-sm text-gray-700 mb-3">
-                  {remainingInvoices > 0
-                    ? `Vous pouvez créer encore ${remainingInvoices} facture${remainingInvoices > 1 ? 's' : ''} ce mois-ci.`
-                    : 'Vous avez atteint votre limite de 5 factures mensuelles.'}
-                </p>
-
-                {/* Progress bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-medium text-gray-600">
-                      {sub.invoiceCount} / 5 factures
-                    </span>
-                    <span className={cn(
-                      "font-bold",
-                      remainingInvoices > 0 ? "text-primary" : "text-red-500"
-                    )}>
-                      {remainingInvoices > 0 ? `${remainingInvoices} restantes` : 'Limite atteinte'}
-                    </span>
+                <div className="relative flex items-center gap-4">
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg group-hover:scale-110 transition-transform">
+                    <Sparkles size={28} className="fill-current" />
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <motion.div
-                      className={cn(
-                        "h-full rounded-full",
-                        remainingInvoices > 0 ? "bg-gradient-to-r from-primary to-primary-dark" : "bg-red-500"
-                      )}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(sub.invoiceCount / 5) * 100}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                    />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-bold text-amber-700">
+                        Essai Gratuit 4 Jours
+                      </h3>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded-full uppercase tracking-wider">
+                        Nouveau
+                      </span>
+                    </div>
+                    <p className="text-sm text-amber-800 mb-2">
+                      Accédez à TOUTES les fonctionnalités Pro pendant 4 jours, sans engagement.
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-amber-600 font-medium">
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      <span>Commencer maintenant</span>
+                    </div>
                   </div>
                 </div>
+              </div>
+            </Link>
+          </motion.div>
 
-                {/* Feature reminder */}
-                <div className="flex flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-200">
-                    <Infinity size={14} className="text-gray-500" />
-                    <span className="text-xs text-gray-600">Illimité avec Pro</span>
+          {/* Usage Alert */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto mb-10 max-w-3xl"
+          >
+            <div className={cn(
+              "relative overflow-hidden rounded-2xl border-2 p-6",
+              remainingInvoices > 0
+                ? "border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5"
+                : "border-red-200 bg-gradient-to-r from-red-50 via-orange-50 to-red-50"
+            )}>
+              {/* Background pattern */}
+              <div className="absolute inset-0 opacity-[0.03]" style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+              }} />
+
+              <div className="relative flex items-start gap-4">
+                <div className={cn(
+                  "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl",
+                  remainingInvoices > 0 ? "bg-primary/10" : "bg-red-100"
+                )}>
+                  {remainingInvoices > 0 ? (
+                    <Zap size={24} className="text-primary" />
+                  ) : (
+                    <Lock size={24} className="text-red-500" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className={cn(
+                    "text-lg font-bold mb-1",
+                    remainingInvoices > 0 ? "text-primary" : "text-red-700"
+                  )}>
+                    {remainingInvoices > 0 ? 'Plan Gratuit' : 'Limite atteinte'}
+                  </h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    {remainingInvoices > 0
+                      ? `Vous pouvez créer encore ${remainingInvoices} facture${remainingInvoices > 1 ? 's' : ''} ce mois-ci.`
+                      : 'Vous avez atteint votre limite de 5 factures mensuelles.'}
+                  </p>
+
+                  {/* Progress bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="font-medium text-gray-600">
+                        {sub.invoiceCount} / 5 factures
+                      </span>
+                      <span className={cn(
+                        "font-bold",
+                        remainingInvoices > 0 ? "text-primary" : "text-red-500"
+                      )}>
+                        {remainingInvoices > 0 ? `${remainingInvoices} restantes` : 'Limite atteinte'}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <motion.div
+                        className={cn(
+                          "h-full rounded-full",
+                          remainingInvoices > 0 ? "bg-gradient-to-r from-primary to-primary-dark" : "bg-red-500"
+                        )}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(sub.invoiceCount / 5) * 100}%` }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-200">
-                    <Sparkles size={14} className="text-gray-500" />
-                    <span className="text-xs text-gray-600">IA incluse</span>
+
+                  {/* Feature reminder */}
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-200">
+                      <Infinity size={14} className="text-gray-500" />
+                      <span className="text-xs text-gray-600">Illimité avec Pro</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-200">
+                      <Sparkles size={14} className="text-gray-500" />
+                      <span className="text-xs text-gray-600">IA incluse</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </>
       )}
 
       {/* ALERTE POUR LES UTILISATEURS PAYANTS */}
