@@ -154,6 +154,11 @@ export interface Invoice {
   internal_notes?: string;
   legal_mentions?: string;
   payment_terms_id?: string;
+  client_email?: string;
+  client_phone?: string;
+  client_address?: string;
+  client_city?: string;
+  client_postal_code?: string;
 }
 
 export interface ParsedVoiceInvoice {
@@ -202,6 +207,11 @@ export interface InvoiceFormData {
   notes?: string;
   linked_invoice_id?: string;
   discount_percent?: number;
+  client_email?: string;
+  client_phone?: string;
+  client_address?: string;
+  client_city?: string;
+  client_postal_code?: string;
 }
 
 export interface Appointment {

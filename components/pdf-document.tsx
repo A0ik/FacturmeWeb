@@ -168,13 +168,27 @@ export function PdfDocument({ invoice, profile }: { invoice: Invoice; profile: P
   const paymentUrl = invoice.stripe_payment_url || invoice.payment_link || '';
   const paymentMethod = invoice.stripe_payment_url ? 'Stripe' : (invoice.payment_link ? 'SumUp' : '');
 
+  // Company info lines (shown below company name)
+  const senderInfo: string[] = [];
+  if (profile.address) senderInfo.push(profile.address);
+  if (profile.postal_code || profile.city) senderInfo.push([profile.postal_code, profile.city].filter(Boolean).join(' '));
+  if (profile.phone) senderInfo.push(profile.phone);
+  if (profile.email) senderInfo.push(profile.email);
+  if (profile.siret) senderInfo.push(`SIRET : ${profile.siret}`);
+
+  // Client details — use invoice-level fields if set, otherwise fall back to client record
   const clientLines: string[] = [];
-  if (invoice.client?.address) clientLines.push(invoice.client.address);
-  if (invoice.client?.postal_code || invoice.client?.city)
-    clientLines.push([invoice.client.postal_code, invoice.client.city].filter(Boolean).join(' '));
-  if (invoice.client?.email) clientLines.push(invoice.client.email);
-  if (invoice.client?.phone) clientLines.push(invoice.client.phone);
-  if (invoice.client?.siret) clientLines.push(`SIRET : ${invoice.client.siret}`);
+  const cAddr = (invoice as any).client_address || invoice.client?.address;
+  const cCity = (invoice as any).client_city || invoice.client?.city;
+  const cPc = (invoice as any).client_postal_code || invoice.client?.postal_code;
+  const cEmail = (invoice as any).client_email || invoice.client?.email;
+  const cPhone = (invoice as any).client_phone || invoice.client?.phone;
+  const cSiret = invoice.client?.siret;
+  if (cAddr) clientLines.push(cAddr);
+  if (cPc || cCity) clientLines.push([cPc, cCity].filter(Boolean).join(' '));
+  if (cEmail) clientLines.push(cEmail);
+  if (cPhone) clientLines.push(cPhone);
+  if (cSiret) clientLines.push(`SIRET : ${cSiret}`);
 
   const legalParts: string[] = [];
   if (profile.siret) legalParts.push(`SIRET : ${profile.siret}`);
@@ -223,26 +237,38 @@ export function PdfDocument({ invoice, profile }: { invoice: Invoice; profile: P
                 <Text style={{ fontSize: 9, fontFamily: bold, color: '#ffffff', letterSpacing: 2.5 }}>{meta.label}</Text>
               </View>
             </View>
-            {/* Company name below logo if logo exists */}
+            {/* Company name + info below logo */}
             {profile.logo_url && companyName && (
               <Text style={{ fontSize: 14, fontFamily: bold, color: '#ffffff', marginTop: 8 }}>{companyName}</Text>
+            )}
+            {senderInfo.length > 0 && (
+              <View style={{ marginTop: 6 }}>
+                {senderInfo.slice(0, 4).map((line, i) => (
+                  <Text key={i} style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.65)', marginBottom: 1.5 }}>{line}</Text>
+                ))}
+              </View>
             )}
           </View>
         ) : (
           <View>
             <View style={{ height: 4, backgroundColor: accent }} />
             <View style={{ paddingHorizontal: 44, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              {/* Logo + company name left */}
+              {/* Logo + company name + info left */}
               <View style={{ flex: 1 }}>
                 {profile.logo_url ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <Image src={profile.logo_url} style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
-                  </View>
+                  <Image src={profile.logo_url} style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
                 ) : (
                   <Text style={{ fontSize: 20, fontFamily: bold, color: '#111827' }}>{companyName}</Text>
                 )}
                 {profile.logo_url && companyName && (
                   <Text style={{ fontSize: 13, fontFamily: bold, color: '#111827', marginTop: 6 }}>{companyName}</Text>
+                )}
+                {senderInfo.length > 0 && (
+                  <View style={{ marginTop: 5 }}>
+                    {senderInfo.slice(0, 4).map((line, i) => (
+                      <Text key={i} style={{ fontSize: 8.5, color: '#6b7280', marginBottom: 1.5 }}>{line}</Text>
+                    ))}
+                  </View>
                 )}
               </View>
               {/* Doc info right */}

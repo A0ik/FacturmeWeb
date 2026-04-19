@@ -1,6 +1,6 @@
 'use client';
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -90,11 +90,17 @@ const VAT_RATES = [
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile } = useAuthStore();
   const { clients, createInvoice } = useDataStore();
   const sub = useSubscription();
 
-  const [docType, setDocType] = useState<DocumentType>('invoice');
+  // Read URL params (from client page "Nouvelle facture" link)
+  const paramClientId = searchParams.get('clientId');
+  const paramClientName = searchParams.get('clientName');
+  const paramType = searchParams.get('type') as DocumentType | null;
+
+  const [docType, setDocType] = useState<DocumentType>(paramType || 'invoice');
   const [mode, setMode] = useState<'voice' | 'ai' | 'manual'>('manual');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -115,9 +121,15 @@ export default function NewInvoicePage() {
   const [aiError, setAiError] = useState('');
 
   // Form state
-  const [clientName, setClientName] = useState('');
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientName, setClientName] = useState(paramClientName || '');
+  const [clientId, setClientId] = useState<string | null>(paramClientId || null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showClientDetails, setShowClientDetails] = useState(false);
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [clientCity, setClientCity] = useState('');
+  const [clientPostalCode, setClientPostalCode] = useState('');
 
   const [items, setItems] = useState<Omit<InvoiceItem, 'total'>[]>([
     { id: generateId(), description: '', quantity: 1, unit_price: 0, vat_rate: 20 },
@@ -130,6 +142,20 @@ export default function NewInvoicePage() {
   const [paymentTermId, setPaymentTermId] = useState<string>('days30');
   const [showCalendar, setShowCalendar] = useState(false);
   const [lastGenSource, setLastGenSource] = useState<'voice' | 'ai' | null>(null);
+
+  // Pre-fill client details from selected client
+  useEffect(() => {
+    if (clientId) {
+      const c = clients.find((cl) => cl.id === clientId);
+      if (c) {
+        setClientEmail(c.email || '');
+        setClientPhone(c.phone || '');
+        setClientAddress(c.address || '');
+        setClientCity(c.city || '');
+        setClientPostalCode(c.postal_code || '');
+      }
+    }
+  }, [clientId, clients]);
 
   const suggestions = clients.filter(
     (c) => clientName.length >= 1 && c.name.toLowerCase().includes(clientName.toLowerCase()),
@@ -181,7 +207,12 @@ export default function NewInvoicePage() {
         })));
       }
       if (parsed?.notes) setNotes(parsed.notes);
-      if (parsed?.due_days != null) setPaymentDays(parsed.due_days);
+      if (parsed?.due_days != null) {
+        setPaymentDays(parsed.due_days);
+        const days = parsed.due_days;
+        const termMap: Record<number, string> = { 0: 'reception', 15: 'days15', 30: 'days30', 45: 'days45', 60: 'days60' };
+        setPaymentTermId(termMap[days] || `custom-${days}`);
+      }
       if (summary) toast.success(summary);
       setAiPrompt('');
       setLastGenSource('ai');
@@ -246,7 +277,12 @@ export default function NewInvoicePage() {
         })));
       }
       if (parsed?.notes) setNotes(parsed.notes);
-      if (parsed?.due_days != null) setPaymentDays(parsed.due_days);
+      if (parsed?.due_days != null) {
+        setPaymentDays(parsed.due_days);
+        const days = parsed.due_days;
+        const termMap: Record<number, string> = { 0: 'reception', 15: 'days15', 30: 'days30', 45: 'days45', 60: 'days60' };
+        setPaymentTermId(termMap[days] || `custom-${days}`);
+      }
       if (result.summary) toast.success(result.summary);
       setLastGenSource('voice');
       setMode('manual');
@@ -293,7 +329,7 @@ export default function NewInvoicePage() {
     setSaving(true);
     setError('');
     try {
-      await createInvoice({
+      const newInvoice = await createInvoice({
         client_id: clientId || undefined,
         client_name_override: clientId ? undefined : clientName || undefined,
         document_type: docType,
@@ -302,11 +338,17 @@ export default function NewInvoicePage() {
         items: items,
         notes: notes || undefined,
         discount_percent: discountPercent > 0 ? discountPercent : undefined,
+        client_email: clientId ? undefined : clientEmail || undefined,
+        client_phone: clientId ? undefined : clientPhone || undefined,
+        client_address: clientId ? undefined : clientAddress || undefined,
+        client_city: clientId ? undefined : clientCity || undefined,
+        client_postal_code: clientId ? undefined : clientPostalCode || undefined,
       }, profile);
-      toast.success('Document cree avec succes !');
-      router.push('/invoices');
+      toast.success('Document créé avec succès !');
+      router.push(`/invoices/${newInvoice.id}`);
     } catch (e: any) {
-      setError(e.message || 'Erreur lors de la creation.');
+      console.error('[new invoice] createInvoice error:', e);
+      setError(e.message || 'Erreur lors de la création.');
     } finally {
       setSaving(false);
     }
@@ -587,13 +629,13 @@ export default function NewInvoicePage() {
             )}
 
             {/* Client section */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm" style={{ overflow: 'visible' }}>
               <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-50 bg-gray-50/50">
                 <User size={14} className="text-gray-400" />
                 <h3 className="text-sm font-bold text-gray-700">Client</h3>
               </div>
               <div className="p-4">
-                <div className="relative">
+                <div className="relative" style={{ zIndex: showSuggestions && suggestions.length > 0 ? 50 : 'auto' }}>
                   <Input
                     placeholder="Nom du client ou de l'entreprise"
                     value={clientName}
@@ -602,7 +644,7 @@ export default function NewInvoicePage() {
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   />
                   {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
                       {suggestions.slice(0, 5).map((c) => (
                         <button
                           key={c.id}
@@ -623,8 +665,53 @@ export default function NewInvoicePage() {
                 </div>
                 {clientId && (
                   <p className="text-xs text-primary flex items-center gap-1 mt-2">
-                    <CheckCircle2 size={11} /> Client associe — infos bancaires incluses automatiquement
+                    <CheckCircle2 size={11} /> Client associé
                   </p>
+                )}
+
+                {/* Expandable client details */}
+                {!clientId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowClientDetails(!showClientDetails)}
+                    className="text-xs text-gray-400 hover:text-gray-600 font-medium mt-3 flex items-center gap-1 transition-colors"
+                  >
+                    <ChevronDown size={12} className={cn('transition-transform', showClientDetails && 'rotate-180')} />
+                    {showClientDetails ? 'Masquer les détails' : 'Ajouter plus d\'informations'}
+                  </button>
+                )}
+                {showClientDetails && !clientId && (
+                  <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                    <Input
+                      placeholder="Email"
+                      type="email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Téléphone"
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Adresse"
+                      value={clientAddress}
+                      onChange={(e) => setClientAddress(e.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Code postal"
+                        value={clientPostalCode}
+                        onChange={(e) => setClientPostalCode(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Ville"
+                        value={clientCity}
+                        onChange={(e) => setClientCity(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

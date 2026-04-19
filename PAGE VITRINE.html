@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factu.me — Facturation & Gestion d'entreprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b', 950: '#022c22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::selection {
+            background: #d1fae5;
+            color: #064e3b
+        }
+
+        .gradient-text-light {
+            background: linear-gradient(135deg, #6ee7b7, #34d399, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text
+        }
+
+        .card-3d {
+            perspective: 1000px
+        }
+
+        .card-3d-inner {
+            transition: transform .6s cubic-bezier(.23, 1, .32, 1), box-shadow .6s ease;
+            transform-style: preserve-3d;
+            will-change: transform
+        }
+
+        .card-3d:hover .card-3d-inner {
+            box-shadow: 0 25px 50px -12px rgba(16, 185, 129, .18), 0 0 0 1px rgba(16, 185, 129, .08)
+        }
+
+        @keyframes heroFloat {
+
+            0%,
+            100% {
+                transform: translateY(0) rotateX(1deg) rotateY(-8deg)
+            }
+
+            50% {
+                transform: translateY(-10px) rotateX(-1deg) rotateY(-5deg)
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-25px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(.7)
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1)
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0)
+            }
+
+            50% {
+                transform: translateY(-10px)
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0
+            }
+
+            100% {
+                background-position: 200% 0
+            }
+        }
+
+        @keyframes morph {
+
+            0%,
+            100% {
+                border-radius: 60% 40% 30% 70%/60% 30% 70% 40%
+            }
+
+            50% {
+                border-radius: 50% 60% 30% 60%/30% 60% 70% 40%
+            }
+        }
+
+        @keyframes gradient-shift {
+
+            0%,
+            100% {
+                background-position: 0% 50%
+            }
+
+            50% {
+                background-position: 100% 50%
+            }
+        }
+
+        @keyframes wiggle {
+
+            0%,
+            100% {
+                transform: rotate(0)
+            }
+
+            25% {
+                transform: rotate(-5deg)
+            }
+
+            75% {
+                transform: rotate(5deg)
+            }
+        }
+
+        @keyframes barPulse1 {
+
+            0%,
+            100% {
+                height: 10px
+            }
+
+            50% {
+                height: 22px
+            }
+        }
+
+        @keyframes barPulse2 {
+
+            0%,
+            100% {
+                height: 16px
+            }
+
+            50% {
+                height: 8px
+            }
+        }
+
+        @keyframes barPulse3 {
+
+            0%,
+            100% {
+                height: 6px
+            }
+
+            50% {
+                height: 18px
+            }
+        }
+
+        @keyframes scanLine {
+            0% {
+                top: 10%
+            }
+
+            100% {
+                top: 85%
+            }
+        }
+
+        .hero-float {
+            animation: heroFloat 8s ease-in-out infinite
+        }
+
+        .anim-slide-up {
+            animation: slideUp .8s ease-out forwards
+        }
+
+        .anim-slide-down {
+            animation: slideDown .7s ease-out forwards
+        }
+
+        .anim-scale-in {
+            animation: scaleIn .6s ease-out forwards
+        }
+
+        .anim-fade-in {
+            animation: fadeIn 1s ease-out forwards
+        }
+
+        .anim-float {
+            animation: float 6s ease-in-out infinite
+        }
+
+        .anim-morph {
+            animation: morph 15s ease-in-out infinite
+        }
+
+        .anim-wiggle {
+            animation: wiggle 2s ease-in-out infinite
+        }
+
+        .shimmer-bg {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .1), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite
+        }
+
+        .delay-100 {
+            animation-delay: .1s
+        }
+
+        .delay-200 {
+            animation-delay: .2s
+        }
+
+        .delay-300 {
+            animation-delay: .3s
+        }
+
+        .delay-400 {
+            animation-delay: .4s
+        }
+
+        .delay-500 {
+            animation-delay: .5s
+        }
+
+        .delay-600 {
+            animation-delay: .6s
+        }
+
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(35px);
+            transition: all .8s cubic-bezier(.23, 1, .32, 1)
+        }
+
+        .scroll-reveal.visible {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .scroll-reveal-left {
+            opacity: 0;
+            transform: translateX(-50px);
+            transition: all .8s cubic-bezier(.23, 1, .32, 1)
+        }
+
+        .scroll-reveal-left.visible {
+            opacity: 1;
+            transform: translateX(0)
+        }
+
+        .scroll-reveal-right {
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all .8s cubic-bezier(.23, 1, .32, 1)
+        }
+
+        .scroll-reveal-right.visible {
+            opacity: 1;
+            transform: translateX(0)
+        }
+
+        .scroll-reveal-scale {
+            opacity: 0;
+            transform: scale(.85);
+            transition: all .8s cubic-bezier(.23, 1, .32, 1)
+        }
+
+        .scroll-reveal-scale.visible {
+            opacity: 1;
+            transform: scale(1)
+        }
+
+        .nav-blur {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px)
+        }
+
+        .pricing-popular {
+            position: relative;
+            z-index: 1
+        }
+
+        .pricing-popular::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 1.25rem;
+            background: linear-gradient(135deg, #10b981, #059669, #34d399, #10b981);
+            background-size: 300% 300%;
+            animation: gradient-shift 4s ease infinite;
+            z-index: -1
+        }
+
+        #particles-canvas {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1
+        }
+
+        .glow-green-strong {
+            box-shadow: 0 0 50px rgba(16, 185, 129, .2), 0 0 100px rgba(16, 185, 129, .08)
+        }
+
+        @media(hover:none)and(pointer:coarse) {
+            .card-3d-inner {
+                transition: transform .3s ease, box-shadow .3s ease !important
+            }
+
+            .card-3d:hover .card-3d-inner {
+                transform: none !important;
+                box-shadow: 0 10px 25px -5px rgba(16, 185, 129, .15) !important
+            }
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .4s ease, padding .4s ease
+        }
+
+        .faq-answer.open {
+            max-height: 200px;
+            padding-top: .75rem
+        }
+
+        .faq-chevron {
+            transition: transform .3s ease
+        }
+
+        .faq-chevron.open {
+            transform: rotate(180deg)
+        }
+
+        #sticky-cta {
+            transform: translateY(100%);
+            transition: transform .4s cubic-bezier(.23, 1, .32, 1)
+        }
+
+        #sticky-cta.show {
+            transform: translateY(0)
+        }
+    </style>
+</head>
+
+<body class="font-sans bg-white text-slate-900 antialiased overflow-x-hidden">
+
+    <!-- Sticky mobile CTA -->
+    <div id="sticky-cta" class="fixed bottom-0 left-0 right-0 z-40 p-3 sm:hidden">
+        <a href="#tarifs"
+            class="flex items-center justify-center gap-2 bg-brand-500 text-white font-semibold py-3 rounded-2xl shadow-xl shadow-brand-500/30 text-sm active:scale-[0.97] transition-transform">
+            <i data-lucide="zap" class="w-4 h-4"></i>Commencer gratuitement
+        </a>
+    </div>
+
+    <!-- NAV -->
+    <nav class="fixed top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-50 nav-blur bg-white/85 rounded-2xl border border-brand-100/50 shadow-lg shadow-black/[0.04] transition-all duration-300"
+        id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-2 group">
+                <div
+                    class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-brand-500/30 transition-all duration-300">
+                    <i data-lucide="zap" class="w-[18px] h-[18px] text-white"></i></div>
+                <span class="text-lg sm:text-xl font-bold tracking-tight">Factu<span
+                        class="text-brand-500">.me</span></span>
+            </a>
+            <div class="hidden md:flex items-center gap-6 lg:gap-8">
+                <a href="#fonctionnalites"
+                    class="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-brand-500 after:transition-all hover:after:w-full">Fonctionnalités</a>
+                <a href="#ia"
+                    class="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-brand-500 after:transition-all hover:after:w-full">IA</a>
+                <a href="#tarifs"
+                    class="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-brand-500 after:transition-all hover:after:w-full">Tarifs</a>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/login"
+                    class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-600 transition-all px-3 py-2 rounded-xl hover:bg-brand-50"><i
+                        data-lucide="log-in" class="w-4 h-4"></i><span>Se connecter</span></a>
+                <a href="#tarifs"
+                    class="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all shadow-md shadow-brand-500/25 hover:shadow-lg active:scale-[0.97]"><span
+                        class="hidden sm:inline">Essai gratuit</span><span class="sm:hidden">Essai</span><i
+                        data-lucide="arrow-right" class="w-4 h-4"></i></a>
+                <button id="mobile-menu-btn"
+                    class="md:hidden p-2 -mr-2 rounded-lg hover:bg-brand-50 transition-colors"><i data-lucide="menu"
+                        class="w-5 h-5 text-slate-700"></i></button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden border-t border-brand-100/50 bg-white/95 nav-blur rounded-b-2xl">
+            <div class="px-4 py-3 space-y-1">
+                <a href="#fonctionnalites"
+                    class="block text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors">Fonctionnalités</a>
+                <a href="#ia"
+                    class="block text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors">Intelligence
+                    Artificielle</a>
+                <a href="#tarifs"
+                    class="block text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors">Tarifs</a>
+                <div class="pt-2 border-t border-slate-100 mt-2"><a href="/login"
+                        class="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors"><i
+                            data-lucide="log-in" class="w-4 h-4"></i>Se connecter</a></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative min-h-screen flex items-center overflow-hidden bg-brand-950 pt-20 sm:pt-0">
+        <div class="absolute inset-0">
+            <div
+                class="absolute top-[-20%] left-[-10%] w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[120px] anim-morph">
+            </div>
+            <div class="absolute bottom-[-20%] right-[-10%] w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] bg-brand-400/8 rounded-full blur-[80px] sm:blur-[100px] anim-morph"
+                style="animation-delay:-5s"></div>
+            <div class="absolute inset-0 opacity-[0.03]"
+                style="background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:50px 50px">
+            </div>
+            <canvas id="particles-canvas"></canvas>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-16 lg:py-0 relative z-10 w-full">
+            <div class="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                <div class="space-y-5 sm:space-y-7 order-2 lg:order-1">
+                    <div class="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-brand-300 anim-slide-down"
+                        style="opacity:0">
+                        <span class="relative flex h-2 w-2"><span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span><span
+                                class="relative inline-flex rounded-full h-2 w-2 bg-brand-400"></span></span>100%
+                        Français<i data-lucide="zap" class="w-3 h-3 text-brand-400"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight anim-slide-up"
+                        style="opacity:0">
+                        <span class="text-white">La facturation</span><br><span
+                            class="gradient-text-light">propulsée</span><span class="text-white"> par</span><br><span
+                            class="gradient-text-light">l'IA</span><i data-lucide="zap"
+                            class="inline-block w-7 h-7 sm:w-9 sm:h-9 text-brand-400 ml-1 sm:ml-2 anim-wiggle align-middle"></i>
+                    </h1>
+                    <div class="space-y-3 anim-slide-up delay-200" style="opacity:0">
+                        <p class="text-base sm:text-lg text-brand-200/70 leading-relaxed max-w-lg">Créez vos factures en
+                            dictant à voix haute. L'IA fait tout le reste.</p>
+                        <div
+                            class="flex items-center justify-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-4 max-w-sm mx-auto backdrop-blur">
+                            <div class="flex items-end gap-[3px] h-7">
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse1 .8s ease-in-out infinite"></div>
+                                <div class="w-[3px] bg-brand-500 rounded-full"
+                                    style="animation:barPulse2 .6s ease-in-out infinite .1s"></div>
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse3 .7s ease-in-out infinite .2s"></div>
+                                <div class="w-[3px] bg-brand-600 rounded-full"
+                                    style="animation:barPulse1 .5s ease-in-out infinite .15s"></div>
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse2 .9s ease-in-out infinite .25s"></div>
+                                <div class="w-[3px] bg-brand-500 rounded-full"
+                                    style="animation:barPulse3 .65s ease-in-out infinite .05s"></div>
+                                <div class="w-[3px] bg-brand-300 rounded-full"
+                                    style="animation:barPulse1 .75s ease-in-out infinite .3s"></div>
+                            </div>
+                            <i data-lucide="mic" class="w-5 h-5 text-brand-400 flex-shrink-0"></i>
+                            <div class="flex items-end gap-[3px] h-7">
+                                <div class="w-[3px] bg-brand-500 rounded-full"
+                                    style="animation:barPulse3 .7s ease-in-out infinite .12s"></div>
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse1 .85s ease-in-out infinite .22s"></div>
+                                <div class="w-[3px] bg-brand-600 rounded-full"
+                                    style="animation:barPulse2 .55s ease-in-out infinite .08s"></div>
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse3 .65s ease-in-out infinite .18s"></div>
+                                <div class="w-[3px] bg-brand-500 rounded-full"
+                                    style="animation:barPulse1 .9s ease-in-out infinite .28s"></div>
+                                <div class="w-[3px] bg-brand-300 rounded-full"
+                                    style="animation:barPulse2 .6s ease-in-out infinite .35s"></div>
+                                <div class="w-[3px] bg-brand-400 rounded-full"
+                                    style="animation:barPulse1 .7s ease-in-out infinite .02s"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 anim-slide-up delay-400" style="opacity:0">
+                        <a href="#tarifs"
+                            class="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-sm sm:text-base relative overflow-hidden"><span
+                                class="relative z-10">Commencer gratuitement</span><i data-lucide="arrow-right"
+                                class="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:translate-x-1 transition-transform"></i>
+                            <div class="absolute inset-0 shimmer-bg"></div>
+                        </a>
+                        <a href="#fonctionnalites"
+                            class="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-sm sm:text-base backdrop-blur"><i
+                                data-lucide="play-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-brand-400"></i>Voir la
+                            démo</a>
+                    </div>
+                    <!-- Trust badge under CTA -->
+                    <div class="flex items-center justify-center gap-4 text-[11px] text-brand-200/30 anim-slide-up delay-500"
+                        style="opacity:0">
+                        <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3 h-3"></i>Données
+                            en France</span>
+                        <span class="flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i>SSL</span>
+                        <span class="flex items-center gap-1"><i data-lucide="check-circle"
+                                class="w-3 h-3"></i>RGPD</span>
+                    </div>
+                    <div class="flex items-center gap-4 sm:gap-5 pt-1 anim-slide-up delay-600" style="opacity:0">
+                        <div class="flex -space-x-2">
+                            <img src="https://picsum.photos/seed/face1/36/36.jpg"
+                                class="w-8 h-8 rounded-full border-2 border-brand-950 object-cover" alt=""><img
+                                src="https://picsum.photos/seed/face2/36/36.jpg"
+                                class="w-8 h-8 rounded-full border-2 border-brand-950 object-cover" alt=""><img
+                                src="https://picsum.photos/seed/face3/36/36.jpg"
+                                class="w-8 h-8 rounded-full border-2 border-brand-950 object-cover" alt=""><img
+                                src="https://picsum.photos/seed/face4/36/36.jpg"
+                                class="w-8 h-8 rounded-full border-2 border-brand-950 object-cover" alt="">
+                            <div
+                                class="w-8 h-8 rounded-full border-2 border-brand-950 bg-brand-500/20 flex items-center justify-center text-[10px] font-bold text-brand-300">
+                                +2k</div>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-0.5"><i data-lucide="star"
+                                    class="w-3 h-3 text-white fill-white"></i><i data-lucide="star"
+                                    class="w-3 h-3 text-white fill-white"></i><i data-lucide="star"
+                                    class="w-3 h-3 text-white fill-white"></i><i data-lucide="star"
+                                    class="w-3 h-3 text-white fill-white"></i><i data-lucide="star"
+                                    class="w-3 h-3 text-white fill-white"></i></div>
+                            <div class="text-[11px] text-brand-300/40 mt-0.5">2 000+ entrepreneurs</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative order-1 lg:order-2 flex justify-center anim-scale-in delay-300" style="opacity:0">
+                    <div
+                        class="absolute w-[70%] h-[70%] bg-brand-500/15 rounded-3xl blur-[50px] sm:blur-[60px] anim-morph">
+                    </div>
+                    <div class="relative w-full max-w-[340px] sm:max-w-[420px]">
+                        <div class="relative hero-float glow-green-strong" style="transform-style:preserve-3d">
+                            <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-brand-100/50"
+                                style="transform:rotateY(-8deg) rotateX(1deg)">
+                                <div class="bg-brand-900 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2">
+                                    <div class="flex gap-1.5">
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/80"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400/80"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/80"></div>
+                                    </div>
+                                    <div
+                                        class="flex-1 bg-brand-800 rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[11px] text-brand-300 font-mono flex items-center gap-1 truncate">
+                                        <i data-lucide="lock"
+                                            class="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0"></i>factu.me/invoice/FACT-2026-0042
+                                    </div>
+                                </div>
+                                <div class="p-3.5 sm:p-5 space-y-3 sm:space-y-4">
+                                    <div class="flex justify-between items-start gap-2">
+                                        <div class="min-w-0">
+                                            <div
+                                                class="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">
+                                                Émetteur</div>
+                                            <div class="font-bold text-xs sm:text-sm text-slate-800 truncate">Martin
+                                                Consulting</div>
+                                            <div class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">12
+                                                rue de la Paix, 75002 Paris</div>
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <div
+                                                class="inline-flex items-center gap-1 bg-brand-50 text-brand-700 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-brand-200">
+                                                <i data-lucide="check-circle"
+                                                    class="w-2.5 h-2.5 sm:w-3 sm:h-3"></i>Payée</div>
+                                            <div class="text-[9px] sm:text-[10px] text-slate-400 mt-1.5">FACT-2026-0042
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-slate-100 pt-2.5 sm:pt-3">
+                                        <div
+                                            class="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">
+                                            Client</div>
+                                        <div class="font-semibold text-xs sm:text-sm text-slate-800">Dupont Consulting
+                                            SAS</div>
+                                        <div class="text-[10px] sm:text-[11px] text-slate-400 truncate">8 av.
+                                            Champs-Élysées, 75008</div>
+                                    </div>
+                                    <div class="overflow-hidden rounded-lg border border-slate-100">
+                                        <div
+                                            class="bg-slate-50 px-2 sm:px-3 py-1.5 sm:py-2 grid grid-cols-4 text-[8px] sm:text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                                            <span>Description</span><span class="text-right">Qté</span><span
+                                                class="text-right">Prix</span><span class="text-right">Total</span>
+                                        </div>
+                                        <div class="divide-y divide-slate-50">
+                                            <div
+                                                class="px-2 sm:px-3 py-2 sm:py-2.5 grid grid-cols-4 text-[10px] sm:text-[12px]">
+                                                <span class="text-slate-700 truncate pr-1">Dév. web</span><span
+                                                    class="text-right text-slate-400">5j</span><span
+                                                    class="text-right text-slate-400">600€</span><span
+                                                    class="text-right font-semibold">3 000€</span></div>
+                                            <div
+                                                class="px-2 sm:px-3 py-2 sm:py-2.5 grid grid-cols-4 text-[10px] sm:text-[12px]">
+                                                <span class="text-slate-700 truncate pr-1">Conseil UX</span><span
+                                                    class="text-right text-slate-400">2j</span><span
+                                                    class="text-right text-slate-400">400€</span><span
+                                                    class="text-right font-semibold">800€</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-end">
+                                        <div
+                                            class="bg-brand-50 rounded-xl p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-[150px] sm:min-w-[180px] border border-brand-100">
+                                            <div class="flex justify-between text-[10px] sm:text-[11px]"><span
+                                                    class="text-slate-400">Total HT</span><span class="font-medium">3
+                                                    800€</span></div>
+                                            <div class="flex justify-between text-[10px] sm:text-[11px]"><span
+                                                    class="text-slate-400">TVA 20%</span><span
+                                                    class="font-medium">760€</span></div>
+                                            <div
+                                                class="flex justify-between text-xs sm:text-sm font-bold border-t border-brand-200 pt-1 sm:pt-1.5 mt-1">
+                                                <span>Total TTC</span><span class="text-brand-600">4 560€</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute -top-3 -right-1 sm:-top-5 sm:-right-5 anim-float z-20"
+                            style="animation-delay:.5s">
+                            <div
+                                class="bg-white rounded-lg sm:rounded-xl shadow-xl shadow-brand-500/10 border border-brand-100/50 px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-2.5">
+                                <div
+                                    class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="zap" class="w-4 h-4 text-brand-600"></i></div>
+                                <div>
+                                    <div class="text-[10px] sm:text-[11px] font-bold text-slate-800">IA Active</div>
+                                    <div class="text-[9px] sm:text-[10px] text-brand-500 font-medium">Générée en 3s
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute -bottom-2 -left-1 sm:-bottom-4 sm:-left-5 anim-float z-20"
+                            style="animation-delay:1.5s">
+                            <div
+                                class="bg-white rounded-lg sm:rounded-xl shadow-xl shadow-brand-500/10 border border-brand-100/50 px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-2.5">
+                                <div
+                                    class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="mail-check" class="w-4 h-4 text-brand-600"></i></div>
+                                <div>
+                                    <div class="text-[10px] sm:text-[11px] font-bold text-slate-800">Envoyée et payée
+                                    </div>
+                                    <div class="text-[9px] sm:text-[10px] text-brand-500 font-medium">via Stripe</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 z-10"><svg viewBox="0 0 1440 60" fill="none" class="w-full">
+                <path d="M0 30C360 60 720 60 1080 40C1260 30 1380 25 1440 30V60H0V30Z" fill="white" />
+            </svg></div>
+    </section>
+
+    <!-- Stats -->
+    <section class="py-8 sm:py-10 bg-white relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 scroll-reveal">
+                <div class="text-center">
+                    <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight" data-count="6">0
+                    </div>
+                    <div class="text-xs sm:text-sm text-slate-400 mt-1 font-medium">Types de documents</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight" data-count="6">0
+                    </div>
+                    <div class="text-xs sm:text-sm text-slate-400 mt-1 font-medium">Templates PDF</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl sm:text-4xl font-extrabold text-brand-500 tracking-tight">3<span
+                            class="text-base sm:text-lg">s</span></div>
+                    <div class="text-xs sm:text-sm text-slate-400 mt-1 font-medium">Facturation par IA</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight" data-count="100">0
+                    </div>
+                    <div class="text-xs sm:text-sm text-slate-400 mt-1 font-medium">% Conforme droit FR</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Logos -->
+    <section class="py-10 sm:py-14 bg-white border-b border-slate-100">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 text-center scroll-reveal">
+            <p class="text-xs sm:text-sm text-slate-400 font-medium mb-6 uppercase tracking-wider">Ils nous font
+                confiance</p>
+            <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12">
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="building-2"
+                        class="w-5 h-5"></i><span class="text-sm font-semibold">Auto-entrepreneurs</span></div>
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="code-2" class="w-5 h-5"></i><span
+                        class="text-sm font-semibold">Freelances</span></div>
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="store" class="w-5 h-5"></i><span
+                        class="text-sm font-semibold">TPE / PME</span></div>
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="briefcase" class="w-5 h-5"></i><span
+                        class="text-sm font-semibold">Consultants</span></div>
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="palette" class="w-5 h-5"></i><span
+                        class="text-sm font-semibold">Agences</span></div>
+                <div class="flex items-center gap-2 text-slate-300"><i data-lucide="heart-pulse"
+                        class="w-5 h-5"></i><span class="text-sm font-semibold">Santé</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem -->
+    <section class="py-16 sm:py-24 bg-slate-50">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-10 sm:mb-14 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-red-50 border border-red-100 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-red-600 mb-4">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>Le problème</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-4">Vous perdez des heures sur
+                    l'administratif</h2>
+                <p class="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Jusqu'à <span
+                        class="font-bold text-slate-800">5 heures par semaine</span> sur des tâches qui ne génèrent
+                    aucun revenu.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <div class="card-3d scroll-reveal">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-8 border border-slate-100">
+                        <div
+                            class="w-12 h-12 sm:w-14 sm:h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="clock" class="w-6 h-6 sm:w-7 sm:h-7 text-brand-500"></i></div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-1 text-center">5h<span
+                                class="text-brand-400">/sem</span></div>
+                        <div class="text-sm text-slate-500 text-center">Perdues sur l'administratif</div>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.1s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-8 border border-slate-100">
+                        <div
+                            class="w-12 h-12 sm:w-14 sm:h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="trending-down" class="w-6 h-6 sm:w-7 sm:h-7 text-brand-500"></i></div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-1 text-center">25%</div>
+                        <div class="text-sm text-slate-500 text-center">De factures impayées à temps</div>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.2s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-8 border border-slate-100">
+                        <div
+                            class="w-12 h-12 sm:w-14 sm:h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="puzzle" class="w-6 h-6 sm:w-7 sm:h-7 text-brand-500"></i></div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-1 text-center">5 outils</div>
+                        <div class="text-sm text-slate-500 text-center">Différents nécessaires</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works - 3 steps -->
+    <section class="py-16 sm:py-24 bg-white">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-12 sm:mb-16 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4">
+                    <i data-lucide="rocket" class="w-4 h-4"></i>Comment ça marche</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Opérationnel en 3 étapes</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 relative">
+                <!-- Connecting line -->
+                <div class="hidden sm:block absolute top-10 left-[16%] right-[16%] h-px bg-brand-200"></div>
+                <div class="scroll-reveal text-center relative" style="transition-delay:.05s">
+                    <div
+                        class="w-20 h-20 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/20 relative z-10">
+                        <span class="text-2xl font-extrabold text-white">1</span></div>
+                    <h3 class="font-bold text-base sm:text-lg mb-2">Créez votre compte</h3>
+                    <p class="text-sm text-slate-500 max-w-[240px] mx-auto">Inscription en 2 minutes. Choisissez votre
+                        template de facture préféré.</p>
+                </div>
+                <div class="scroll-reveal text-center relative" style="transition-delay:.15s">
+                    <div
+                        class="w-20 h-20 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/20 relative z-10">
+                        <span class="text-2xl font-extrabold text-white">2</span></div>
+                    <h3 class="font-bold text-base sm:text-lg mb-2">Décrivez votre facture</h3>
+                    <p class="text-sm text-slate-500 max-w-[240px] mx-auto">Dites-la à voix haute ou tapez-la en langage
+                        naturel. L'IA fait le reste.</p>
+                </div>
+                <div class="scroll-reveal text-center relative" style="transition-delay:.25s">
+                    <div
+                        class="w-20 h-20 bg-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand-500/20 relative z-10">
+                        <span class="text-2xl font-extrabold text-white">3</span></div>
+                    <h3 class="font-bold text-base sm:text-lg mb-2">Recevez votre paiement</h3>
+                    <p class="text-sm text-slate-500 max-w-[240px] mx-auto">Envoyez par e-mail, votre client paie en un
+                        clic. Statut mis à jour automatiquement.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Before / After -->
+    <section class="py-16 sm:py-24 bg-slate-50">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-12 sm:mb-14 scroll-reveal">
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Avant / Après Factu.me</h2>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                <div class="scroll-reveal" style="transition-delay:.05s">
+                    <div class="bg-white rounded-2xl p-6 sm:p-8 border border-red-100 h-full">
+                        <div class="flex items-center gap-2 mb-5">
+                            <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><i
+                                    data-lucide="x" class="w-4 h-4 text-red-500"></i></div><span
+                                class="font-bold text-sm text-red-600">Avant</span>
+                        </div>
+                        <ul class="space-y-3">
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>45 minutes pour faire une
+                                facture</li>
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>3 outils différents minimum
+                            </li>
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>Relances oubliées ou mal
+                                faites</li>
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>Reçus perdus dans un tiroir
+                            </li>
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>Mentions légales incorrectes
+                            </li>
+                            <li class="flex items-start gap-2.5 text-sm text-slate-500"><i data-lucide="minus"
+                                    class="w-4 h-4 text-red-300 flex-shrink-0 mt-0.5"></i>Export impôts = cauchemar</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="scroll-reveal" style="transition-delay:.15s">
+                    <div
+                        class="bg-brand-500 rounded-2xl p-6 sm:p-8 border border-brand-400 h-full shadow-lg shadow-brand-500/20">
+                        <div class="flex items-center gap-2 mb-5">
+                            <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><i
+                                    data-lucide="check" class="w-4 h-4 text-white"></i></div><span
+                                class="font-bold text-sm text-white">Après Factu.me</span>
+                        </div>
+                        <ul class="space-y-3">
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>3 secondes grâce à l'IA</li>
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>Tout en un seul endroit</li>
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>Relances automatiques</li>
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>Reçus scannés et catégorisés
+                            </li>
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>Mentions légales automatiques
+                            </li>
+                            <li class="flex items-start gap-2.5 text-sm text-white/90"><i data-lucide="zap"
+                                    class="w-4 h-4 text-white flex-shrink-0 mt-0.5"></i>Export impôts en un clic</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="fonctionnalites" class="py-16 sm:py-24 lg:py-32 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-10 sm:mb-16 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4">
+                    <i data-lucide="layers" class="w-4 h-4"></i>Fonctionnalités</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Tout en un seul endroit</h2>
+                <p class="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Remplacez vos 5 outils par une seule
+                    plateforme.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div class="card-3d scroll-reveal">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="file-text" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">Facturation multi-documents</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">Factures, devis, avoirs, bons de commande,
+                            bons de livraison, factures d'acompte.</p>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.05s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="sparkles" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">Intelligence Artificielle</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">Dictez ou décrivez votre facture. L'IA remplit
+                            tout et comprend les modifications.</p>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.1s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="send" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">Envoi et suivi</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">E-mail avec PDF, liens de paiement, portail
+                            client, relances automatiques, signature.</p>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.15s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">CRM intégré</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">Fiches clients, import CSV, auto-complétion
+                            SIRET, tags, historique et pipeline de vente.</p>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.2s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="calculator" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">Comptabilité</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">Export officiel pour les impôts, suivi des
+                            dépenses, scan de reçus, rapprochement bancaire.</p>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.25s">
+                    <div class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full">
+                        <div
+                            class="w-11 h-11 sm:w-12 sm:h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-4">
+                            <i data-lucide="layout-grid" class="w-5 h-5 sm:w-6 sm:h-6 text-brand-500"></i></div>
+                        <h3 class="text-base sm:text-lg font-bold mb-2">Espace collaboratif</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">Jusqu'à 10 espaces de travail isolés, rôles,
+                            flux d'activité et notifications.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Section -->
+    <section id="ia" class="py-16 sm:py-24 lg:py-32 bg-brand-950 text-white relative overflow-hidden">
+        <div
+            class="absolute top-0 right-0 w-[400px] sm:w-[500px] h-[400px] sm:h-[500px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[120px] anim-morph">
+        </div>
+        <div class="absolute inset-0 opacity-[0.02]"
+            style="background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:50px 50px">
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div class="scroll-reveal-left order-2 lg:order-1">
+                    <div
+                        class="bg-brand-900/80 backdrop-blur rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl shadow-brand-500/10 border border-brand-800/50">
+                        <div
+                            class="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-brand-900 border-b border-brand-800/50">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/60"></div>
+                                <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400/60"></div>
+                                <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/60"></div>
+                            </div><span class="ml-2 text-[10px] sm:text-xs text-brand-400 font-medium">Factu.me
+                                AI</span>
+                        </div>
+                        <div class="p-4 sm:p-6 space-y-3 sm:space-y-4 font-mono text-xs sm:text-sm">
+                            <div class="flex items-start gap-2 sm:gap-3 anim-fade-in"
+                                style="opacity:0;animation-delay:.5s">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i data-lucide="mic" class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-400"></i></div>
+                                <div
+                                    class="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-3 text-brand-200 max-w-[92%] border border-brand-700/30 text-[11px] sm:text-[13px]">
+                                    "Facture pour Dupont, 5 jours de dev à 600€ HT, TVA 20%, ajoute 2 jours conseil à
+                                    400€"</div>
+                            </div>
+                            <div class="flex items-start gap-2 sm:gap-3 anim-fade-in"
+                                style="opacity:0;animation-delay:1s">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 bg-brand-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i data-lucide="sparkles" class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-400"></i>
+                                </div>
+                                <div class="space-y-2 max-w-[92%]">
+                                    <div
+                                        class="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2 sm:px-4 sm:py-2.5 text-brand-300 border border-brand-700/30 text-[11px] sm:text-[13px]">
+                                        <span class="text-brand-400">Analyse...</span></div>
+                                    <div
+                                        class="bg-brand-800/50 rounded-xl rounded-tl-none px-3 py-2.5 sm:px-4 sm:py-3 text-brand-200 space-y-1.5 sm:space-y-2 border border-brand-700/30 text-[10px] sm:text-xs">
+                                        <div class="flex items-center gap-1.5 text-green-400"><i data-lucide="check"
+                                                class="w-3 h-3"></i>Client : Dupont Consulting SAS</div>
+                                        <div class="flex items-center gap-1.5 text-green-400"><i data-lucide="check"
+                                                class="w-3 h-3"></i>Développement — 5j x 600€</div>
+                                        <div class="flex items-center gap-1.5 text-green-400"><i data-lucide="check"
+                                                class="w-3 h-3"></i>Conseil — 2j x 400€</div>
+                                        <div class="flex items-center gap-1.5 text-green-400"><i data-lucide="check"
+                                                class="w-3 h-3"></i>TVA 20% appliquée</div>
+                                        <div
+                                            class="flex items-center gap-1.5 text-brand-300 font-semibold pt-1 border-t border-brand-700/30">
+                                            <i data-lucide="zap" class="w-3 h-3 text-brand-400"></i> FACT-2026-0042
+                                            créée</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-5 sm:space-y-7 scroll-reveal-right order-1 lg:order-2">
+                    <div
+                        class="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-300">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>Propulsé par l'IA</div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Dites-le, l'IA<br>le fait pour
+                        vous</h2>
+                    <div class="space-y-4 sm:space-y-5">
+                        <div class="flex items-start gap-3 sm:gap-4">
+                            <div
+                                class="w-10 h-10 sm:w-11 sm:h-11 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="mic" class="w-4 h-4 sm:w-5 sm:h-5 text-brand-400"></i></div>
+                            <div>
+                                <h3 class="font-bold text-sm sm:text-base mb-1">Dictée vocale</h3>
+                                <p class="text-xs sm:text-sm text-brand-200/60">Parlez naturellement, l'IA remplit tous
+                                    les champs.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 sm:gap-4">
+                            <div
+                                class="w-10 h-10 sm:w-11 sm:h-11 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="type" class="w-4 h-4 sm:w-5 sm:h-5 text-brand-400"></i></div>
+                            <div>
+                                <h3 class="font-bold text-sm sm:text-base mb-1">Génération textuelle</h3>
+                                <p class="text-xs sm:text-sm text-brand-200/60">Tapez en langage naturel, descriptions
+                                    professionnelles automatiques.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 sm:gap-4">
+                            <div
+                                class="w-10 h-10 sm:w-11 sm:h-11 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="pencil" class="w-4 h-4 sm:w-5 sm:h-5 text-brand-400"></i></div>
+                            <div>
+                                <h3 class="font-bold text-sm sm:text-base mb-1">Modification intelligente</h3>
+                                <p class="text-xs sm:text-sm text-brand-200/60">"Ajoute 2 jours" — l'IA comprend et
+                                    modifie en conséquence.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Payment Links -->
+    <section class="py-16 sm:py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div class="scroll-reveal-left">
+                    <div class="bg-slate-50 rounded-2xl p-5 sm:p-8 border border-slate-100 space-y-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center"><i
+                                    data-lucide="link" class="w-5 h-5 text-brand-600"></i></div>
+                            <div>
+                                <div class="font-bold text-sm">Lien de paiement envoyé</div>
+                                <div class="text-xs text-slate-400">factu.me/pay/inv-0042</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 border border-slate-100 space-y-3">
+                            <div class="flex justify-between text-sm"><span class="text-slate-500">Conception site
+                                    web</span><span class="font-semibold">3 000€</span></div>
+                            <div class="flex justify-between text-sm"><span class="text-slate-500">Conseil
+                                    UX/UI</span><span class="font-semibold">800€</span></div>
+                            <div class="flex justify-between text-sm border-t border-slate-100 pt-2"><span
+                                    class="font-semibold">Total TTC</span><span class="font-bold text-brand-600">4
+                                    560€</span></div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-400"><i data-lucide="shield-check"
+                                class="w-3.5 h-3.5 text-brand-500"></i>Paiement sécurisé par Stripe</div>
+                        <button
+                            class="w-full bg-brand-500 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2"><i
+                                data-lucide="credit-card" class="w-4 h-4"></i>Payer maintenant</button>
+                    </div>
+                </div>
+                <div class="space-y-5 sm:space-y-6 scroll-reveal-right">
+                    <div
+                        class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700">
+                        <i data-lucide="credit-card" class="w-4 h-4"></i>Paiement en ligne</div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Envoyez un lien,<br>votre
+                        client paie directement</h2>
+                    <p class="text-base sm:text-lg text-slate-500 leading-relaxed">Plus besoin d'attendre un virement.
+                        Envoyez un lien de paiement avec votre facture : votre client clique, paie par carte, et le
+                        statut se met à jour instantanément.</p>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Paiement par carte ou virement instantané</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Statut mis à jour en temps réel</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Relances automatiques si impayé</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CRM -->
+    <section class="py-16 sm:py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div class="space-y-5 sm:space-y-6 scroll-reveal-left">
+                    <div
+                        class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700">
+                        <i data-lucide="users" class="w-4 h-4"></i>CRM intégré</div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Vos clients,<br>toujours sous
+                        la main</h2>
+                    <p class="text-base sm:text-lg text-slate-500 leading-relaxed">Fiches complètes, historique de
+                        toutes vos factures, et un pipeline visuel pour suivre vos opportunités.</p>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Auto-complétion des infos entreprise (SIRET)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Pipeline de vente en 6 étapes visuelles</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Import de clients en masse depuis un fichier</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-reveal-right">
+                    <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-100 shadow-sm">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Pipeline de
+                            vente</div>
+                        <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+                            <div class="bg-brand-50 rounded-xl p-2.5 sm:p-3 border border-brand-100">
+                                <div class="text-[10px] sm:text-xs font-semibold text-brand-700 mb-2">Prospect</div>
+                                <div
+                                    class="bg-white rounded-lg p-2 text-[10px] sm:text-xs border border-brand-100 mb-1.5 shadow-sm">
+                                    <div class="font-medium text-slate-700">Dupont SAS</div>
+                                    <div class="text-slate-400">12 000€</div>
+                                </div>
+                                <div
+                                    class="bg-white rounded-lg p-2 text-[10px] sm:text-xs border border-brand-100 shadow-sm">
+                                    <div class="font-medium text-slate-700">Martin SARL</div>
+                                    <div class="text-slate-400">8 500€</div>
+                                </div>
+                            </div>
+                            <div class="bg-amber-50 rounded-xl p-2.5 sm:p-3 border border-amber-100">
+                                <div class="text-[10px] sm:text-xs font-semibold text-amber-700 mb-2">Proposition</div>
+                                <div
+                                    class="bg-white rounded-lg p-2 text-[10px] sm:text-xs border border-amber-100 shadow-sm">
+                                    <div class="font-medium text-slate-700">Lemoine Co</div>
+                                    <div class="text-slate-400">25 000€</div>
+                                </div>
+                            </div>
+                            <div class="bg-green-50 rounded-xl p-2.5 sm:p-3 border border-green-100">
+                                <div class="text-[10px] sm:text-xs font-semibold text-green-700 mb-2">Gagné</div>
+                                <div
+                                    class="bg-white rounded-lg p-2 text-[10px] sm:text-xs border border-green-100 shadow-sm">
+                                    <div class="font-medium text-slate-700">Garcia SI</div>
+                                    <div class="text-slate-400">15 000€</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Fiche client
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-100">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div
+                                    class="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center text-xs font-bold text-brand-700">
+                                    DC</div>
+                                <div>
+                                    <div class="font-bold text-sm">Dupont Consulting SAS</div>
+                                    <div class="text-[11px] text-slate-400">8 av. Champs-Élysées, 75008 Paris</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center">
+                                <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                    <div class="text-sm font-bold text-brand-600">12</div>
+                                    <div class="text-[10px] text-slate-400">Factures</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                    <div class="text-sm font-bold text-brand-600">45 600€</div>
+                                    <div class="text-[10px] text-slate-400">CA total</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                    <div class="text-sm font-bold text-green-600">0€</div>
+                                    <div class="text-[10px] text-slate-400">Impayé</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- OCR -->
+    <section class="py-16 sm:py-24 bg-brand-950 text-white relative overflow-hidden">
+        <div
+            class="absolute bottom-0 right-0 w-[400px] sm:w-[500px] h-[400px] sm:h-[500px] bg-brand-500/8 rounded-full blur-[100px] anim-morph">
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div class="scroll-reveal-left order-2 lg:order-1">
+                    <div
+                        class="bg-brand-900/80 backdrop-blur rounded-2xl overflow-hidden border border-brand-800/50 p-5 sm:p-6">
+                        <div class="text-xs font-semibold text-brand-400 uppercase tracking-wider mb-4">Scan de reçu en
+                            cours</div>
+                        <div
+                            class="relative bg-white rounded-xl p-4 aspect-[3/4] sm:aspect-[4/3] flex items-center justify-center overflow-hidden">
+                            <div class="w-full space-y-2 relative z-10">
+                                <div class="h-2 w-16 bg-slate-300 rounded mx-auto"></div>
+                                <div class="h-1.5 w-24 bg-slate-200 rounded mx-auto"></div>
+                                <div class="h-px bg-slate-200 my-2"></div>
+                                <div class="space-y-1.5 px-2">
+                                    <div class="h-1.5 w-full bg-slate-200 rounded"></div>
+                                    <div class="h-1.5 w-3/4 bg-slate-200 rounded"></div>
+                                    <div class="h-1.5 w-5/6 bg-slate-200 rounded"></div>
+                                </div>
+                                <div class="h-px bg-slate-200 my-2"></div>
+                                <div class="flex justify-between px-2">
+                                    <div class="h-1.5 w-12 bg-slate-300 rounded"></div>
+                                    <div class="h-1.5 w-16 bg-slate-300 rounded"></div>
+                                </div>
+                                <div class="flex justify-between px-2">
+                                    <div class="h-1.5 w-10 bg-slate-300 rounded"></div>
+                                    <div class="h-1.5 w-14 bg-slate-300 rounded"></div>
+                                </div>
+                                <div class="h-px bg-slate-300 my-2"></div>
+                                <div class="flex justify-between px-2">
+                                    <div class="h-2 w-14 bg-slate-400 rounded"></div>
+                                    <div class="h-2 w-20 bg-slate-400 rounded"></div>
+                                </div>
+                            </div>
+                            <div class="absolute left-2 right-2 h-0.5 bg-brand-500 shadow-lg shadow-brand-500/50"
+                                style="animation:scanLine 2.5s ease-in-out infinite alternate"></div>
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <div class="flex items-center gap-2 text-xs"><i data-lucide="check-circle"
+                                    class="w-3.5 h-3.5 text-green-400"></i><span class="text-brand-200">Fournisseur :
+                                    <strong>Boulangerie Dupont</strong></span></div>
+                            <div class="flex items-center gap-2 text-xs"><i data-lucide="check-circle"
+                                    class="w-3.5 h-3.5 text-green-400"></i><span class="text-brand-200">Montant :
+                                    <strong>24,80€</strong></span></div>
+                            <div class="flex items-center gap-2 text-xs"><i data-lucide="check-circle"
+                                    class="w-3.5 h-3.5 text-green-400"></i><span class="text-brand-200">TVA :
+                                    <strong>4,10€ (20%)</strong></span></div>
+                            <div class="flex items-center gap-2 text-xs"><i data-lucide="check-circle"
+                                    class="w-3.5 h-3.5 text-green-400"></i><span class="text-brand-200">Catégorie :
+                                    <strong>Repas</strong></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-5 sm:space-y-7 scroll-reveal-right order-1 lg:order-2">
+                    <div
+                        class="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-300">
+                        <i data-lucide="scan-text" class="w-4 h-4"></i>Scan intelligent</div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Photographiez un reçu,<br>l'IA
+                        fait le reste</h2>
+                    <p class="text-base sm:text-lg text-brand-200/60 leading-relaxed">Prenez en photo vos factures
+                        fournisseurs, tickets de restaurant, reçus d'essence. L'IA extrait automatiquement le montant,
+                        la TVA, la date et le fournisseur.</p>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 bg-brand-500/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="camera" class="w-4 h-4 text-brand-400"></i></div>
+                            <div>
+                                <div class="font-bold text-sm mb-0.5">Photo ou upload</div>
+                                <div class="text-xs text-brand-200/50">Prenez en photo ou importez un PDF</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 bg-brand-500/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-brand-400"></i></div>
+                            <div>
+                                <div class="font-bold text-sm mb-0.5">Extraction automatique</div>
+                                <div class="text-xs text-brand-200/50">Montant, TVA, date, fournisseur reconnus</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 bg-brand-500/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="tag" class="w-4 h-4 text-brand-400"></i></div>
+                            <div>
+                                <div class="font-bold text-sm mb-0.5">Catégorisation intelligente</div>
+                                <div class="text-xs text-brand-200/50">Repas, transport, équipement, bureau...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Templates -->
+    <section class="py-16 sm:py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                <div class="space-y-5 sm:space-y-6 scroll-reveal-left">
+                    <div
+                        class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700">
+                        <i data-lucide="palette" class="w-4 h-4"></i>Templates personnalisables</div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Votre facture,<br>votre style
+                    </h2>
+                    <p class="text-base sm:text-lg text-slate-500 leading-relaxed">Choisissez parmi 6 modèles
+                        professionnels, personnalisez avec votre logo et vos couleurs. L'IA applique votre template
+                        automatiquement.</p>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">Logo et couleurs personnalisées</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">6 modèles professionnels</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="check" class="w-4 h-4 text-brand-500"></i></div><span
+                                class="text-sm text-slate-600">L'IA applique votre template automatiquement</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-reveal-right">
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div
+                            class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl sm:rounded-2xl border border-slate-100 overflow-hidden aspect-[3/4] relative">
+                            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800"></div>
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-slate-300 rounded"></div>
+                                <div class="h-1 w-16 bg-slate-200 rounded"></div>
+                                <div class="h-4 bg-white rounded border border-slate-200 mt-2"></div>
+                                <div class="h-4 bg-white rounded border border-slate-200"></div>
+                            </div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-brand-400 to-brand-600 rounded-xl sm:rounded-2xl overflow-hidden aspect-[3/4] relative">
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-white/60 rounded"></div>
+                                <div class="h-1 w-16 bg-white/40 rounded"></div>
+                                <div class="h-4 bg-white/90 rounded mt-2"></div>
+                                <div class="h-4 bg-white/90 rounded"></div>
+                            </div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-brand-50 to-emerald-50 rounded-xl sm:rounded-2xl border-2 border-brand-200/50 overflow-hidden aspect-[3/4] relative">
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-brand-300 rounded"></div>
+                                <div class="h-1 w-16 bg-brand-200 rounded"></div>
+                                <div class="h-4 bg-white rounded border border-brand-200/50 mt-2"></div>
+                                <div class="h-4 bg-white rounded border border-brand-200/50"></div>
+                            </div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl sm:rounded-2xl overflow-hidden aspect-[3/4] relative">
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-slate-500 rounded"></div>
+                                <div class="h-1 w-16 bg-slate-600 rounded"></div>
+                                <div class="h-4 bg-slate-700 rounded border border-slate-600 mt-2"></div>
+                                <div class="h-4 bg-slate-700 rounded border border-slate-600"></div>
+                            </div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-slate-700 to-blue-950 rounded-xl sm:rounded-2xl overflow-hidden aspect-[3/4] relative">
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-slate-400 rounded"></div>
+                                <div class="h-1 w-16 bg-slate-500 rounded"></div>
+                                <div class="h-4 bg-slate-600/50 rounded border border-slate-500/30 mt-2"></div>
+                                <div class="h-4 bg-slate-600/50 rounded border border-slate-500/30"></div>
+                            </div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl sm:rounded-2xl overflow-hidden aspect-[3/4] relative">
+                            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500"></div>
+                            <div class="p-2 sm:p-3 space-y-1.5 mt-4">
+                                <div class="h-1.5 w-12 bg-green-400 rounded"></div>
+                                <div class="h-1 w-16 bg-green-300 rounded"></div>
+                                <div class="h-4 bg-white rounded border border-green-200/50 mt-2"></div>
+                                <div class="h-4 bg-white rounded border border-green-200/50"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-16 sm:py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-10 sm:mb-14 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>Témoignages</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Ce qu'ils en disent</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+                <div class="card-3d scroll-reveal">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full flex flex-col">
+                        <div class="flex items-center gap-1 mb-4"><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i></div>
+                        <p class="text-sm text-slate-600 leading-relaxed flex-grow mb-5">"Je passais 2h par mois sur mes
+                            factures. Depuis que j'utilise Factu.me, je dicte ma facture en 10 secondes et c'est envoyé.
+                            Un gain de temps énorme."</p>
+                        <div class="flex items-center gap-3 pt-4 border-t border-slate-100"><img
+                                src="https://picsum.photos/seed/sarah-m/48/48.jpg"
+                                class="w-11 h-11 rounded-full object-cover" alt="">
+                            <div>
+                                <div class="font-bold text-sm">Sarah M.</div>
+                                <div class="text-xs text-slate-400">Développeuse freelance</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.1s">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full flex flex-col">
+                        <div class="flex items-center gap-1 mb-4"><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i></div>
+                        <p class="text-sm text-slate-600 leading-relaxed flex-grow mb-5">"Le scan de reçus est bluffant.
+                            Je photographie mes tickets essence et c'est directement catégorisé. Mon comptable est
+                            impressionné par la clarté de mes exports."</p>
+                        <div class="flex items-center gap-3 pt-4 border-t border-slate-100"><img
+                                src="https://picsum.photos/seed/thomas-l/48/48.jpg"
+                                class="w-11 h-11 rounded-full object-cover" alt="">
+                            <div>
+                                <div class="font-bold text-sm">Thomas L.</div>
+                                <div class="text-xs text-slate-400">Auto-entrepreneur, transport</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.2s">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-6 sm:p-7 border border-slate-100 h-full flex flex-col">
+                        <div class="flex items-center gap-1 mb-4"><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i><i data-lucide="star"
+                                class="w-4 h-4 text-amber-400 fill-amber-400"></i></div>
+                        <p class="text-sm text-slate-600 leading-relaxed flex-grow mb-5">"On était 4 dans l'agence,
+                            chacun avait son outil. Aujourd'hui on est tous sur Factu.me avec des workspaces séparés. Le
+                            pipeline CRM en plus, c'est top."</p>
+                        <div class="flex items-center gap-3 pt-4 border-t border-slate-100"><img
+                                src="https://picsum.photos/seed/claire-d/48/48.jpg"
+                                class="w-11 h-11 rounded-full object-cover" alt="">
+                            <div>
+                                <div class="font-bold text-sm">Claire D.</div>
+                                <div class="text-xs text-slate-400">Directrice, agence digitale</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="tarifs" class="py-16 sm:py-24 lg:py-32 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-10 sm:mb-14 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4">
+                    <i data-lucide="tag" class="w-4 h-4"></i>Tarifs transparents</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">Choisissez votre plan</h2>
+                <p class="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto">Sans engagement. Évoluez quand vous
+                    voulez.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div class="card-3d scroll-reveal">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-5 sm:p-7 border border-slate-200 h-full flex flex-col">
+                        <div class="mb-5">
+                            <h3 class="text-base sm:text-lg font-bold mb-1">Gratuit</h3>
+                            <div class="text-2xl sm:text-3xl font-extrabold tracking-tight">0€</div>
+                            <div class="text-xs sm:text-sm text-slate-400">Pour toujours</div>
+                        </div>
+                        <div class="space-y-2.5 mb-6 flex-grow">
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">3 factures / mois</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Clients illimités</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">6 templates PDF</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Envoi par e-mail</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Paiement en ligne</span></div>
+                        </div><a href="#"
+                            class="block text-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-all text-sm active:scale-[0.97]">Commencer</a>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.05s">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-5 sm:p-7 border border-slate-200 h-full flex flex-col">
+                        <div class="mb-5">
+                            <h3 class="text-base sm:text-lg font-bold mb-1">Solo</h3>
+                            <div class="flex items-baseline gap-1"><span
+                                    class="text-2xl sm:text-3xl font-extrabold tracking-tight">9,99€</span><span
+                                    class="text-xs sm:text-sm text-slate-400">/mois</span></div>
+                        </div>
+                        <div class="space-y-2.5 mb-6 flex-grow">
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-700 font-semibold text-xs sm:text-sm">Factures illimitées</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Clients illimités</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                    class="text-brand-700 font-semibold text-xs sm:text-sm">IA et dictée vocale</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Scan de reçus</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Import bancaire</span></div>
+                        </div><a href="#"
+                            class="block text-center bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl transition-all text-sm active:scale-[0.97]">Choisir
+                            Solo</a>
+                    </div>
+                </div>
+                <div class="pricing-popular scroll-reveal" style="transition-delay:.1s">
+                    <div class="card-3d">
+                        <div class="card-3d-inner bg-white rounded-2xl p-5 sm:p-7 h-full flex flex-col">
+                            <div class="flex items-center justify-between mb-5">
+                                <div>
+                                    <h3 class="text-base sm:text-lg font-bold mb-1">Pro</h3>
+                                    <div class="flex items-baseline gap-1"><span
+                                            class="text-2xl sm:text-3xl font-extrabold tracking-tight">19,99€</span><span
+                                            class="text-xs sm:text-sm text-slate-400">/mois</span></div>
+                                </div><span
+                                    class="bg-brand-500 text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full">Populaire</span>
+                            </div>
+                            <div class="space-y-2.5 mb-6 flex-grow">
+                                <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                        class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                        class="text-slate-600 text-xs sm:text-sm">Tout du plan Solo</span></div>
+                                <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                        class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                        class="text-brand-700 font-semibold text-xs sm:text-sm">Export officiel
+                                        impôts</span></div>
+                                <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                        class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                        class="text-brand-700 font-semibold text-xs sm:text-sm">CRM Pipeline</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                        class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                        class="text-brand-700 font-semibold text-xs sm:text-sm">Factures
+                                        récurrentes</span></div>
+                                <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                        class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                        class="text-brand-700 font-semibold text-xs sm:text-sm">Signature
+                                        électronique</span></div>
+                            </div><a href="#"
+                                class="block text-center bg-brand-500 hover:bg-brand-600 text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-md shadow-brand-500/25 active:scale-[0.97]">Choisir
+                                Pro</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-3d scroll-reveal" style="transition-delay:.15s">
+                    <div
+                        class="card-3d-inner bg-white rounded-2xl p-5 sm:p-7 border border-slate-200 h-full flex flex-col">
+                        <div class="mb-5">
+                            <h3 class="text-base sm:text-lg font-bold mb-1">Business</h3>
+                            <div class="flex items-baseline gap-1"><span
+                                    class="text-2xl sm:text-3xl font-extrabold tracking-tight">39,99€</span><span
+                                    class="text-xs sm:text-sm text-slate-400">/mois</span></div>
+                        </div>
+                        <div class="space-y-2.5 mb-6 flex-grow">
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-500 flex-shrink-0"></i><span
+                                    class="text-slate-600 text-xs sm:text-sm">Tout du plan Pro</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                    class="text-brand-700 font-semibold text-xs sm:text-sm">10 espaces de travail</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                    class="text-brand-700 font-semibold text-xs sm:text-sm">Multi-utilisateurs</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                    class="text-brand-700 font-semibold text-xs sm:text-sm">API et Webhooks</span></div>
+                            <div class="flex items-center gap-2 text-sm"><i data-lucide="check"
+                                    class="w-4 h-4 text-brand-600 flex-shrink-0"></i><span
+                                    class="text-brand-700 font-semibold text-xs sm:text-sm">Support prioritaire</span>
+                            </div>
+                        </div><a href="#"
+                            class="block text-center bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl transition-all text-sm active:scale-[0.97]">Choisir
+                            Business</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Trust badge under pricing -->
+            <div class="text-center mt-6 sm:mt-8 scroll-reveal">
+                <p class="text-xs text-slate-400 flex items-center justify-center gap-3"><i data-lucide="shield-check"
+                        class="w-3.5 h-3.5 text-brand-500"></i>Données hébergées en France · Connexion sécurisée ·
+                    Annulation en un clic</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="py-16 sm:py-24 bg-slate-50">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6">
+            <div class="text-center mb-10 sm:mb-14 scroll-reveal">
+                <div
+                    class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-700 mb-4">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i>Questions fréquentes</div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Tout ce que vous voulez savoir
+                </h2>
+            </div>
+            <div class="space-y-3 sm:space-y-4 scroll-reveal">
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <button class="faq-toggle w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                        onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.faq-chevron').classList.toggle('open')">
+                        <span class="font-semibold text-sm sm:text-base pr-4">Est-ce vraiment gratuit ?</span>
+                        <i data-lucide="chevron-down" class="faq-chevron w-5 h-5 text-slate-400 flex-shrink-0"></i>
+                    </button>
+                    <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6">
+                        <p class="text-sm text-slate-500 leading-relaxed">Oui, le plan Gratuit est gratuit pour toujours
+                            avec 3 factures par mois, sans carte bancaire requise. Vous pouvez passer à un plan payant
+                            quand vous en avez besoin, sans engagement.</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <button class="faq-toggle w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                        onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.faq-chevron').classList.toggle('open')">
+                        <span class="font-semibold text-sm sm:text-base pr-4">Mes données sont-elles en sécurité
+                            ?</span>
+                        <i data-lucide="chevron-down" class="faq-chevron w-5 h-5 text-slate-400 flex-shrink-0"></i>
+                    </button>
+                    <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6">
+                        <p class="text-sm text-slate-500 leading-relaxed">Absolument. Vos données sont chiffrées,
+                            hébergées en France, et chaque utilisateur ne peut accéder qu'à ses propres données. Vous
+                            pouvez exporter ou supprimer vos données à tout moment.</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <button class="faq-toggle w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                        onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.faq-chevron').classList.toggle('open')">
+                        <span class="font-semibold text-sm sm:text-base pr-4">Puis-je récupérer mes données si je veux
+                            quitter ?</span>
+                        <i data-lucide="chevron-down" class="faq-chevron w-5 h-5 text-slate-400 flex-shrink-0"></i>
+                    </button>
+                    <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6">
+                        <p class="text-sm text-slate-500 leading-relaxed">Oui, conformément au RGPD vous pouvez
+                            télécharger l'intégralité de vos données à tout moment ou demander la suppression totale de
+                            votre compte.</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <button class="faq-toggle w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                        onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.faq-chevron').classList.toggle('open')">
+                        <span class="font-semibold text-sm sm:text-base pr-4">L'IA comprend-elle vraiment ce que je dis
+                            ?</span>
+                        <i data-lucide="chevron-down" class="faq-chevron w-5 h-5 text-slate-400 flex-shrink-0"></i>
+                    </button>
+                    <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6">
+                        <p class="text-sm text-slate-500 leading-relaxed">Oui, l'IA est entraînée pour comprendre le
+                            français naturel. Vous pouvez dire "5 jours de dev à 600€" et elle créera la facture
+                            complète avec les bonnes descriptions professionnelles.</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <button class="faq-toggle w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                        onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.faq-chevron').classList.toggle('open')">
+                        <span class="font-semibold text-sm sm:text-base pr-4">Est-ce conforme pour les impôts français
+                            ?</span>
+                        <i data-lucide="chevron-down" class="faq-chevron w-5 h-5 text-slate-400 flex-shrink-0"></i>
+                    </button>
+                    <div class="faq-answer px-5 sm:px-6 pb-5 sm:pb-6">
+                        <p class="text-sm text-slate-500 leading-relaxed">Oui, les mentions légales (pénalités de
+                            retard, indemnité forfaitaire, TVA) sont ajoutées automatiquement. L'export officiel pour
+                            les impôts est disponible sur les plans Pro et Business.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="py-16 sm:py-24 lg:py-32 bg-brand-950 text-white relative overflow-hidden">
+        <div class="absolute inset-0">
+            <div
+                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[800px] h-[500px] sm:h-[800px] bg-brand-500/10 rounded-full blur-[100px] sm:blur-[150px] anim-morph">
+            </div>
+        </div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10 scroll-reveal-scale">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-brand-500 rounded-2xl sm:rounded-3xl mb-6 sm:mb-8 anim-float shadow-2xl shadow-brand-500/30">
+                <i data-lucide="zap" class="w-7 h-7 sm:w-8 sm:h-8 text-white"></i></div>
+            <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-5 sm:mb-6">Prêt à
+                en finir avec<br><span class="gradient-text-light">la paperasse ?</span></h2>
+            <p class="text-base sm:text-lg text-brand-200/60 max-w-2xl mx-auto mb-8 sm:mb-10">Rejoignez les 2 000+
+                entrepreneurs qui ont repris le contrôle de leur facturation.</p>
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                <a href="#tarifs"
+                    class="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-sm sm:text-base relative overflow-hidden"><span
+                        class="relative z-10">Commencer gratuitement</span><i data-lucide="arrow-right"
+                        class="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:translate-x-1 transition-transform"></i>
+                    <div class="absolute inset-0 shimmer-bg"></div>
+                </a>
+                <a href="/login"
+                    class="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-sm sm:text-base backdrop-blur"><i
+                        data-lucide="log-in" class="w-4 h-4 sm:w-5 sm:h-5 text-brand-400"></i>Se connecter</a>
+            </div>
+            <p class="text-xs sm:text-sm text-brand-200/30 mt-5 sm:mt-6">Sans carte bancaire · Sans engagement ·
+                Annulation en un clic</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-brand-950 text-white border-t border-brand-900 py-12 sm:py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 mb-10 sm:mb-12">
+                <div class="col-span-2">
+                    <a href="#" class="flex items-center gap-2 mb-3">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-brand-500 rounded-xl flex items-center justify-center"><i
+                                data-lucide="zap" class="w-[18px] h-[18px] text-white"></i></div><span
+                            class="text-lg sm:text-xl font-bold">Factu<span class="text-brand-400">.me</span></span>
+                    </a>
+                    <p class="text-xs sm:text-sm text-brand-200/40 leading-relaxed max-w-xs mb-4">La plateforme de
+                        facturation 100% française, propulsée par l'IA.</p>
+                    <div class="flex items-center gap-2 sm:gap-3"><a href="#"
+                            class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><i
+                                data-lucide="twitter" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60"></i></a><a
+                            href="#"
+                            class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><i
+                                data-lucide="linkedin" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60"></i></a><a
+                            href="#"
+                            class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-900 hover:bg-brand-800 rounded-lg flex items-center justify-center transition-all active:scale-95"><i
+                                data-lucide="github" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-300/60"></i></a></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-xs sm:text-sm mb-3 text-brand-200">Produit</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#fonctionnalites"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Fonctionnalités</a>
+                        </li>
+                        <li><a href="#tarifs"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Tarifs</a>
+                        </li>
+                        <li><a href="#ia"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">IA</a>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-xs sm:text-sm mb-3 text-brand-200">Ressources</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Documentation</a>
+                        </li>
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Guide
+                                démarrage</a></li>
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">FAQ</a>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-xs sm:text-sm mb-3 text-brand-200">Légal</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Mentions
+                                légales</a></li>
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">CGU</a>
+                        </li>
+                        <li><a href="#"
+                                class="text-xs sm:text-sm text-brand-200/40 hover:text-brand-400 transition-colors">Confidentialité</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div
+                class="border-t border-brand-900 pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p class="text-xs sm:text-sm text-brand-200/30">2025 Factu.me. Fait avec <i data-lucide="zap"
+                        class="w-3 h-3 inline text-brand-400"></i> en France.</p>
+                <div class="flex items-center gap-2 text-[11px] sm:text-xs text-brand-200/30"><span
+                        class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-brand-500 rounded-full animate-pulse"></span>Opérationnel
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn'), mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+        mobileMenu.querySelectorAll('a').forEach(l => l.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function (e) { const h = this.getAttribute('href'); if (h === '#') return; e.preventDefault(); const t = document.querySelector(h); if (t) { window.scrollTo({ top: t.getBoundingClientRect().top + window.pageYOffset - 80, behavior: 'instant' }); } });
+        });
+
+        // Particles
+        const canvas = document.getElementById('particles-canvas'), ctx = canvas.getContext('2d');
+        let particles = []; const isMob = window.innerWidth < 768; const pCount = isMob ? 20 : 45;
+        function resizeCanvas() { const s = canvas.parentElement; canvas.width = s.offsetWidth; canvas.height = s.offsetHeight; }
+        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+        class P { constructor() { this.reset() } reset() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.s = Math.random() * 1.5 + .5; this.sx = (Math.random() - .5) * .2; this.sy = (Math.random() - .5) * .2; this.o = Math.random() * .3 + .1; this.l = Math.random() * 180 + 80; this.ml = this.l } update() { this.x += this.sx; this.y += this.sy; this.l--; if (this.l <= 0 || this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset() } draw() { const a = (this.l / this.ml) * this.o; ctx.beginPath(); ctx.arc(this.x, this.y, this.s, 0, Math.PI * 2); ctx.fillStyle = `rgba(52,211,153,${a})`; ctx.fill() } }
+        for (let i = 0; i < pCount; i++)particles.push(new P());
+        function animP() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw() }); if (!isMob) for (let i = 0; i < particles.length; i++)for (let j = i + 1; j < particles.length; j++) { const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, d = Math.sqrt(dx * dx + dy * dy); if (d < 100) { ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.strokeStyle = `rgba(52,211,153,${.04 * (1 - d / 100)})`; ctx.lineWidth = .5; ctx.stroke() } } requestAnimationFrame(animP) }
+        animP();
+
+        // 3D tilt desktop
+        if (!('ontouchstart' in window)) { document.querySelectorAll('.card-3d').forEach(c => { const i = c.querySelector('.card-3d-inner'); if (!i) return; c.addEventListener('mousemove', e => { const r = c.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, cx = r.width / 2, cy = r.height / 2; i.style.transform = `perspective(1000px) rotateX(${(y - cy) / cy * -7}deg) rotateY(${(x - cx) / cx * 7}deg) scale3d(1.02,1.02,1.02)` }); c.addEventListener('mouseleave', () => { i.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1,1,1)' }) }) }
+
+        // Scroll reveal
+        const rObs = new IntersectionObserver(e => { e.forEach(en => { if (en.isIntersecting) { en.target.classList.add('visible'); rObs.unobserve(en.target) } }) }, { threshold: .08, rootMargin: '0px 0px -30px 0px' });
+        document.querySelectorAll('.scroll-reveal,.scroll-reveal-left,.scroll-reveal-right,.scroll-reveal-scale').forEach(el => rObs.observe(el));
+
+        // Counter
+        const cObs = new IntersectionObserver(e => { e.forEach(en => { if (en.isIntersecting) { const el = en.target, t = parseInt(el.dataset.count); if (!t) return; let c = 0; const s = t / 35; const timer = setInterval(() => { c += s; if (c >= t) { c = t; clearInterval(timer) } el.textContent = Math.round(c) }, 25); cObs.unobserve(el) } }) }, { threshold: .5 });
+        document.querySelectorAll('[data-count]').forEach(el => cObs.observe(el));
+
+        // Nav shadow
+        const nav = document.getElementById('navbar');
+        window.addEventListener('scroll', () => { if (window.scrollY > 40) { nav.classList.add('shadow-xl', 'shadow-brand-500/5'); nav.style.background = 'rgba(255,255,255,.92)' } else { nav.classList.remove('shadow-xl', 'shadow-brand-500/5'); nav.style.background = 'rgba(255,255,255,.85)' } });
+
+        // Sticky mobile CTA
+        const stickyCta = document.getElementById('sticky-cta');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 600) stickyCta.classList.add('show');
+            else stickyCta.classList.remove('show');
+        });
+    </script>
+</body>
+
+</html>

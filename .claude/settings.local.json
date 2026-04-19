@@ -30,7 +30,8 @@
       "mcp__ide__getDiagnostics",
       "mcp__claude_ai_Supabase__get_advisors",
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(claude mcp *)"
     ]
   }
 }
