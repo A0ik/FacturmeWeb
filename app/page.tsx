@@ -168,7 +168,7 @@ export default function LandingPage() {
       </div>
 
       {/* ═══════════ NAVBAR ═══════════ */}
-      <nav className={`fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 backdrop-blur-2xl bg-white/90 rounded-full border transition-all duration-300 max-w-[680px] w-[calc(100%-24px)] sm:w-auto px-3 sm:px-5 py-2.5 ${scrolled ? 'border-brand-200/60 shadow-lg shadow-brand-500/8' : 'border-brand-100/30 shadow-md shadow-black/[0.03]'}`}>
+      <nav className={`fixed top-2 sm:top-3 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto z-50 backdrop-blur-2xl bg-white/90 rounded-full border transition-all duration-300 sm:max-w-[680px] px-3 sm:px-5 py-2 sm:py-2.5 ${scrolled ? 'border-brand-200/60 shadow-lg shadow-brand-500/8' : 'border-brand-100/30 shadow-md shadow-black/[0.03]'}`}>
         <div className="flex items-center justify-between gap-2">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
@@ -200,7 +200,7 @@ export default function LandingPage() {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="fixed top-16 left-3 right-3 z-50 md:hidden backdrop-blur-2xl bg-white/95 rounded-2xl border border-brand-100/30 shadow-xl shadow-black/[0.06] overflow-hidden">
+        <div className="fixed top-14 sm:top-16 left-2 right-2 sm:left-4 sm:right-4 z-50 md:hidden backdrop-blur-2xl bg-white/95 rounded-2xl border border-brand-100/30 shadow-xl shadow-black/[0.06] overflow-hidden">
           <div className="px-4 py-3 space-y-1">
             <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="block text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors">Fonctionnalités</a>
             <a href="#ai" onClick={(e) => scrollTo(e, '#ai')} className="block text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 py-2.5 px-3 rounded-xl transition-colors">Intelligence Artificielle</a>
@@ -215,49 +215,54 @@ export default function LandingPage() {
       )}
 
       {/* ═══════════ HERO ═══════════ */}
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-brand-950 pt-20 sm:pt-0">
+      <section className="relative min-h-[100dvh] flex items-center overflow-hidden bg-brand-950 pt-24 pb-16 sm:pt-0 sm:pb-0">
         <div className="absolute inset-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[500px] sm:w-[700px] lg:w-[900px] h-[500px] sm:h-[700px] lg:h-[900px] bg-brand-500/10 rounded-full blur-[120px] animate-[blob_15s_ease-in-out_infinite]" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-[400px] sm:w-[600px] lg:w-[800px] h-[400px] sm:h-[600px] lg:h-[800px] bg-brand-400/8 rounded-full blur-[100px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-5s' }} />
+          {/* Blob 1 — top left, MASSIVE */}
+          <div className="absolute top-[-30%] left-[-20%] w-[120vw] sm:w-[900px] md:w-[1200px] lg:w-[1600px] h-[120vw] sm:h-[900px] md:h-[1200px] lg:h-[1600px] bg-brand-500/12 rounded-full blur-[150px] sm:blur-[200px] animate-[blob_15s_ease-in-out_infinite]" />
+          {/* Blob 2 — bottom right, MASSIVE */}
+          <div className="absolute bottom-[-30%] right-[-20%] w-[100vw] sm:w-[800px] md:w-[1100px] lg:w-[1400px] h-[100vw] sm:h-[800px] md:h-[1100px] lg:h-[1400px] bg-brand-400/10 rounded-full blur-[130px] sm:blur-[180px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-5s' }} />
+          {/* Blob 3 — center glow */}
+          <div className="absolute top-[30%] left-[30%] w-[60vw] sm:w-[600px] md:w-[800px] h-[60vw] sm:h-[600px] md:h-[800px] bg-brand-500/6 rounded-full blur-[100px] sm:blur-[150px] animate-[blob_15s_ease-in-out_infinite]" style={{ animationDelay: '-10s' }} />
+          {/* Grid overlay */}
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)', backgroundSize: '50px 50px' }} />
           <ParticlesCanvas />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 lg:py-0 relative z-10 w-full">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-4 sm:py-16 lg:py-0 relative z-10 w-full">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-20 items-center">
             {/* Text */}
-            <div className="space-y-5 sm:space-y-7 order-2 lg:order-1">
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8 order-2 lg:order-1 text-center lg:text-left">
               <ScrollReveal direction="down">
-                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-brand-300">
+                <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium text-brand-300">
                   <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-brand-400" /></span>
                   100% Français <Zap className="w-3 h-3 text-brand-400" />
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.1}>
-                <h1 className="text-[2rem] sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-[1.08] tracking-tight">
+                <h1 className="text-[1.85rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight">
                   <span className="text-white">La facturation</span><br />
                   <span className="gradient-text-light">propulsée</span>
                   <span className="text-white"> par</span><br />
                   <span className="gradient-text-light">l&apos;IA</span>
-                  <Zap className="inline-block w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 text-brand-400 ml-1 sm:ml-2 animate-[wiggle_2s_ease-in-out_infinite]" />
+                  <Zap className="inline-block w-5 h-5 sm:w-8 sm:h-8 md:w-10 md:h-10 text-brand-400 ml-1 sm:ml-2 animate-[wiggle_2s_ease-in-out_infinite]" />
                 </h1>
               </ScrollReveal>
 
               <ScrollReveal delay={0.2}>
-                <div className="space-y-4">
-                  <p className="text-base sm:text-lg lg:text-xl text-brand-200/70 leading-relaxed max-w-lg">Créez vos factures en dictant à voix haute. L&apos;IA fait tout le reste.</p>
-                  {/* Voice bars with FIXED height container to prevent layout shift */}
-                  <div className="flex items-center justify-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-4 max-w-xs mx-auto backdrop-blur">
-                    <div className="flex items-end gap-[3px] h-[24px] overflow-hidden">
+                <div className="space-y-3 sm:space-y-4">
+                  <p className="text-sm sm:text-lg md:text-xl lg:text-2xl text-brand-200/70 leading-relaxed max-w-lg mx-auto lg:mx-0">Créez vos factures en dictant à voix haute. L&apos;IA fait tout le reste.</p>
+                  {/* Voice bars */}
+                  <div className="flex items-center justify-center gap-3 sm:gap-4 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-3 sm:py-4 max-w-[280px] sm:max-w-xs mx-auto lg:mx-0 backdrop-blur">
+                    <div className="flex items-end gap-[2px] sm:gap-[3px] h-[22px] sm:h-[26px] overflow-hidden">
                       {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="w-[3px] bg-brand-400 rounded-full" style={{ height: `${10 + Math.random() * 12}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }} />
+                        <div key={i} className="w-[2.5px] sm:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 10}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }} />
                       ))}
                     </div>
-                    <Mic className="w-5 h-5 text-brand-400 flex-shrink-0" />
-                    <div className="flex items-end gap-[3px] h-[24px] overflow-hidden">
+                    <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400 flex-shrink-0" />
+                    <div className="flex items-end gap-[2px] sm:gap-[3px] h-[22px] sm:h-[26px] overflow-hidden">
                       {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="w-[3px] bg-brand-400 rounded-full" style={{ height: `${10 + Math.random() * 12}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.12}s` }} />
+                        <div key={i} className="w-[2.5px] sm:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 10}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.12}s` }} />
                       ))}
                     </div>
                   </div>
@@ -265,100 +270,100 @@ export default function LandingPage() {
               </ScrollReveal>
 
               <ScrollReveal delay={0.3}>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-sm sm:text-base relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 mx-auto lg:mx-0 max-w-sm sm:max-w-none">
+                  <Link href="/register" className="group inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 text-white font-semibold px-5 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all shadow-xl shadow-brand-500/30 hover:shadow-2xl active:scale-[0.97] text-[13px] sm:text-base relative overflow-hidden">
                     <span className="relative z-10">Commencer gratuitement</span>
                     <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-in-out]" />
                   </Link>
-                  <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-sm sm:text-base backdrop-blur">
+                  <a href="#features" onClick={(e) => scrollTo(e, '#features')} className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white font-medium px-5 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 text-[13px] sm:text-base backdrop-blur">
                     <PlayCircle className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400" />Voir la démo
                   </a>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.4}>
-                <div className="flex items-center justify-center gap-4 text-[11px] text-brand-200/30">
-                  <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" />Données en France</span>
+                <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 text-[10px] sm:text-[11px] text-brand-200/30">
+                  <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" />France</span>
                   <span className="flex items-center gap-1"><Lock className="w-3 h-3" />SSL</span>
                   <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />RGPD</span>
                 </div>
               </ScrollReveal>
 
               <ScrollReveal delay={0.5}>
-                <div className="flex items-center gap-4 sm:gap-5 pt-1">
+                <div className="flex items-center gap-3 sm:gap-5 pt-1 justify-center lg:justify-start">
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map((i) => (
-                      <img key={i} src={`https://picsum.photos/seed/face${i}/36/36.jpg`} className="w-8 h-8 rounded-full border-2 border-brand-950 object-cover" alt="" />
+                      <img key={i} src={`https://picsum.photos/seed/face${i}/36/36.jpg`} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-brand-950 object-cover" alt="" />
                     ))}
-                    <div className="w-8 h-8 rounded-full border-2 border-brand-950 bg-brand-500/20 flex items-center justify-center text-[10px] font-bold text-brand-300">+2k</div>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-brand-950 bg-brand-500/20 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-brand-300">+2k</div>
                   </div>
                   <div>
-                    <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-3 h-3 text-white fill-white" />)}</div>
-                    <div className="text-[11px] text-brand-300/40 mt-0.5">2 000+ entrepreneurs</div>
+                    <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white fill-white" />)}</div>
+                    <div className="text-[10px] sm:text-[11px] text-brand-300/40 mt-0.5">2 000+ entrepreneurs</div>
                   </div>
                 </div>
               </ScrollReveal>
             </div>
 
-            {/* 3D Invoice — more tilted, no visible borders */}
+            {/* 3D Invoice */}
             <div className="relative order-1 lg:order-2 flex justify-center">
               <ScrollReveal direction="scale" delay={0.3}>
-                <div className="relative w-full max-w-[300px] sm:max-w-[380px] lg:max-w-[420px]">
-                  <div className="absolute w-[70%] h-[70%] bg-brand-500/15 rounded-3xl blur-[50px] sm:blur-[60px] animate-[blob_15s_ease-in-out_infinite]" />
+                <div className="relative w-full max-w-[260px] sm:max-w-[360px] md:max-w-[420px] lg:max-w-[480px]">
+                  <div className="absolute w-[80%] h-[80%] bg-brand-500/15 rounded-3xl blur-[40px] sm:blur-[60px] animate-[blob_15s_ease-in-out_infinite]" />
 
-                  <div className="relative animate-[heroFloat_8s_ease-in-out_infinite]" style={{ boxShadow: '0 0 60px rgba(16,185,129,.25), 0 0 120px rgba(16,185,129,.1)', transformStyle: 'preserve-3d' }}>
-                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden" style={{ transform: 'rotateY(-14deg) rotateX(2deg)', border: 'none' }}>
+                  <div className="relative animate-[heroFloat_8s_ease-in-out_infinite]" style={{ boxShadow: '0 0 80px rgba(16,185,129,.3), 0 0 160px rgba(16,185,129,.12)', transformStyle: 'preserve-3d' }}>
+                    <div className="bg-white rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden" style={{ transform: 'rotateY(-14deg) rotateX(2deg)' }}>
                       {/* Browser bar */}
-                      <div className="bg-brand-900 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/80" />
-                          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400/80" />
-                          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/80" />
+                      <div className="bg-brand-900 px-2.5 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 flex items-center gap-1.5 sm:gap-2">
+                        <div className="flex gap-1 sm:gap-1.5">
+                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-red-400/80" />
+                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-amber-400/80" />
+                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full bg-green-400/80" />
                         </div>
-                        <div className="flex-1 bg-brand-800 rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[11px] text-brand-300 font-mono flex items-center gap-1 truncate">
-                          <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />factu.me/invoice/FACT-2026-0042
+                        <div className="flex-1 bg-brand-800 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[7px] sm:text-[10px] md:text-[11px] text-brand-300 font-mono flex items-center gap-0.5 sm:gap-1 truncate">
+                          <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 flex-shrink-0" />factu.me/invoice/FACT-2026-0042
                         </div>
                       </div>
 
                       {/* Invoice content */}
-                      <div className="p-3.5 sm:p-5 space-y-3 sm:space-y-4">
-                        <div className="flex justify-between items-start gap-2">
+                      <div className="p-2.5 sm:p-4 md:p-5 space-y-2 sm:space-y-3 md:space-y-4">
+                        <div className="flex justify-between items-start gap-1.5 sm:gap-2">
                           <div className="min-w-0">
-                            <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Émetteur</div>
-                            <div className="font-bold text-xs sm:text-sm text-slate-800 truncate">Martin Consulting</div>
-                            <div className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">12 rue de la Paix, 75002 Paris</div>
+                            <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Émetteur</div>
+                            <div className="font-bold text-[10px] sm:text-xs md:text-sm text-slate-800 truncate">Martin Consulting</div>
+                            <div className="text-[8px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">12 rue de la Paix, 75002 Paris</div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="inline-flex items-center gap-1 bg-brand-50 text-brand-700 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-brand-200">
-                              <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Payée
+                            <div className="inline-flex items-center gap-0.5 sm:gap-1 bg-brand-50 text-brand-700 text-[8px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 md:px-2.5 py-0.5 rounded-full border border-brand-200">
+                              <CheckCircle className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />Payée
                             </div>
-                            <div className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5">FACT-2026-0042</div>
+                            <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 mt-1">FACT-2026-0042</div>
                           </div>
                         </div>
-                        <div className="border-t border-slate-100 pt-2.5 sm:pt-3">
-                          <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Client</div>
-                          <div className="font-semibold text-xs sm:text-sm text-slate-800">Dupont Consulting SAS</div>
-                          <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">8 av. Champs-Élysées, 75008</div>
+                        <div className="border-t border-slate-100 pt-1.5 sm:pt-2.5 md:pt-3">
+                          <div className="text-[7px] sm:text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-0.5">Client</div>
+                          <div className="font-semibold text-[10px] sm:text-xs md:text-sm text-slate-800">Dupont Consulting SAS</div>
+                          <div className="text-[8px] sm:text-[10px] md:text-[11px] text-slate-400 truncate">8 av. Champs-Élysées, 75008</div>
                         </div>
-                        <div className="overflow-hidden rounded-lg border border-slate-100">
-                          <div className="bg-slate-50 px-2 sm:px-3 py-1.5 sm:py-2 grid grid-cols-4 text-[8px] sm:text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                            <span>Description</span><span className="text-right">Qté</span><span className="text-right">Prix</span><span className="text-right">Total</span>
+                        <div className="overflow-hidden rounded-md sm:rounded-lg border border-slate-100">
+                          <div className="bg-slate-50 px-1.5 sm:px-2.5 md:px-3 py-1 sm:py-1.5 md:py-2 grid grid-cols-4 text-[6px] sm:text-[8px] md:text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                            <span>Desc.</span><span className="text-right">Qté</span><span className="text-right">Prix</span><span className="text-right">Total</span>
                           </div>
                           <div className="divide-y divide-slate-50">
-                            <div className="px-2 sm:px-3 py-2 sm:py-2.5 grid grid-cols-4 text-[10px] sm:text-[12px]">
-                              <span className="text-slate-700 truncate pr-1">Dév. web</span><span className="text-right text-slate-400">5j</span><span className="text-right text-slate-400">600€</span><span className="text-right font-semibold">3 000€</span>
+                            <div className="px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 grid grid-cols-4 text-[8px] sm:text-[10px] md:text-[12px]">
+                              <span className="text-slate-700 truncate pr-0.5 sm:pr-1">Dév. web</span><span className="text-right text-slate-400">5j</span><span className="text-right text-slate-400">600€</span><span className="text-right font-semibold">3 000€</span>
                             </div>
-                            <div className="px-2 sm:px-3 py-2 sm:py-2.5 grid grid-cols-4 text-[10px] sm:text-[12px]">
-                              <span className="text-slate-700 truncate pr-1">Conseil UX</span><span className="text-right text-slate-400">2j</span><span className="text-right text-slate-400">400€</span><span className="text-right font-semibold">800€</span>
+                            <div className="px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 grid grid-cols-4 text-[8px] sm:text-[10px] md:text-[12px]">
+                              <span className="text-slate-700 truncate pr-0.5 sm:pr-1">Conseil UX</span><span className="text-right text-slate-400">2j</span><span className="text-right text-slate-400">400€</span><span className="text-right font-semibold">800€</span>
                             </div>
                           </div>
                         </div>
                         <div className="flex justify-end">
-                          <div className="bg-brand-50 rounded-xl p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-[150px] sm:min-w-[180px] border border-brand-100">
-                            <div className="flex justify-between text-[10px] sm:text-[11px]"><span className="text-slate-400">Total HT</span><span className="font-medium">3 800€</span></div>
-                            <div className="flex justify-between text-[10px] sm:text-[11px]"><span className="text-slate-400">TVA 20%</span><span className="font-medium">760€</span></div>
-                            <div className="flex justify-between text-xs sm:text-sm font-bold border-t border-brand-200 pt-1 sm:pt-1.5 mt-1"><span>Total TTC</span><span className="text-brand-600">4 560€</span></div>
+                          <div className="bg-brand-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 space-y-0.5 min-w-[120px] sm:min-w-[150px] md:min-w-[180px] border border-brand-100">
+                            <div className="flex justify-between text-[8px] sm:text-[10px] md:text-[11px]"><span className="text-slate-400">Total HT</span><span className="font-medium">3 800€</span></div>
+                            <div className="flex justify-between text-[8px] sm:text-[10px] md:text-[11px]"><span className="text-slate-400">TVA 20%</span><span className="font-medium">760€</span></div>
+                            <div className="flex justify-between text-[9px] sm:text-xs md:text-sm font-bold border-t border-brand-200 pt-0.5 sm:pt-1 mt-0.5"><span>Total TTC</span><span className="text-brand-600">4 560€</span></div>
                           </div>
                         </div>
                       </div>
@@ -366,18 +371,18 @@ export default function LandingPage() {
                   </div>
 
                   {/* Floating badge: IA Active */}
-                  <div className="absolute -top-3 -right-1 sm:-top-5 sm:-right-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '0.5s' }}>
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-xl shadow-brand-500/10 px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-brand-100 rounded-lg flex items-center justify-center flex-shrink-0"><Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" /></div>
-                      <div><div className="text-[10px] sm:text-[11px] font-bold text-slate-800">IA Active</div><div className="text-[9px] sm:text-[10px] text-brand-500 font-medium">Générée en 3s</div></div>
+                  <div className="absolute -top-2 -right-0 sm:-top-4 sm:-right-4 md:-top-5 md:-right-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '0.5s' }}>
+                    <div className="bg-white rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl shadow-brand-500/10 px-2 py-1.5 sm:px-3.5 sm:py-2.5 flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-brand-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0"><Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-brand-600" /></div>
+                      <div><div className="text-[8px] sm:text-[10px] md:text-[11px] font-bold text-slate-800">IA Active</div><div className="text-[7px] sm:text-[9px] md:text-[10px] text-brand-500 font-medium">Générée en 3s</div></div>
                     </div>
                   </div>
 
                   {/* Floating badge: Envoyée et payée */}
-                  <div className="absolute -bottom-2 -left-1 sm:-bottom-4 sm:-left-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '1.5s' }}>
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-xl shadow-brand-500/10 px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-brand-100 rounded-lg flex items-center justify-center flex-shrink-0"><MailCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" /></div>
-                      <div><div className="text-[10px] sm:text-[11px] font-bold text-slate-800">Envoyée et payée</div><div className="text-[9px] sm:text-[10px] text-brand-500 font-medium">via Stripe</div></div>
+                  <div className="absolute -bottom-1.5 -left-0 sm:-bottom-3 sm:-left-4 md:-bottom-4 md:-left-5 animate-[float_6s_ease-in-out_infinite] z-20" style={{ animationDelay: '1.5s' }}>
+                    <div className="bg-white rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl shadow-brand-500/10 px-2 py-1.5 sm:px-3.5 sm:py-2.5 flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-brand-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0"><MailCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-brand-600" /></div>
+                      <div><div className="text-[8px] sm:text-[10px] md:text-[11px] font-bold text-slate-800">Envoyée et payée</div><div className="text-[7px] sm:text-[9px] md:text-[10px] text-brand-500 font-medium">via Stripe</div></div>
                     </div>
                   </div>
                 </div>
@@ -393,8 +398,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ STATS ═══════════ */}
-      <section className="py-8 sm:py-10 bg-white relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <section className="py-6 sm:py-10 bg-white relative z-10">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             {[{ target: 6, label: 'Types de documents' }, { target: 6, label: 'Templates PDF' }].map((s, i) => (
               <div key={i} className="text-center">
