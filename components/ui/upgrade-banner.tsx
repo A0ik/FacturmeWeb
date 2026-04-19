@@ -62,15 +62,8 @@ export function UpgradeBanner({
       opacity: 1,
       rotate: 0,
       transition: {
-        x: { duration: 0.3, ease: "easeOut" },
-        y: { duration: 0.3, ease: "easeOut" },
-        opacity: { duration: 0.3 },
-        rotate: {
-          duration: 0.5,
-          type: "spring",
-          stiffness: 200,
-          damping: 15,
-        },
+        duration: 0.3,
+        ease: [0.25, 0.46, 0.45, 0.94],
       },
     }),
   };
