@@ -344,7 +344,8 @@ export async function createFacturXPdf(
     const fileSpecRef = pdfDoc.context.register(fileSpecDict);
 
     // Créer l'array AF (Associated Files)
-    const afArray = pdfDoc.context.array([fileSpecRef]);
+    const afArray = PDFArray.withContext(pdfDoc.context);
+    afArray.push(fileSpecRef);
 
     // Ajouter AF au catalogue
     const catalog = pdfDoc.catalog;
@@ -510,7 +511,7 @@ export async function downloadFacturXPdf(
     const facturXPdfBytes = await createFacturXPdf(pdfBuffer, invoice, profile);
 
     // Créer un blob et télécharger
-    const blob = new Blob([facturXPdfBytes], { type: 'application/pdf' });
+    const blob = new Blob([Buffer.from(facturXPdfBytes)], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -615,8 +616,12 @@ export async function extractFacturXXmlFromPdf(pdfBuffer: Uint8Array): Promise<s
     if (!afArray) return null;
 
     // Chercher le fichier XML embarqué
-    const afItems = afArray instanceof PDFArray ? afArray.items() : [];
-    for (const item of afItems) {
+    // @ts-ignore - pdf-lib doesn't expose proper types for PDFArray
+    const afArrayLength = afArray.length || 0;
+    for (let i = 0; i < afArrayLength; i++) {
+      // @ts-ignore
+      const item = afArray.get(i);
+      if (!item) continue;
       // @ts-ignore
       const ef = item?.get(PDFName.of('EF'));
       if (ef) {

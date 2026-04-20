@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.filter(r => !r.success).length;
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(Buffer.from(zipBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',

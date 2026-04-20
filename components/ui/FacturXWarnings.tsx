@@ -44,9 +44,9 @@ interface FacturXWarningsProps {
  */
 export function FacturXWarnings({ invoice, profile, variant = 'inline' }: FacturXWarningsProps) {
   // Vérifier l'éligibilité Factur-X
-  const eligibility = isFacturXEligible(invoice as Invoice, profile || {});
+  const eligibility = isFacturXEligible(invoice as Invoice, (profile || {}) as Profile);
 
-  if (eligibility.eligible && eligibility.warnings.length === 0) {
+  if (eligibility.eligible && (!eligibility.warnings || eligibility.warnings.length === 0)) {
     return null;
   }
 

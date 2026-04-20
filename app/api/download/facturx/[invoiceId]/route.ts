@@ -149,7 +149,7 @@ export async function GET(
 
     console.log('[Factur-X] Envoi du fichier:', filename);
 
-    return new NextResponse(facturXPdfBytes, {
+    return new NextResponse(Buffer.from(facturXPdfBytes), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

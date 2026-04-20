@@ -130,7 +130,7 @@ export async function GET(
     // ── Envoi du PDF ────────────────────────────────────────────────────────
     const filename = `${invoice.number.replace(/\//g, '-')}-facturx.pdf`;
 
-    return new NextResponse(facturXPdfBytes, {
+    return new NextResponse(Buffer.from(facturXPdfBytes), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

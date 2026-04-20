@@ -112,13 +112,16 @@ export const useDataStore = create<DataState>((set, get) => ({
     }
 
     // Update profile count in background (don't wait for it)
-    getSupabaseClient().from('profiles').update({
-      invoice_count: invoiceCount,
-      monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1,
-      invoice_month: currentMonth
-    }).eq('id', user.id).then(() => {
-      // Refresh profile from server
-      getSupabaseClient().from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+    (async () => {
+      try {
+        await getSupabaseClient().from('profiles').update({
+          invoice_count: invoiceCount,
+          monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1,
+          invoice_month: currentMonth
+        }).eq('id', user.id);
+
+        // Refresh profile from server
+        const { data } = await getSupabaseClient().from('profiles').select('*').eq('id', user.id).single();
         if (data) {
           // Update local auth store if available
           try {
@@ -128,10 +131,10 @@ export const useDataStore = create<DataState>((set, get) => ({
             console.warn('[createInvoice] Could not update auth store:', e);
           }
         }
-      });
-    }).catch((e) => {
-      console.warn('[createInvoice] Profile update failed (non-critical):', e);
-    });
+      } catch (e) {
+        console.warn('[createInvoice] Profile update failed (non-critical):', e);
+      }
+    })();
 
     set((s) => ({ invoices: [data, ...s.invoices] }));
     get().computeStats();
