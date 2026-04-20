@@ -266,18 +266,62 @@ export default function SettingsPage() {
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 2 Mo.');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image valide (JPG, PNG, etc.).');
+      return;
+    }
+
     setUploading(true);
+    setError('');
     try {
       const { data: { session } } = await getSupabaseClient().auth.getSession();
-      const user = session?.user; if (!user) throw new Error('Non authentifié');
+      const user = session?.user;
+      if (!user) throw new Error('Non authentifié');
+
       const ext = file.name.split('.').pop();
-      const path = `logos/${user.id}.${ext}`;
-      await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
-      const { data } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
-      await updateProfile({ logo_url: data.publicUrl } as any);
-    } catch (e: any) { setError(e.message); }
-    finally { setUploading(false); }
+      const fileName = `${user.id}.${ext}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload to the 'logos' bucket (correct bucket)
+      const { error: uploadError } = await getSupabaseClient()
+        .storage
+        .from('logos')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        console.error('[Logo Upload] Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = getSupabaseClient()
+        .storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new logo URL
+      await updateProfile({ logo_url: publicUrl } as any);
+
+      toast.success('Logo mis à jour avec succès !');
+    } catch (e: any) {
+      console.error('[Logo Upload] Error:', e);
+      setError(e.message || 'Erreur lors du téléchargement du logo');
+      toast.error(e.message || 'Erreur lors du téléchargement du logo');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (e.target) e.target.value = '';
+    }
   };
 
   const handleManageSubscription = async () => {
@@ -295,18 +339,62 @@ export default function SettingsPage() {
   };
 
   const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 2 Mo.');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image valide (JPG, PNG, etc.).');
+      return;
+    }
+
     setUploadingSig(true);
+    setError('');
     try {
       const { data: { session } } = await getSupabaseClient().auth.getSession();
-      const user = session?.user; if (!user) throw new Error('Non authentifié');
+      const user = session?.user;
+      if (!user) throw new Error('Non authentifié');
+
       const ext = file.name.split('.').pop();
-      const path = `signatures/${user.id}.${ext}`;
-      await getSupabaseClient().storage.from('assets').upload(path, file, { upsert: true });
-      const { data } = getSupabaseClient().storage.from('assets').getPublicUrl(path);
-      await updateProfile({ signature_url: data.publicUrl } as any);
-    } catch (e: any) { setError(e.message); }
-    finally { setUploadingSig(false); }
+      const fileName = `signature.${ext}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload to the 'logos' bucket with correct path format for RLS
+      const { error: uploadError } = await getSupabaseClient()
+        .storage
+        .from('logos')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        console.error('[Signature Upload] Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = getSupabaseClient()
+        .storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new signature URL
+      await updateProfile({ signature_url: publicUrl } as any);
+
+      toast.success('Signature mise à jour avec succès !');
+    } catch (e: any) {
+      console.error('[Signature Upload] Error:', e);
+      setError(e.message || 'Erreur lors du téléchargement de la signature');
+      toast.error(e.message || 'Erreur lors du téléchargement de la signature');
+    } finally {
+      setUploadingSig(false);
+      // Reset file input
+      if (e.target) e.target.value = '';
+    }
   };
 
   const handleRemoveSignature = async () => {

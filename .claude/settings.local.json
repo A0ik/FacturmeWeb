@@ -46,7 +46,8 @@
       "mcp__magic__21st_magic_component_inspiration",
       "Bash(rtk ls *)",
       "Bash(rtk grep *)",
-      "Bash(rtk next *)"
+      "Bash(rtk next *)",
+      "mcp__supabase__list_storage_buckets"
     ]
   },
   "enableAllProjectMcpServers": true,
