@@ -13,20 +13,26 @@ import {
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmbeddedCheckout, { PlanInfo } from '@/components/ui/EmbeddedCheckout';
+import OptimizedPricingCard from '@/components/ui/OptimizedPricingCard';
+import { PaywallHeader } from '@/components/ui/PaywallHeader';
 
-interface PlanFeature { label: string; included: boolean; }
+interface PlanFeature { label: string; included: boolean; highlight?: boolean; }
 interface Plan {
   id: string; name: string; price: string; tagline: string;
   icon: React.ElementType; iconColor: string; iconBg: string;
-  gradient: string; features: PlanFeature[]; cta: string; badge?: string;
+  gradient: string; gradientFrom: string; gradientTo: string;
+  features: PlanFeature[]; cta: string; badge?: string;
+  borderColor: string; glowColor: string; popular?: boolean;
 }
 
 const PLANS: Plan[] = [
   {
     id: 'solo', name: 'Solo', price: '9,99€', tagline: 'Idéal pour démarrer',
-    icon: Zap, iconColor: 'text-white', iconBg: 'from-primary to-primary-dark',
-    gradient: 'from-primary via-primary to-primary-dark',
-    cta: 'Choisir Solo', badge: 'Populaire', features: [
+    icon: Zap, iconColor: 'text-white', iconBg: 'from-emerald-500 to-emerald-600',
+    gradient: 'from-emerald-500 via-emerald-600 to-emerald-700',
+    gradientFrom: 'from-emerald-500', gradientTo: 'to-emerald-700',
+    borderColor: 'emerald-500', glowColor: 'shadow-emerald-500',
+    cta: 'Choisir Solo', badge: 'Économique', features: [
       { label: 'Factures illimitées', included: true },
       { label: 'Clients illimités', included: true },
       { label: 'Envoi par email', included: true },
@@ -39,9 +45,11 @@ const PLANS: Plan[] = [
   },
   {
     id: 'pro', name: 'Pro', price: '19,99€', tagline: 'Pour grandir',
-    icon: Rocket, iconColor: 'text-white', iconBg: 'from-violet-500 to-violet-600',
-    gradient: 'from-violet-500 via-violet-600 to-violet-700',
-    cta: 'Choisir Pro', features: [
+    icon: Rocket, iconColor: 'text-white', iconBg: 'from-blue-800 to-indigo-900',
+    gradient: 'from-blue-800 via-blue-900 to-indigo-900',
+    gradientFrom: 'from-blue-800', gradientTo: 'to-indigo-900',
+    borderColor: 'blue-800', glowColor: 'shadow-blue-800',
+    cta: 'Choisir Pro', badge: 'Populaire', popular: true, features: [
       { label: 'Tout dans Solo', included: true },
       { label: 'IA & Relances', included: true },
       { label: 'Export FEC', included: true },
@@ -54,9 +62,11 @@ const PLANS: Plan[] = [
   },
   {
     id: 'business', name: 'Business', price: '39,99€', tagline: 'Pour les équipes',
-    icon: Crown, iconColor: 'text-white', iconBg: 'from-orange-500 to-orange-600',
-    gradient: 'from-orange-500 via-orange-600 to-orange-700',
-    cta: 'Choisir Business', features: [
+    icon: Crown, iconColor: 'text-white', iconBg: 'from-purple-600 to-violet-700',
+    gradient: 'from-purple-600 via-violet-700 to-purple-800',
+    gradientFrom: 'from-purple-600', gradientTo: 'to-purple-800',
+    borderColor: 'purple-600', glowColor: 'shadow-purple-600',
+    cta: 'Choisir Business', badge: 'Recommandé', features: [
       { label: 'Tout dans Pro', included: true },
       { label: '10 espaces de travail', included: true },
       { label: 'API & Webhooks', included: true },
@@ -73,175 +83,6 @@ function getHighlightedPlan(tier: string): string {
   if (tier === 'free' || tier === 'solo') return 'pro';
   return 'business';
 }
-
-// Glass Plan Card Component
-const GlassPlanCard = ({
-  plan, isHighlighted, isCurrent, isLoading, isDowngrade, onClick, delay,
-}: {
-  plan: Plan;
-  isHighlighted: boolean;
-  isCurrent: boolean;
-  isLoading: boolean;
-  isDowngrade: boolean;
-  onClick: () => void;
-  delay: number;
-}) => {
-  const Icon = plan.icon;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      className="relative h-full"
-    >
-      {/* Glow effect */}
-      {isHighlighted && (
-        <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-violet-500/20 to-primary/20 rounded-[40px] blur-2xl opacity-75" />
-      )}
-
-      <motion.div
-        whileHover={{ y: -8 }}
-        className={cn(
-          'relative h-full flex flex-col rounded-3xl border-2 overflow-hidden transition-all duration-300',
-          isHighlighted
-            ? 'border-primary shadow-2xl shadow-primary/20'
-            : 'border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl',
-          isCurrent && !isHighlighted && 'border-primary/40 ring-2 ring-primary/20',
-          'cursor-pointer group bg-white dark:bg-gray-900'
-        )}
-        onClick={onClick}
-      >
-        {/* Header with gradient */}
-        <div className={cn(
-          'relative p-6 pb-8 bg-gradient-to-br',
-          plan.gradient
-        )}>
-          {/* Animated pattern */}
-          <div className="absolute inset-0 opacity-[0.1]">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }} />
-          </div>
-
-          {/* Badge */}
-          {plan.badge && isHighlighted && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: delay + 0.3, type: 'spring', bounce: 0.5 }}
-              className="absolute top-4 right-4"
-            >
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider border border-white/30">
-                <Sparkles size={10} />
-                {plan.badge}
-              </span>
-            </motion.div>
-          )}
-          {isCurrent && !isHighlighted && (
-            <div className="absolute top-4 right-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider border border-white/30">
-                <Check size={10} />
-                Plan actuel
-              </span>
-            </div>
-          )}
-
-          <div className="relative">
-            <motion.div
-              whileHover={{ rotate: [0, -10, 10, -10, 0] }}
-              transition={{ duration: 0.5 }}
-              className={cn(
-                'inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-4 bg-white/20 backdrop-blur-sm',
-              )}
-            >
-              <Icon size={28} className={plan.iconColor} />
-            </motion.div>
-            <h3 className="text-2xl font-black text-white">{plan.name}</h3>
-            <p className="text-sm text-white/80 mt-1">{plan.tagline}</p>
-          </div>
-
-          <div className="relative mt-6">
-            <div className="flex items-end gap-1">
-              <span className="text-5xl font-black text-white">{plan.price}</span>
-              <span className="text-lg text-white/60 mb-2">/ mois</span>
-            </div>
-            <p className="text-xs text-white/60 mt-2">Sans engagement • Résiliable à tout moment</p>
-          </div>
-        </div>
-
-        {/* Features */}
-        <div className="flex-1 p-6 bg-white dark:bg-gray-900">
-          <ul className="space-y-3">
-            {plan.features.map((feat, i) => (
-              <motion.li
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: delay + 0.1 + (i * 0.05) }}
-                className="flex items-start gap-3"
-              >
-                {feat.included ? (
-                  <div className="flex-shrink-0 mt-0.5">
-                    <CheckCircle2 size={18} className="text-primary" strokeWidth={2.5} />
-                  </div>
-                ) : (
-                  <div className="flex-shrink-0 mt-0.5">
-                    <Circle size={18} className="text-gray-300 dark:text-gray-600" strokeWidth={2} />
-                  </div>
-                )}
-                <span className={cn('text-sm break-words', feat.included ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500')}>
-                  {feat.label}
-                </span>
-              </motion.li>
-            ))}
-          </ul>
-        </div>
-
-        {/* CTA Button */}
-        <div className="p-6 pt-0 bg-white dark:bg-gray-900">
-          <motion.button
-            whileHover={{ scale: isCurrent || isDowngrade ? 1 : 1.02 }}
-            whileTap={{ scale: isCurrent || isDowngrade ? 1 : 0.98 }}
-            disabled={isCurrent || isLoading || isDowngrade}
-            className={cn(
-              'w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold transition-all duration-200 shadow-lg',
-              isCurrent
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-default'
-                : isDowngrade
-                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  : cn(
-                    'text-white hover:shadow-xl',
-                    plan.id === 'solo' && 'bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary',
-                    plan.id === 'pro' && 'bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700',
-                    plan.id === 'business' && 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700'
-                  ),
-            )}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Chargement...</span>
-              </>
-            ) : isCurrent ? (
-              <>
-                <Check size={14} />
-                {plan.cta}
-              </>
-            ) : isDowngrade ? (
-              'Plan inférieur'
-            ) : (
-              <>
-                {plan.cta}
-                <ArrowRight size={14} />
-              </>
-            )}
-          </motion.button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
 
 export default function PaywallPage() {
   const router = useRouter();
@@ -317,33 +158,13 @@ export default function PaywallPage() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         onClick={router.back}
-        className="mb-8 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 w-fit transition-colors"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 w-fit transition-colors"
       >
         <ArrowLeft size={14} /> Retour
       </motion.button>
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-12 text-center"
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border-2 border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 px-5 py-2 text-xs font-bold text-primary uppercase tracking-widest"
-        >
-          <Crown size={12} />
-          Plans & Tarifs
-        </motion.div>
-        <h1 className="mb-4 text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent">
-          Choisissez votre plan
-        </h1>
-        <p className="mx-auto max-w-xl text-base text-gray-500">
-          Commencez gratuitement, évoluez à votre rythme. Sans engagement.
-        </p>
-      </motion.div>
+      {/* Optimized Header with Social Proof */}
+      <PaywallHeader onCTAClick={() => {}} />
 
       {/* Free User Alerts */}
       {sub.isFree && (
@@ -641,7 +462,7 @@ export default function PaywallPage() {
               const isLoading = loading === plan.id;
 
               return (
-                <GlassPlanCard
+                <OptimizedPricingCard
                   key={plan.id}
                   plan={plan}
                   isHighlighted={isHighlighted}
@@ -650,6 +471,7 @@ export default function PaywallPage() {
                   isDowngrade={isDowngrade}
                   onClick={() => handleSelect(plan.id)}
                   delay={index * 0.1}
+                  userCount="+2,500"
                 />
               );
             })}

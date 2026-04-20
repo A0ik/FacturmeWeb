@@ -288,11 +288,10 @@ export default function DashboardPage() {
         {/* En retard */}
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className={`rounded-2xl p-5 border shadow-sm transition-all duration-300 group ${
-            stats?.overdueCount
+          className={`rounded-2xl p-5 border shadow-sm transition-all duration-300 group ${stats?.overdueCount
               ? 'bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-500/10 dark:to-orange-500/5 border-red-100 dark:border-red-500/20 hover:shadow-lg hover:shadow-red-500/10'
               : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-white/10 hover:shadow-md'
-          }`}>
+            }`}>
           <div className="flex items-center justify-between mb-2">
             <p className={`text-xs font-semibold uppercase tracking-wide ${stats?.overdueCount ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
               En retard
@@ -343,11 +342,11 @@ export default function DashboardPage() {
         </p>
         <div className="grid grid-cols-5 gap-3 sm:gap-4">
           {[
-            { href: '/invoices/new?type=invoice',        icon: FileText,     label: 'Facture',   hoverBg: 'hover:from-primary hover:to-primary-dark',   iconBg: 'bg-primary/10',  iconColor: 'text-primary' },
-            { href: '/invoices/new?type=quote',          icon: Clipboard,    label: 'Devis',     hoverBg: 'hover:from-blue-500 hover:to-blue-600',  iconBg: 'bg-blue-50',     iconColor: 'text-blue-500' },
-            { href: '/invoices/new?type=credit_note',    icon: RefreshCw,    label: 'Avoir',     hoverBg: 'hover:from-purple-500 hover:to-purple-600', iconBg: 'bg-purple-50',  iconColor: 'text-purple-500' },
-            { href: '/invoices/new?type=purchase_order', icon: ShoppingCart, label: 'Bon cde',   hoverBg: 'hover:from-orange-500 hover:to-orange-600', iconBg: 'bg-orange-50',  iconColor: 'text-orange-500' },
-            { href: '/invoices/new?type=delivery_note',  icon: Truck,        label: 'Bon liv.',  hoverBg: 'hover:from-cyan-500 hover:to-cyan-600',  iconBg: 'bg-cyan-50',     iconColor: 'text-cyan-500' },
+            { href: '/invoices/new?type=invoice', icon: FileText, label: 'Facture', hoverBg: 'hover:from-primary hover:to-primary-dark', iconBg: 'bg-primary/10', iconColor: 'text-primary' },
+            { href: '/invoices/new?type=quote', icon: Clipboard, label: 'Devis', hoverBg: 'hover:from-blue-500 hover:to-blue-600', iconBg: 'bg-blue-50', iconColor: 'text-blue-500' },
+            { href: '/invoices/new?type=credit_note', icon: RefreshCw, label: 'Avoir', hoverBg: 'hover:from-purple-500 hover:to-purple-600', iconBg: 'bg-purple-50', iconColor: 'text-purple-500' },
+            { href: '/invoices/new?type=purchase_order', icon: ShoppingCart, label: 'Bon cde', hoverBg: 'hover:from-orange-500 hover:to-orange-600', iconBg: 'bg-orange-50', iconColor: 'text-orange-500' },
+            { href: '/invoices/new?type=delivery_note', icon: Truck, label: 'Bon liv.', hoverBg: 'hover:from-cyan-500 hover:to-cyan-600', iconBg: 'bg-cyan-50', iconColor: 'text-cyan-500' },
           ].map(({ href, icon: Icon, label, hoverBg, iconBg, iconColor }) => (
             <Link
               key={href}
@@ -379,11 +378,10 @@ export default function DashboardPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                  period === p
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${period === p
                     ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-white/10'
-                }`}
+                  }`}
               >
                 {p}M
               </button>

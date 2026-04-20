@@ -51,7 +51,10 @@
       "Bash(pnpm add *)",
       "Bash(npx vitest *)",
       "Bash(npx rtk *)",
-      "Bash(rtk npm *)"
+      "Bash(rtk npm *)",
+      "Bash(rtk find *)",
+      "Bash(python3 scripts/search.py \"SaaS subscription pricing paywall conversion optimized\" --design-system -p \"FacturmeWeb\")",
+      "mcp__magic__21st_magic_component_refiner"
     ]
   },
   "enableAllProjectMcpServers": true,
