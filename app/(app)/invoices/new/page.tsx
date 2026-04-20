@@ -199,6 +199,12 @@ export default function NewInvoicePage() {
       if (!res.ok) throw new Error(data.error);
       const { parsed, summary } = data;
       if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
+      // Auto-fill client details from AI generation
+      if (parsed?.client_email) setClientEmail(parsed.client_email);
+      if (parsed?.client_phone) setClientPhone(parsed.client_phone);
+      if (parsed?.client_address) setClientAddress(parsed.client_address);
+      if (parsed?.client_city) setClientCity(parsed.client_city);
+      if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),
@@ -269,6 +275,12 @@ export default function NewInvoicePage() {
       setTranscript(result.transcript || '');
       const parsed = result.parsed;
       if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
+      // Auto-fill client details from voice input
+      if (parsed?.client_email) setClientEmail(parsed.client_email);
+      if (parsed?.client_phone) setClientPhone(parsed.client_phone);
+      if (parsed?.client_address) setClientAddress(parsed.client_address);
+      if (parsed?.client_city) setClientCity(parsed.client_city);
+      if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),

@@ -68,6 +68,11 @@ Format attendu:
   "action": "replaced",
   "summary": null,
   "client_name": "string ou null",
+  "client_email": "string ou null — email du client",
+  "client_phone": "string ou null — téléphone du client",
+  "client_address": "string ou null — adresse rue du client",
+  "client_city": "string ou null — ville du client",
+  "client_postal_code": "string ou null — code postal du client",
   "items": [
     {
       "description": "string — description détaillée et professionnelle",
@@ -87,6 +92,7 @@ Règles strictes:
 - due_days = délai paiement en jours (30 par défaut)
 - discount_percent = remise globale en % (0 si non mentionné)
 - Si un montant TTC est mentionné, convertis en HT : HT = TTC / (1 + vat_rate/100)
+- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville
 - Génère des descriptions PROFESSIONNELLES et COMMERCIALES (jamais de copier-coller du prompt)
   Ex: "site web" → "Conception et développement de site web"
   Ex: "logo" → "Création d'identité visuelle et logotype"

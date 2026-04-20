@@ -85,6 +85,11 @@ Format attendu:
   "action": "replaced",
   "summary": null,
   "client_name": "string ou null",
+  "client_email": "string ou null — email du client",
+  "client_phone": "string ou null — téléphone du client",
+  "client_address": "string ou null — adresse rue du client",
+  "client_city": "string ou null — ville du client",
+  "client_postal_code": "string ou null — code postal du client",
   "items": [{"description": "string", "quantity": number, "unit_price": number, "vat_rate": number}],
   "due_days": number,
   "notes": "string ou null"
@@ -98,6 +103,7 @@ Règles ABSOLUES pour les descriptions :
 - Ex: l'utilisateur dit "3 jours de conseil" → description: "Prestation de conseil et accompagnement stratégique"
 - La description doit être claire, professionnelle, entre 3 et 10 mots
 - unit_price est TOUJOURS HT (hors taxes)
+- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville
 - vat_rate par défaut = 20
 - due_days = délai de paiement en jours (30 par défaut)
 - Si le montant est TTC, calcule le HT en divisant par (1 + vat_rate/100)`;

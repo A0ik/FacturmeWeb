@@ -65,15 +65,35 @@ export const useDataStore = create<DataState>((set, get) => ({
     const docType = formData.document_type || 'invoice';
     const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : docType === 'purchase_order' ? 'BC' : docType === 'delivery_note' ? 'BL' : (profile.invoice_prefix || 'FACT');
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const { data: counters, error: rpcError } = await getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
+
+    // RPC call with timeout to prevent infinite hanging
     let number: string;
-    if (rpcError || !counters?.invoice_count) {
+    try {
+      const rpcPromise = getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout RPC')), 5000)
+      );
+      const { data: counters, error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+      if (rpcError || !counters?.invoice_count) {
+        number = get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
+        await getSupabaseClient().from('profiles').update({ invoice_count: (profile.invoice_count || 0) + 1, monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1, invoice_month: currentMonth }).eq('id', user.id);
+      } else { number = get().getNextInvoiceNumber(prefix, counters.invoice_count); }
+    } catch (rpcTimeoutError) {
+      console.warn('[createInvoice] RPC timeout, using fallback:', rpcTimeoutError);
       number = get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
-      await getSupabaseClient().from('profiles').update({ invoice_count: (profile.invoice_count || 0) + 1, monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1, invoice_month: currentMonth }).eq('id', user.id);
-    } else { number = get().getNextInvoiceNumber(prefix, counters.invoice_count); }
+      try {
+        await getSupabaseClient().from('profiles').update({ invoice_count: (profile.invoice_count || 0) + 1, monthly_invoice_count: (profile.monthly_invoice_count || 0) + 1, invoice_month: currentMonth }).eq('id', user.id);
+      } catch (updateError) {
+        console.warn('[createInvoice] Profile update failed, continuing with invoice creation:', updateError);
+      }
+    }
+
     const discountAmount = formData.discount_percent ? (subtotal + vatAmount) * (formData.discount_percent / 100) : 0;
     const { data, error } = await getSupabaseClient().from('invoices').insert({ user_id: user.id, client_id: formData.client_id || null, client_name_override: formData.client_name_override || null, number, document_type: docType, status: 'draft' as InvoiceStatus, issue_date: formData.issue_date, due_date: formData.due_date || null, items, subtotal, vat_amount: vatAmount, discount_percent: formData.discount_percent || null, discount_amount: discountAmount || null, total: subtotal + vatAmount - discountAmount, notes: formData.notes || null, linked_invoice_id: formData.linked_invoice_id || null, client_email: (formData as any).client_email || null, client_phone: (formData as any).client_phone || null, client_address: (formData as any).client_address || null, client_city: (formData as any).client_city || null, client_postal_code: (formData as any).client_postal_code || null }).select('*, client:clients(*)').single();
-    if (error) throw error;
+    if (error) {
+      console.error('[createInvoice] Insert error:', error);
+      throw error;
+    }
     set((s) => ({ invoices: [data, ...s.invoices] })); get().computeStats(); return data;
   },
   updateInvoice: async (id, updates) => {
@@ -129,8 +149,21 @@ export const useDataStore = create<DataState>((set, get) => ({
     const docType = original.document_type || 'invoice';
     const prefix = docType === 'quote' ? 'DEVIS' : docType === 'credit_note' ? 'AVOIR' : docType === 'purchase_order' ? 'BC' : docType === 'delivery_note' ? 'BL' : (profile.invoice_prefix || 'FACT');
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const { data: counters } = await getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
-    const number = counters?.invoice_count ? get().getNextInvoiceNumber(prefix, counters.invoice_count) : get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
+
+    // RPC call with timeout to prevent infinite hanging
+    let number: string;
+    try {
+      const rpcPromise = getSupabaseClient().rpc('increment_invoice_count', { p_user_id: user.id, p_month: currentMonth });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout RPC')), 5000)
+      );
+      const { data: counters } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+      number = counters?.invoice_count ? get().getNextInvoiceNumber(prefix, counters.invoice_count) : get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
+    } catch (rpcTimeoutError) {
+      console.warn('[duplicateInvoice] RPC timeout, using fallback:', rpcTimeoutError);
+      number = get().getNextInvoiceNumber(prefix, (profile.invoice_count || 0) + 1);
+    }
+
     const { data, error } = await getSupabaseClient().from('invoices').insert({ user_id: user.id, client_id: original.client_id || null, client_name_override: original.client_name_override || null, number, document_type: docType, status: 'draft' as InvoiceStatus, issue_date: today, due_date: due.toISOString().split('T')[0], items: original.items, subtotal: original.subtotal, vat_amount: original.vat_amount, total: original.total, notes: original.notes || null }).select('*, client:clients(*)').single();
     if (error) throw error;
     set((s) => ({ invoices: [data, ...s.invoices] })); get().computeStats(); return data;

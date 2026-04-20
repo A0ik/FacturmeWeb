@@ -2,11 +2,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Users, Kanban,
   RefreshCw, Settings, Zap, ChevronRight, ChevronDown,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar, Camera,
   Calculator, Activity, Landmark, Search, Link2, TrendingUp,
+  Rocket, Crown, Sparkles, Star, ArrowUpRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -17,6 +19,43 @@ import { UserDropdown } from '@/components/ui/user-dropdown';
 import { Logo } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { toast } from 'sonner';
+
+// Tier-specific configurations
+const TIER_CONFIG = {
+  free: {
+    name: 'Gratuit',
+    nextTier: 'solo',
+    gradient: 'from-gray-600 to-gray-700',
+    iconBg: 'from-gray-100 to-gray-200',
+    icon: Zap,
+    iconColor: 'text-gray-700',
+    message: 'Essai gratuit 4 jours',
+    subtext: 'Accès complet · Sans engagement',
+    cta: '/trial',
+  },
+  solo: {
+    name: 'Solo',
+    nextTier: 'pro',
+    gradient: 'from-primary to-primary-dark',
+    iconBg: 'from-primary/10 to-primary/20',
+    icon: Rocket,
+    iconColor: 'text-primary',
+    message: 'Passer à Pro',
+    subtext: 'IA · FEC · CRM · Relances',
+    cta: '/paywall',
+  },
+  pro: {
+    name: 'Pro',
+    nextTier: 'business',
+    gradient: 'from-orange-500 to-orange-600',
+    iconBg: 'from-orange-50 to-orange-100 dark:from-orange-500/10 dark:to-orange-500/20',
+    icon: Crown,
+    iconColor: 'text-orange-600',
+    message: 'Passer à Business',
+    subtext: 'Multi-comptes · Webhooks · API',
+    cta: '/paywall',
+  },
+} as const;
 
 // Items visibles au premier regard — le Core Flow MVP
 const NAV_CORE = [
@@ -53,10 +92,15 @@ export default function Sidebar() {
   const { profile, user, signOut } = useAuthStore();
   const { invoices } = useDataStore();
   const { unreadCount, fetchNotifications } = useWorkspaceStore();
-  const { isFree } = useSubscription();
+  const { isFree, tier } = useSubscription();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
+
+  // Get current tier configuration — only show upgrade for non-business users
+  const currentTier = (tier === 'free' ? 'free' : tier === 'solo' ? 'solo' : tier === 'pro' ? 'pro' : 'free') as keyof typeof TIER_CONFIG;
+  const tierConfig = TIER_CONFIG[currentTier];
+  const shouldShowUpgrade = tier !== 'business';
 
   useEffect(() => {
     if (user) fetchNotifications(user.id);
@@ -228,31 +272,78 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Upgrade banner — only show if user is not on Business (top tier) */}
-      {profile?.subscription_tier !== 'business' && (
+      {/* Upgrade banner — ALWAYS show for non-Business users, with tier-specific styling */}
+      {shouldShowUpgrade && (
         <div className="relative z-10 px-3 mb-3 flex-shrink-0">
           <Link
-            href={profile?.subscription_tier === 'free' ? '/trial' : '/paywall'}
-            className="group relative flex items-center gap-3 p-3.5 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent hover:border-primary/30 hover:from-primary/15 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 overflow-hidden"
+            href={tierConfig.cta}
+            className="group relative flex items-center gap-3 p-3.5 rounded-2xl border bg-gradient-to-br overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              borderImageSource: `linear-gradient(135deg, ${tierConfig.gradient.split(' ')[0]}, ${tierConfig.gradient.split(' ')[2]})`,
+              borderImageSlice: 1,
+            }}
           >
-            {/* Animated glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg shadow-primary/20">
-              <Zap size={17} className="text-white fill-white" />
+            {/* Animated gradient background */}
+            <div className={cn(
+              'absolute inset-0 bg-gradient-to-br opacity-90 transition-opacity duration-500 group-hover:opacity-100',
+              tierConfig.gradient
+            )} />
+
+            {/* Animated particles */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {[...Array(3)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-white/40 rounded-full"
+                  animate={{
+                    x: [0, Math.random() * 100],
+                    y: [0, Math.random() * 50],
+                    opacity: [0, 1, 0],
+                  }}
+                  transition={{
+                    duration: 3 + Math.random() * 2,
+                    repeat: Number.POSITIVE_INFINITY,
+                    delay: i * 0.5,
+                  }}
+                  style={{ left: `${10 + i * 25}%`, top: `${20 + i * 15}%` }}
+                />
+              ))}
             </div>
-            <div className="relative flex-1 min-w-0">
-              <p className="text-xs font-bold text-gray-900 dark:text-white group-hover:translate-x-1 transition-transform duration-300">
-                {profile?.subscription_tier === 'free'   ? 'Essai gratuit 4 jours' :
-                 profile?.subscription_tier === 'solo'   ? 'Passer à Pro'  :
-                                                           'Passer à Business'}
-              </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                {profile?.subscription_tier === 'free'   ? 'Accès complet · Sans engagement' :
-                 profile?.subscription_tier === 'solo'   ? 'IA · FEC · CRM'             :
-                                                           'Multi-comptes · Webhooks'}
-              </p>
+
+            {/* Content */}
+            <div className="relative flex items-center gap-3 w-full">
+              {/* Tier icon */}
+              <div className={cn(
+                'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-lg',
+                tierConfig.iconBg
+              )}>
+                <tierConfig.icon size={17} className={tierConfig.iconColor} strokeWidth={2.5} />
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-white group-hover:translate-x-1 transition-transform duration-300">
+                    {tierConfig.message}
+                  </p>
+                  {currentTier === 'free' && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-[9px] font-bold text-white border border-white/30">
+                      <Sparkles size={6} />
+                      Nouveau
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-white/80 mt-0.5">
+                  {tierConfig.subtext}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <ArrowUpRight
+                size={16}
+                className="relative text-white/70 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 flex-shrink-0"
+              />
             </div>
-            <ChevronRight size={15} className="relative text-primary/50 group-hover:text-primary group-hover:translate-x-1 transition-all" />
           </Link>
         </div>
       )}
@@ -312,10 +403,7 @@ export default function Sidebar() {
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate capitalize font-medium">
-                {profile?.subscription_tier === 'free' ? 'Plan gratuit'
-                  : profile?.subscription_tier === 'solo' ? 'Plan Solo'
-                  : profile?.subscription_tier === 'pro' ? 'Plan Pro'
-                  : 'Gratuit'}
+                {tierConfig.name}
               </p>
             </div>
           </div>

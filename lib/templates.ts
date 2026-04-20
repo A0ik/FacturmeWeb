@@ -61,13 +61,13 @@ export function prepareTemplateData(invoice: Invoice, profile?: Profile | null, 
   const clientName = invoice.client?.name || invoice.client_name_override || 'Client';
   const clientAddr = invoice.client ? [invoice.client.address, `${invoice.client.postal_code || ''} ${invoice.client.city || ''}`.trim(), invoice.client.country !== 'France' ? invoice.client.country : ''].filter(Boolean).join('<br/>') : '';
   const labels = getLabels(invoice);
-  // Logo with onerror removal — if the image fails to load, the element is hidden (bigger logo for better visibility)
+  // Logo with onerror removal — positioned at top-left with proper alignment
   const logoHtml = p.logo_url
-    ? `<img src="${p.logo_url}" style="height:90px;max-width:240px;object-fit:contain;display:block;margin-bottom:16px" onerror="this.parentNode && this.parentNode.removeChild(this)" crossorigin="anonymous"/>`
+    ? `<div style="display:flex;align-items:flex-start;justify-content:flex-start;margin-bottom:16px;padding:12px;background:#fafafa;border-radius:12px;border-left:4px solid ${accent}"><img src="${p.logo_url}" style="height:120px;max-width:300px;object-fit:contain;display:block;margin:0;padding:0" onerror="this.parentNode && this.parentNode.removeChild(this)" crossorigin="anonymous"/></div>`
     : '';
   // Client logo — displayed in client section
   const clientLogoHtml = invoice.client?.logo_url
-    ? `<img src="${invoice.client.logo_url}" style="height:60px;max-width:180px;object-fit:contain;display:inline-block;margin-bottom:8px" onerror="this.parentNode && this.parentNode.removeChild(this)" crossorigin="anonymous"/>`
+    ? `<div style="display:inline-block;margin-right:16px;vertical-align:top"><img src="${invoice.client.logo_url}" style="height:70px;max-width:200px;object-fit:contain;display:block" onerror="this.parentNode && this.parentNode.removeChild(this)" crossorigin="anonymous"/></div>`
     : '';
   const legal = p.siret || p.legal_status ? legalMention(p as Profile, invoice.document_type) : '';
 
@@ -80,11 +80,11 @@ export function prepareTemplateData(invoice: Invoice, profile?: Profile | null, 
   const paymentMethod = invoice.stripe_payment_url ? 'Stripe' : (invoice.payment_link ? 'SumUp' : '');
 
   const qrBlock = paymentUrl
-    ? `<div style="display:inline-block;margin-left:16px;vertical-align:middle;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=72x72&data=${encodeURIComponent(paymentUrl)}" width="72" height="72" style="display:block;border-radius:6px;border:1px solid #e5e7eb"/><div style="font-size:9px;color:#9ca3af;margin-top:4px">Scanner pour payer</div></div>`
+    ? `<div style="display:inline-block;margin-left:16px;vertical-align:middle;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=72x72&data=${encodeURIComponent(paymentUrl)}" width="72" height="72" style="display:block;border-radius:6px;border:1px solid #e5e7eb"/><div style="font-size:10px;color:#374151;margin-top:4px;font-weight:500">Scanner pour payer</div></div>`
     : '';
 
   const rows = invoice.items.map((item, i) =>
-    `<tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}"><td style="padding:12px 16px;font-size:13px;border-bottom:1px solid #f0f0f0"><div style="font-weight:600;color:#111827">${item.description}</div>${(item as any).detail ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px">${(item as any).detail}</div>` : ''}</td><td style="padding:12px 8px;text-align:center;font-size:13px;color:#6b7280;border-bottom:1px solid #f0f0f0">${item.quantity}</td><td style="padding:12px 8px;text-align:right;font-size:13px;color:#374151;border-bottom:1px solid #f0f0f0">${f(item.unit_price)}</td><td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f0f0f0"><span style="background:${accent}15;color:${accent};font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px">${item.vat_rate}%</span></td><td style="padding:12px 16px;text-align:right;font-weight:700;font-size:13px;border-bottom:1px solid #f0f0f0">${f(item.total)}</td></tr>`
+    `<tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}"><td style="padding:14px 18px;font-size:14px;border-bottom:1px solid #f0f0f0"><div style="font-weight:600;color:#111827">${item.description}</div>${(item as any).detail ? `<div style="font-size:12px;color:#4b5563;margin-top:2px">${(item as any).detail}</div>` : ''}</td><td style="padding:14px 10px;text-align:center;font-size:14px;color:#374151;border-bottom:1px solid #f0f0f0">${item.quantity}</td><td style="padding:14px 10px;text-align:right;font-size:14px;color:#374151;border-bottom:1px solid #f0f0f0">${f(item.unit_price)}</td><td style="padding:14px 10px;text-align:center;border-bottom:1px solid #f0f0f0"><span style="background:${accent}15;color:${accent};font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px">${item.vat_rate}%</span></td><td style="padding:14px 18px;text-align:right;font-weight:700;font-size:14px;border-bottom:1px solid #f0f0f0">${f(item.total)}</td></tr>`
   ).join('');
 
   const discountRow = (invoice.discount_amount ?? 0) > 0
@@ -92,7 +92,7 @@ export function prepareTemplateData(invoice: Invoice, profile?: Profile | null, 
     : '';
 
   const signatureBlock = labels.showSignature
-    ? `<div style="margin-top:28px;border:1.5px dashed ${accent}66;border-radius:10px;padding:20px 24px;background:#fafafa"><div style="font-size:10px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px">✎ Bon pour accord</div><div style="display:flex;gap:24px"><div style="flex:1"><div style="font-size:11px;color:#6b7280;margin-bottom:22px">Date :</div><div style="height:1px;background:#d1d5db"></div></div><div style="flex:2"><div style="font-size:11px;color:#6b7280;margin-bottom:8px">Signature :</div><div style="height:56px;border:1px dashed #d1d5db;border-radius:6px;background:#fff"></div></div></div></div>`
+    ? `<div style="margin-top:28px;border:1.5px dashed ${accent}66;border-radius:10px;padding:20px 24px;background:#fafafa"><div style="font-size:10px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px">✎ Bon pour accord</div><div style="display:flex;gap:24px"><div style="flex:1"><div style="font-size:11px;color:#374151;margin-bottom:22px">Date :</div><div style="height:1px;background:#d1d5db"></div></div><div style="flex:2"><div style="font-size:11px;color:#374151;margin-bottom:8px">Signature :</div><div style="height:56px;border:1px dashed #d1d5db;border-radius:6px;background:#fff"></div></div></div></div>`
     : '';
 
   const paymentSection = paymentUrl
@@ -100,12 +100,27 @@ export function prepareTemplateData(invoice: Invoice, profile?: Profile | null, 
     : '';
 
   const sigBlock = p.signature_url && (invoice.document_type === 'invoice' || invoice.document_type === 'deposit')
-    ? `<div style="margin-top:24px;display:flex;justify-content:flex-end"><div style="text-align:center"><div style="font-size:10px;color:#9ca3af;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Signature</div><img src="${p.signature_url}" style="height:48px;max-width:180px;object-fit:contain" crossorigin="anonymous"/></div></div>`
+    ? `<div style="margin-top:24px;display:flex;justify-content:flex-end"><div style="text-align:center"><div style="font-size:11px;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Signature</div><img src="${p.signature_url}" style="height:48px;max-width:180px;object-fit:contain" crossorigin="anonymous"/></div></div>`
     : '';
 
   const defaultPaymentTerms = `Paiement à réception de la facture. En cas de retard de paiement, une indemnité forfaitaire pour frais de recouvrement de 40 euros sera appliquée, conformément à l'article L.441-6 du Code de commerce. Les pénalités de retard sont calculées sur la base de trois fois le taux d'intérêt légal en vigueur (article L.441-6 c. com.). Tout litige relatif à la présente facture sera soumis à la compétence exclusive du Tribunal de Commerce du siège social du prestataire. L'acceptation de la présente facture vaut accord sur les conditions générales de vente.`;
 
-  const paymentTermsBlock = `<div style="margin-bottom:20px;padding:16px 20px;background:#f8f8fc;border-radius:10px;border-left:3px solid ${accent}40"><div style="font-size:9px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Conditions de paiement</div><div style="font-size:12px;color:#374151;line-height:1.7">${p.payment_terms || defaultPaymentTerms}</div></div>`;
+  // Format payment terms if it's just a number (e.g., "30" -> "Paiement sous 30 jours")
+  const formatPaymentTerms = (terms: string | null | undefined): string => {
+    if (!terms) return defaultPaymentTerms;
+    const numMatch = terms.match(/^\d+$/);
+    if (numMatch) {
+      const days = parseInt(terms, 10);
+      if (days === 0) return 'Paiement à réception de facture.';
+      if (days === 30) return 'Paiement sous 30 jours.';
+      if (days === 45) return 'Paiement sous 45 jours.';
+      if (days === 60) return 'Paiement sous 60 jours.';
+      return `Paiement sous ${days} jours.`;
+    }
+    return terms;
+  };
+
+  const paymentTermsBlock = `<div style="margin-bottom:20px;padding:16px 20px;background:#f8f8fc;border-radius:10px;border-left:3px solid ${accent}40"><div style="font-size:9px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Conditions de paiement</div><div style="font-size:12px;color:#374151;line-height:1.7">${formatPaymentTerms(p.payment_terms)}</div></div>`;
 
   const defaultLegalMention = [
     p.siret ? `SIRET : ${p.siret}` : '',
@@ -116,7 +131,7 @@ export function prepareTemplateData(invoice: Invoice, profile?: Profile | null, 
     "Conformément à l'article L.441-9 du Code de commerce, la facture est émise en double exemplaire.",
   ].filter(Boolean).join(' • ');
 
-  const legalMentionBlock = `<div style="margin-bottom:20px;padding:14px 18px;background:#f9f9f9;border-radius:8px"><div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Mentions legales</div><div style="font-size:11px;color:#6b7280;line-height:1.7">${p.legal_mention || defaultLegalMention}</div></div>`;
+  const legalMentionBlock = `<div style="margin-bottom:20px;padding:14px 18px;background:#f9f9f9;border-radius:8px"><div style="font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Mentions légales</div><div style="font-size:12px;color:#374151;line-height:1.7">${p.legal_mention || defaultLegalMention}</div></div>`;
 
   return {
     accent, currency, locale, f, fd, clientName, clientAddr, labels,
@@ -140,18 +155,18 @@ ${d.watermarkHtml}
   <div style="max-width:52%">
     ${d.logoHtml}
     <div style="font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:6px">${d.profile.company_name||''}</div>
-    <div style="font-size:11.5px;color:#6b7280;line-height:2">
+    <div style="font-size:12px;color:#374151;line-height:2">
       ${d.profile.address||''}${d.profile.address?'<br/>':''}
       ${d.profile.postal_code&&d.profile.city?`${d.profile.postal_code} ${d.profile.city}<br/>`:''}
       ${d.profile.phone?`${d.profile.phone}<br/>`:''}
       ${d.profile.email?`${d.profile.email}<br/>`:''}
-      ${d.profile.siret?`<span style="font-size:10.5px;color:#9ca3af">SIRET ${d.profile.siret}</span>`:''}
-      ${d.profile.vat_number?`<span style="font-size:10.5px;color:#9ca3af"> · N TVA ${d.profile.vat_number}</span>`:''}
+      ${d.profile.siret?`<span style="font-size:11px;color:#4b5563;font-weight:500">SIRET ${d.profile.siret}</span>`:''}
+      ${d.profile.vat_number?`<span style="font-size:11px;color:#4b5563;font-weight:500"> · N° TVA ${d.profile.vat_number}</span>`:''}
     </div>
   </div>
   <div style="text-align:right">
     <div style="font-size:9.5px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">${d.docLabel}</div>
-    <div style="font-size:11.5px;color:#6b7280;line-height:2">
+    <div style="font-size:11.5px;color:#374151;line-height:2">
       <div>${d.labels.issuedLabel} <strong style="color:#1a1a2e">${d.fd(d.invoice.issue_date)}</strong></div>
       ${d.labels.dueDateSection?`<div style="color:${d.accent};font-weight:600">${d.labels.dueDateSection}</div>`:''}
     </div>
@@ -162,16 +177,16 @@ ${d.watermarkHtml}
 
 <div style="display:flex;gap:20px;margin-bottom:36px">
   <div style="flex:1;padding:18px 20px;background:#f8f8fc;border-radius:12px">
-    <div style="font-size:8.5px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">De</div>
+    <div style="font-size:9px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">De</div>
     <div style="font-weight:700;font-size:13px;color:#1a1a2e;margin-bottom:2px">${d.profile.company_name||''}</div>
-    ${d.profile.legal_status?`<div style="font-size:11px;color:#9ca3af;text-transform:capitalize">${d.profile.legal_status.replace('-',' ')}</div>`:''}
+    ${d.profile.legal_status?`<div style="font-size:11px;color:#4b5563;text-transform:capitalize;font-weight:500">${d.profile.legal_status.replace('-',' ')}</div>`:''}
   </div>
   <div style="flex:1;padding:18px 20px;background:#fff;border-radius:12px;border:1.5px solid ${d.accent}30;position:relative;overflow:hidden">
     <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${d.accent}"></div>
-    <div style="font-size:8.5px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>
+    <div style="font-size:9px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>
     ${d.clientLogoHtml}
     <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1a1a2e">${d.clientName}</div>
-    <div style="font-size:11.5px;color:#6b7280;line-height:1.9">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:10.5px;color:#9ca3af">SIRET ${d.invoice.client.siret}</span>`:''}</div>
+    <div style="font-size:11.5px;color:#374151;line-height:1.9">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:11px;color:#4b5563;font-weight:500">SIRET ${d.invoice.client.siret}</span>`:''}</div>
   </div>
 </div>
 
@@ -190,8 +205,8 @@ ${d.watermarkHtml}
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:32px">
   <div style="width:300px">
-    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#6b7280"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#6b7280"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#374151"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#374151"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>
     ${d.discountRow}
     <div style="height:1px;background:#e8e8f0;margin:8px 0"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-radius:12px;background:#1a1a2e">
@@ -228,11 +243,11 @@ ${d.watermarkHtml}
 <div style="border-bottom:3px double #1a1a2e"></div>
 <div style="padding:36px 48px;position:relative;z-index:1">
 <div style="display:flex;justify-content:space-between;margin-bottom:36px">
-  <div style="font-size:11px;color:#666;line-height:1.8">${d.labels.issuedLabel} <strong style="color:#222">${d.fd(d.invoice.issue_date)}</strong>${d.labels.dueDateSection?`<br/><span style="color:${d.accent};font-weight:600">${d.labels.dueDateSection}</span>`:''}</div>
-  <div style="text-align:right;max-width:260px"><div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>${d.clientLogoHtml}<div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#222">${d.clientName}</div><div style="font-size:11px;color:#666;line-height:1.7">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:10px;color:#aaa">SIRET ${d.invoice.client.siret}</span>`:''}</div></div>
+  <div style="font-size:11px;color:#374151;line-height:1.8">${d.labels.issuedLabel} <strong style="color:#1a1a2e">${d.fd(d.invoice.issue_date)}</strong>${d.labels.dueDateSection?`<br/><span style="color:${d.accent};font-weight:600">${d.labels.dueDateSection}</span>`:''}</div>
+  <div style="text-align:right;max-width:260px"><div style="font-size:9px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>${d.clientLogoHtml}<div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1a1a2e">${d.clientName}</div><div style="font-size:11px;color:#374151;line-height:1.7">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:10px;color:#6b7280;font-weight:500">SIRET ${d.invoice.client.siret}</span>`:''}</div></div>
 </div>
 <table style="width:100%;border-collapse:collapse;margin-bottom:24px"><thead><tr style="background:#1a1a2e;color:#fff"><th style="padding:10px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:left">Prestation</th><th style="padding:10px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:center">Qté</th><th style="padding:10px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:right">P.U. HT</th><th style="padding:10px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:center">TVA</th><th style="padding:10px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:right">Total HT</th></tr></thead><tbody>${classicRows}</tbody></table>
-<div style="display:flex;justify-content:flex-end;margin-bottom:32px"><div style="width:260px"><div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;color:#666"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;color:#666"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>${d.discountRow}<div style="height:1px;background:#ccc;margin:8px 0"></div><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1a1a2e;color:#fff"><span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px">${d.labels.totalLabel}</span><span style="font-size:20px;font-weight:700">${d.f(d.invoice.total)}</span></div></div></div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:32px"><div style="width:260px"><div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;color:#374151"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;font-size:11px;color:#374151"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>${d.discountRow}<div style="height:1px;background:#ccc;margin:8px 0"></div><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1a1a2e;color:#fff"><span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px">${d.labels.totalLabel}</span><span style="font-size:20px;font-weight:700">${d.f(d.invoice.total)}</span></div></div></div>
 ${d.invoice.notes?`<div style="margin-bottom:24px;padding:14px 18px;background:#f8f8f8;border-left:3px solid #1a1a2e"><div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Notes</div><div style="font-size:11px;color:#444;line-height:1.6">${d.invoice.notes}</div></div>`:''}
 ${d.paymentTermsBlock}${d.bankBlock}${d.paymentSection}${d.legalMentionBlock}${d.sigBlock}${d.signatureBlock}
 <div style="margin-top:40px;padding-top:18px;border-top:2px double #ccc;text-align:center"><div style="font-size:22px;font-weight:900;color:#1a1a2e;letter-spacing:2px;margin-bottom:6px">${d.invoice.number}</div><div style="font-size:9px;color:#999;line-height:1.8">${d.legal}</div></div>
@@ -242,7 +257,7 @@ ${d.paymentTermsBlock}${d.bankBlock}${d.paymentSection}${d.legalMentionBlock}${d
 // ── Template 3: Moderne (bold, colorful) ──
 export function templateModerne(d: TemplateData): string {
   const modernRows = d.invoice.items.map((item, i) =>
-    `<tr><td style="padding:14px 16px;font-size:13px;border-bottom:1px solid #f0f0f0"><div style="font-weight:600;color:#1a1a2e">${item.description}</div></td><td style="padding:14px 8px;text-align:center;font-size:13px;color:#6b7280;border-bottom:1px solid #f0f0f0">${item.quantity}</td><td style="padding:14px 8px;text-align:right;font-size:13px;color:#374151;border-bottom:1px solid #f0f0f0">${d.f(item.unit_price)}</td><td style="padding:14px 8px;text-align:center;border-bottom:1px solid #f0f0f0"><span style="background:${d.accent};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">${item.vat_rate}%</span></td><td style="padding:14px 16px;text-align:right;font-weight:700;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f0f0">${d.f(item.total)}</td></tr>`
+    `<tr><td style="padding:14px 16px;font-size:13px;border-bottom:1px solid #f0f0f0"><div style="font-weight:600;color:#1a1a2e">${item.description}</div></td><td style="padding:14px 8px;text-align:center;font-size:13px;color:#374151;border-bottom:1px solid #f0f0f0">${item.quantity}</td><td style="padding:14px 8px;text-align:right;font-size:13px;color:#374151;border-bottom:1px solid #f0f0f0">${d.f(item.unit_price)}</td><td style="padding:14px 8px;text-align:center;border-bottom:1px solid #f0f0f0"><span style="background:${d.accent};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">${item.vat_rate}%</span></td><td style="padding:14px 16px;text-align:right;font-weight:700;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f0f0">${d.f(item.total)}</td></tr>`
   ).join('');
 
   return `<!DOCTYPE html><html lang="${d.lang}"><head><meta charset="UTF-8"/><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#1a1a2e;background:#fff;position:relative}@page{margin:0;size:A4}</style></head><body>
@@ -257,11 +272,11 @@ ${d.watermarkHtml}
 </div>
 <div style="padding:40px 48px;position:relative;z-index:1">
 <div style="display:flex;gap:20px;margin-bottom:36px">
-  <div style="flex:1;padding:18px 20px;background:#f8f8fc;border-radius:14px"><div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">De</div><div style="font-weight:700;font-size:13px">${d.profile.company_name||''}</div></div>
-  <div style="flex:1;padding:18px 20px;background:${d.accent}08;border-radius:14px;border:2px solid ${d.accent}20"><div style="font-size:9px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>${d.clientLogoHtml}<div style="font-weight:700;font-size:14px;margin-bottom:4px">${d.clientName}</div><div style="font-size:12px;color:#6b7280;line-height:1.7">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:10px;color:#9ca3af">SIRET ${d.invoice.client.siret}</span>`:''}</div></div>
+  <div style="flex:1;padding:18px 20px;background:#f8f8fc;border-radius:14px"><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">De</div><div style="font-weight:700;font-size:13px">${d.profile.company_name||''}</div></div>
+  <div style="flex:1;padding:18px 20px;background:${d.accent}08;border-radius:14px;border:2px solid ${d.accent}20"><div style="font-size:9px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">${d.labels.billedToLabel}</div>${d.clientLogoHtml}<div style="font-weight:700;font-size:14px;margin-bottom:4px">${d.clientName}</div><div style="font-size:12px;color:#374151;line-height:1.7">${d.clientAddr}${d.invoice.client?.email?`<br/>${d.invoice.client.email}`:''}${d.invoice.client?.phone?`<br/>${d.invoice.client.phone}`:''}${d.invoice.client?.siret?`<br/><span style="font-size:10px;color:#6b7280">SIRET ${d.invoice.client.siret}</span>`:''}</div></div>
 </div>
 <table style="width:100%;border-collapse:collapse;margin-bottom:28px"><thead><tr><th style="padding:10px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:left;color:${d.accent}">Prestation</th><th style="padding:10px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:center;color:${d.accent}">Qté</th><th style="padding:10px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:right;color:${d.accent}">P.U. HT</th><th style="padding:10px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:center;color:${d.accent}">TVA</th><th style="padding:10px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:right;color:${d.accent}">Total HT</th></tr></thead><tbody>${modernRows}</tbody></table>
-<div style="display:flex;justify-content:flex-end;margin-bottom:36px"><div style="width:300px"><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#6b7280"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#6b7280"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>${d.discountRow}<div style="height:1px;background:#e8e8f0;margin:8px 0 10px"></div><div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-radius:16px;background:linear-gradient(135deg,${d.accent},${d.accent}cc);color:#fff"><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px">${d.labels.totalLabel}</span><span style="font-size:26px;font-weight:900">${d.f(d.invoice.total)}</span></div></div></div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:36px"><div style="width:300px"><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#374151"><span>Sous-total HT</span><span>${d.f(d.invoice.subtotal)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;color:#374151"><span>TVA</span><span>${d.f(d.invoice.vat_amount)}</span></div>${d.discountRow}<div style="height:1px;background:#e8e8f0;margin:8px 0 10px"></div><div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-radius:16px;background:linear-gradient(135deg,${d.accent},${d.accent}cc);color:#fff"><span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px">${d.labels.totalLabel}</span><span style="font-size:26px;font-weight:900">${d.f(d.invoice.total)}</span></div></div></div>
 ${d.invoice.notes?`<div style="margin-bottom:28px;padding:16px 20px;background:#f8f8fc;border-radius:12px;border-left:4px solid ${d.accent}"><div style="font-size:9px;font-weight:700;color:${d.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Notes</div><div style="font-size:12px;color:#374151;line-height:1.7">${d.invoice.notes}</div></div>`:''}
 ${d.paymentTermsBlock}${d.bankBlock}${d.paymentSection}${d.legalMentionBlock}${d.sigBlock}${d.signatureBlock}
 <div style="margin-top:40px;padding-top:18px;border-top:2px solid ${d.accent}30;text-align:center"><div style="font-size:22px;font-weight:900;color:#1a1a2e;letter-spacing:-0.5px;margin-bottom:6px">${d.invoice.number}</div><div style="font-size:10px;color:#b0b0c0;line-height:1.8">${d.legal}</div></div>

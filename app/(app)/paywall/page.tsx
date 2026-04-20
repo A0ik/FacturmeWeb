@@ -54,8 +54,8 @@ const PLANS: Plan[] = [
   },
   {
     id: 'business', name: 'Business', price: '39,99€', tagline: 'Pour les équipes',
-    icon: Building2, iconColor: 'text-white', iconBg: 'from-amber-500 to-amber-600',
-    gradient: 'from-amber-500 via-amber-600 to-amber-700',
+    icon: Crown, iconColor: 'text-white', iconBg: 'from-orange-500 to-orange-600',
+    gradient: 'from-orange-500 via-orange-600 to-orange-700',
     cta: 'Choisir Business', features: [
       { label: 'Tout dans Pro', included: true },
       { label: '10 espaces de travail', included: true },

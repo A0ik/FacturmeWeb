@@ -43,7 +43,10 @@
       "Bash(rtk tsc *)",
       "Bash(rtk eslint *)",
       "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"SaaS dashboard clients management modern glassmorphism\" --design-system -p \"FacturmeWeb\" --page \"clients\")",
-      "mcp__magic__21st_magic_component_inspiration"
+      "mcp__magic__21st_magic_component_inspiration",
+      "Bash(rtk ls *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk next *)"
     ]
   },
   "enableAllProjectMcpServers": true,
