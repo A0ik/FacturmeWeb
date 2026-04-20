@@ -49,7 +49,9 @@
       "Bash(rtk next *)",
       "mcp__supabase__list_storage_buckets",
       "Bash(pnpm add *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(npx rtk *)",
+      "Bash(rtk npm *)"
     ]
   },
   "enableAllProjectMcpServers": true,

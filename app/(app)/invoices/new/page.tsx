@@ -8,6 +8,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import Calendar from '@/components/ui/Calendar';
 import PaymentTermsSelector from '@/components/ui/PaymentTermsSelector';
+import FacturXWarnings from '@/components/ui/FacturXWarnings';
 import { formatCurrency, generateId } from '@/lib/utils';
 import { InvoiceItem, DocumentType } from '@/types';
 import {
@@ -688,6 +689,30 @@ export default function NewInvoicePage() {
           >
             {/* Left: form */}
             <div className="lg:col-span-2 space-y-3">
+
+              {/* Factur-X warnings - only for invoices */}
+              {docType === 'invoice' && (
+                <FacturXWarnings
+                  invoice={{
+                    number: undefined, // Will be generated
+                    issue_date: issueDate,
+                    due_date: dueDate || undefined,
+                    document_type: docType,
+                    client: clientId ? clients.find(c => c.id === clientId) : undefined,
+                    client_name_override: clientId ? undefined : clientName || undefined,
+                    client_email: clientId ? undefined : clientEmail || undefined,
+                    client_phone: clientId ? undefined : clientPhone || undefined,
+                    client_address: clientId ? undefined : clientAddress || undefined,
+                    client_city: clientId ? undefined : clientCity || undefined,
+                    client_postal_code: clientId ? undefined : clientPostalCode || undefined,
+                    client_siret: clientId ? undefined : clientSiret || undefined,
+                    client_vat_number: clientId ? undefined : clientVatNumber || undefined,
+                    items: items,
+                  }}
+                  profile={profile}
+                  variant="banner"
+                />
+              )}
 
               {/* Generation success banner */}
               {lastGenSource && (
