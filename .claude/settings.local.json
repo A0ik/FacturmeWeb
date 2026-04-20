@@ -47,7 +47,9 @@
       "Bash(rtk ls *)",
       "Bash(rtk grep *)",
       "Bash(rtk next *)",
-      "mcp__supabase__list_storage_buckets"
+      "mcp__supabase__list_storage_buckets",
+      "Bash(pnpm add *)",
+      "Bash(npx vitest *)"
     ]
   },
   "enableAllProjectMcpServers": true,

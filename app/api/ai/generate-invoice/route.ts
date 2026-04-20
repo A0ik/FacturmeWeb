@@ -73,6 +73,8 @@ Format attendu:
   "client_address": "string ou null — adresse rue du client",
   "client_city": "string ou null — ville du client",
   "client_postal_code": "string ou null — code postal du client",
+  "client_siret": "string ou null — numéro SIRET du client (14 chiffres)",
+  "client_vat_number": "string ou null — numéro de TVA intracommunautaire du client (format FRXX123456789)",
   "items": [
     {
       "description": "string — description détaillée et professionnelle",
@@ -90,9 +92,11 @@ Règles strictes:
 - unit_price est TOUJOURS HT (hors taxes)
 - vat_rate par défaut = 20 (taux normal français)
 - due_days = délai paiement en jours (30 par défaut)
-- discount_percent = remise globale en % (0 si non mentionné)
+- IMPORTANT: discount_percent (remise globale) ne doit être ajouté QUE si l'utilisateur le demande explicitement (ex: "remise 10%", "10% de remise", "faire une remise", "avec une remise de 5%"). Si l'utilisateur ne mentionne aucune remise, mets discount_percent à 0.
 - Si un montant TTC est mentionné, convertis en HT : HT = TTC / (1 + vat_rate/100)
-- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville
+- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville, SIRET, numéro de TVA
+- SIRET : 14 chiffres sans espaces ni points
+- TVA : format français FRXX123456789 (où XX = numéro de clé, 9 chiffres = SIREN)
 - Génère des descriptions PROFESSIONNELLES et COMMERCIALES (jamais de copier-coller du prompt)
   Ex: "site web" → "Conception et développement de site web"
   Ex: "logo" → "Création d'identité visuelle et logotype"

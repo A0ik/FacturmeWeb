@@ -162,6 +162,8 @@ export interface Invoice {
   client_address?: string;
   client_city?: string;
   client_postal_code?: string;
+  client_siret?: string;
+  client_vat_number?: string;
 }
 
 export interface ParsedVoiceInvoice {
@@ -215,6 +217,8 @@ export interface InvoiceFormData {
   client_address?: string;
   client_city?: string;
   client_postal_code?: string;
+  client_siret?: string;
+  client_vat_number?: string;
 }
 
 export interface Appointment {

@@ -267,6 +267,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
         })));
       }
       if (parsed?.notes) setNotes(parsed.notes);
+      if (parsed?.discount_percent > 0) setDiscountPercent(parsed.discount_percent);
       if (parsed?.due_days != null) setPaymentDays(parsed.due_days);
       setMode('manual');
     } catch (e: any) {

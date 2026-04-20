@@ -223,11 +223,11 @@ export function PdfDocument({ invoice, profile }: { invoice: Invoice; profile: P
 
         {isFullHeader ? (
           <View style={{ backgroundColor: tpl.headerColor, paddingHorizontal: 44, paddingTop: 28, paddingBottom: 22 }}>
-            {/* Logo left */}
+            {/* Logo left - positioned at top left */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
                 {profile.logo_url ? (
-                  <Image src={profile.logo_url} style={{ height: 52, maxWidth: 180, objectFit: 'contain' }} />
+                  <Image src={profile.logo_url} style={{ height: 64, maxWidth: 220, objectFit: 'contain' }} />
                 ) : (
                   <Text style={{ fontSize: 18, fontFamily: bold, color: '#ffffff' }}>{companyName}</Text>
                 )}
@@ -254,9 +254,9 @@ export function PdfDocument({ invoice, profile }: { invoice: Invoice; profile: P
             <View style={{ height: 4, backgroundColor: accent }} />
             <View style={{ paddingHorizontal: 44, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               {/* Logo + company name + info left */}
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
                 {profile.logo_url ? (
-                  <Image src={profile.logo_url} style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
+                  <Image src={profile.logo_url} style={{ height: 60, maxWidth: 200, objectFit: 'contain' }} />
                 ) : (
                   <Text style={{ fontSize: 20, fontFamily: bold, color: '#111827' }}>{companyName}</Text>
                 )}

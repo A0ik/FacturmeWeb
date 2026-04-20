@@ -4,21 +4,20 @@ import { generatePdfBuffer } from '@/lib/pdf';
 import { createFacturXPdf, isFacturXEligible, getFacturXInfo } from '@/lib/facturx';
 
 /**
- * API Route - Export Factur-X
+ * API Route - Téléchargement Factur-X
  *
- * Génère un PDF Factur-X complet (PDF + XML embarqué selon EN 16931)
- * Conforme à la réforme française de facturation électronique 2026+
+ * Génère et retourne un PDF Factur-X complet (PDF + XML embarqué selon EN 16931)
  *
- * GET /api/export/facturx/[invoiceId]
+ * GET /api/download/facturx/[invoiceId]
  *
- * Authentification requise
- * Seuls les factures (pas devis/avoirs) sont éligibles
- * Nécessite un abonnement Pro ou Business (pas Free/Solo)
+ * Cette route gère le téléchargement direct du fichier PDF
  */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
+  console.log('[Factur-X] Début génération pour facture:', (await params).invoiceId);
+
   try {
     // ── Authentification ─────────────────────────────────────────────────────
     const supabase = await createServerSupabaseClient();
@@ -28,6 +27,7 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
+      console.error('[Factur-X] Erreur authentification:', authError);
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
@@ -48,7 +48,16 @@ export async function GET(
       admin.from('profiles').select('*').eq('id', user.id).single(),
     ]);
 
-    if (invError || !invoice) {
+    if (invError) {
+      console.error('[Factur-X] Erreur récupération facture:', invError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la récupération de la facture', details: invError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!invoice) {
+      console.error('[Factur-X] Facture introuvable:', invoiceId);
       return NextResponse.json(
         { error: 'Facture introuvable' },
         { status: 404 }
@@ -71,7 +80,6 @@ export async function GET(
     const isTrialActive = profile?.is_trial_active || false;
 
     // Vérifier si l'utilisateur a accès à Factur-X
-    // Nécessite Pro ou Business (pas Free, pas Solo)
     const hasAccess = isTrialActive || tier === 'pro' || tier === 'business';
 
     if (!hasAccess) {
@@ -88,6 +96,7 @@ export async function GET(
     // ── Validation éligibilité Factur-X ───────────────────────────────────────
     const eligibility = isFacturXEligible(invoice, profile);
     if (!eligibility.eligible) {
+      console.error('[Factur-X] Facture non éligible:', eligibility.reason);
       return NextResponse.json(
         {
           error: 'Facture non éligible au format Factur-X',
@@ -97,12 +106,17 @@ export async function GET(
       );
     }
 
+    if (eligibility.warnings && eligibility.warnings.length > 0) {
+      console.warn('[Factur-X] Avertissements:', eligibility.warnings);
+    }
+
     // ── Génération PDF ──────────────────────────────────────────────────────
+    console.log('[Factur-X] Génération PDF...');
     let pdfBuffer: Uint8Array;
     try {
       pdfBuffer = await generatePdfBuffer(invoice, profile);
     } catch (pdfError) {
-      console.error('Erreur génération PDF:', pdfError);
+      console.error('[Factur-X] Erreur génération PDF:', pdfError);
       return NextResponse.json(
         {
           error: 'Erreur lors de la génération du PDF',
@@ -113,11 +127,13 @@ export async function GET(
     }
 
     // ── Conversion en Factur-X ───────────────────────────────────────────────
+    console.log('[Factur-X] Conversion au format Factur-X...');
     let facturXPdfBytes: Uint8Array;
     try {
       facturXPdfBytes = await createFacturXPdf(pdfBuffer, invoice, profile);
+      console.log('[Factur-X] Conversion réussie, taille:', facturXPdfBytes.length, 'octets');
     } catch (facturXError) {
-      console.error('Erreur conversion Factur-X:', facturXError);
+      console.error('[Factur-X] Erreur conversion Factur-X:', facturXError);
       return NextResponse.json(
         {
           error: 'Erreur lors de la conversion au format Factur-X',
@@ -129,19 +145,24 @@ export async function GET(
 
     // ── Envoi du PDF ────────────────────────────────────────────────────────
     const filename = `${invoice.number.replace(/\//g, '-')}-facturx.pdf`;
+    const info = getFacturXInfo();
+
+    console.log('[Factur-X] Envoi du fichier:', filename);
 
     return new NextResponse(facturXPdfBytes, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'X-FacturX-Version': getFacturXInfo().version,
-        'X-FacturX-Profile': getFacturXInfo().profile,
+        'Content-Length': facturXPdfBytes.length.toString(),
+        'X-FacturX-Version': info.version,
+        'X-FacturX-Profile': info.profile,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
 
   } catch (error) {
-    console.error('Erreur inattendue:', error);
+    console.error('[Factur-X] Erreur inattendue:', error);
     return NextResponse.json(
       {
         error: 'Erreur interne du serveur',
@@ -153,7 +174,7 @@ export async function GET(
 }
 
 /**
- * OPTIONS - Support CORS pour requêtes préflight
+ * OPTIONS - Support CORS
  */
 export async function OPTIONS() {
   return new NextResponse(null, {

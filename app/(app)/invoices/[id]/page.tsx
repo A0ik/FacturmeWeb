@@ -3,6 +3,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { formatCurrency } from '@/lib/utils';
 import { downloadInvoicePdf } from '@/lib/pdf';
 import { Invoice, InvoiceStatus } from '@/types';
@@ -14,6 +15,8 @@ import {
   ExternalLink, X, Loader2, Building2, Calendar, Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import EmailPreviewModal from '@/components/ui/EmailPreviewModal';
+import { FacturXButton, FacturXInfoTooltip } from '@/components/ui/FacturXButton';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bg: string; icon: any }> = {
   draft:    { label: 'Brouillon',  color: 'text-gray-500',   bg: 'bg-gray-100',   icon: FileText },
@@ -39,11 +42,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const searchParams = useSearchParams();
   const { profile } = useAuthStore();
   const { invoices, updateInvoiceStatus, deleteInvoice, duplicateInvoice } = useDataStore();
+  const { isFree, isPro, isBusiness, isTrialActive, tier } = useSubscription();
+
+  // Vérifier si l'utilisateur a accès à Factur-X (Pro ou Business)
+  const canUseFacturX = isPro || isBusiness || isTrialActive;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [isReminder, setIsReminder] = useState(false);
   const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
   const [generatingSumUpLink, setGeneratingSumUpLink] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -64,12 +71,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       });
     }
   }, [searchParams, invoice?.id]);
-
-  // Pre-fill email from client
-  useEffect(() => {
-    if (invoice?.client?.email) setEmailTo(invoice.client.email);
-    else if (invoice?.client_name_override) setEmailTo('');
-  }, [invoice?.id]);
 
   if (!invoice) {
     return (
@@ -95,22 +96,29 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     await downloadInvoicePdf(invoice, profile);
   };
 
-  const handleSendEmail = async () => {
-    if (!emailTo.trim()) return toast.error('Entrez une adresse email.');
+  const handleSendEmail = async (email: string, subject: string, message: string) => {
     setSendingEmail(true);
     try {
       const res = await fetch('/api/send-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id, email: emailTo.trim(), profile }),
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          email: email.trim(),
+          subject,
+          message,
+          profile,
+          isReminder,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (invoice.status === 'draft') await updateInvoiceStatus(id, 'sent');
-      toast.success(`Facture envoyée à ${emailTo} !`);
+      toast.success(`Facture envoyée à ${email} !`);
       setShowEmailModal(false);
     } catch (e: any) {
       toast.error(e.message || "Erreur lors de l'envoi.");
+      throw e;
     } finally {
       setSendingEmail(false);
     }
@@ -246,7 +254,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
           {/* Send email */}
           <button
-            onClick={() => setShowEmailModal(true)}
+            onClick={() => { setIsReminder(false); setShowEmailModal(true); }}
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
           >
             <Mail size={15} />
@@ -277,6 +285,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </button>
           )}
 
+          {/* Factur-X - Uniquement pour les factures, pas devis/avoirs */}
+          {invoice.document_type === 'invoice' && canUseFacturX && (
+            <FacturXButton
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.number}
+              variant="secondary"
+            />
+          )}
+
           {/* Edit */}
           <button
             onClick={() => router.push(`/invoices/${id}/edit`)}
@@ -297,7 +314,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-40 w-52 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-40 w-56 overflow-hidden">
                   {invoice.status !== 'paid' && (
                     <button
                       onClick={() => { setShowMenu(false); handleMarkPaid(); }}
@@ -325,6 +342,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                     <Copy size={16} />
                     Dupliquer
                   </button>
+                  <div className="h-px bg-gray-100 mx-4" />
+                  {/* Factur-X dans le menu - toujours visible pour les factures si abonnement OK */}
+                  {invoice.document_type === 'invoice' && canUseFacturX && (
+                    <FacturXButton
+                      invoiceId={invoice.id}
+                      invoiceNumber={invoice.number}
+                      variant="compact"
+                    />
+                  )}
                   <div className="h-px bg-gray-100 mx-4" />
                   <button
                     onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}
@@ -362,7 +388,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <button
-            onClick={() => setShowEmailModal(true)}
+            onClick={() => { setIsReminder(true); setShowEmailModal(true); }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors flex-shrink-0"
           >
             <Mail size={13} />
@@ -489,7 +515,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Actions rapides</h3>
 
             <button
-              onClick={() => setShowEmailModal(true)}
+              onClick={() => { setIsReminder(false); setShowEmailModal(true); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
             >
               <Mail size={16} />
@@ -544,6 +570,54 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </button>
           </div>
 
+          {/* Factur-X Info - Visible pour tous les factures, avec incitation à l'upgrade si nécessaire */}
+          {invoice.document_type === 'invoice' && (
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 shadow-sm p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Factur-X</h3>
+                {canUseFacturX && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                    Actif
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Format de facture électronique conforme à la <span className="font-semibold text-indigo-600">réforme 2026+</span>.
+              </p>
+
+              {canUseFacturX ? (
+                <button
+                  onClick={() => {
+                    // Scroller vers le bouton Factur-X
+                    const facturXButton = document.querySelector('[data-facturx-button]');
+                    facturXButton?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white border-2 border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition-colors"
+                >
+                  <Download size={14} />
+                  Télécharger Factur-X
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/paywall')}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                >
+                  Débloquer Factur-X
+                </button>
+              )}
+
+              <a
+                href="https://fnfe-mpe.org/factur-x/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-indigo-600 hover:underline block text-center"
+              >
+                Qu'est-ce que Factur-X ? →
+              </a>
+            </div>
+          )}
+
           {/* Metadata */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Informations</h3>
@@ -577,57 +651,17 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Email modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-gray-900">Envoyer par e-mail</h2>
-              <button onClick={() => setShowEmailModal(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-xs text-gray-500">Facture <strong>{invoice.number}</strong> · {formatCurrency(invoice.total)}</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
-                Adresse e-mail du destinataire
-              </label>
-              <input
-                type="email"
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                placeholder="client@entreprise.com"
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                onKeyDown={(e) => e.key === 'Enter' && handleSendEmail()}
-              />
-            </div>
-
-            <p className="text-xs text-gray-400">
-              Le PDF de la facture sera joint automatiquement à l'e-mail.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSendEmail}
-                disabled={sendingEmail || !emailTo.trim()}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50"
-              >
-                {sendingEmail ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                Envoyer
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Email modal with preview */}
+      {profile && (
+        <EmailPreviewModal
+          invoice={invoice}
+          profile={profile}
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSend={handleSendEmail}
+          defaultEmail={invoice.client?.email || ''}
+          isReminder={isReminder}
+        />
       )}
 
       {/* Delete confirmation */}

@@ -6,7 +6,7 @@ import { PdfDocument } from '@/components/pdf-document';
 
 const safe = (s: unknown) => String(s ?? '').replace(/[^\x00-\xFF]/g, '?');
 
-function buildEmailHtml(invoice: any, profile: any, senderName: string, isReminder = false): string {
+function buildEmailHtml(invoice: any, profile: any, senderName: string, isReminder = false, customMessage?: string): string {
   const accent = profile?.accent_color || '#1D9E75';
   const clientName = invoice.client?.name || invoice.client_name_override || 'Client';
   const currency = profile?.currency || 'EUR';
@@ -59,7 +59,9 @@ function buildEmailHtml(invoice: any, profile: any, senderName: string, isRemind
 
         <!-- Body -->
         <tr><td style="background:#ffffff;padding:32px 40px">
-
+          ${customMessage
+            ? `<p style="font-size:14px;color:#374151;margin:0 0 28px;line-height:1.6;white-space:pre-wrap">${customMessage.replace(/\n/g, '<br/>')}</p>`
+            : `
           <!-- Greeting -->
           <p style="font-size:15px;color:#374151;margin:0 0 8px">Bonjour ${clientName},</p>
           <p style="font-size:14px;color:#374151;margin:0 0 4px;line-height:1.6">
@@ -71,6 +73,7 @@ function buildEmailHtml(invoice: any, profile: any, senderName: string, isRemind
           <p style="font-size:14px;color:#6b7280;margin:0 0 28px;line-height:1.6">
             De la part de <strong style="color:#111827">${senderName}</strong>.
           </p>
+          `}
 
           <!-- Items table -->
           <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:20px">
@@ -138,7 +141,7 @@ export async function POST(req: NextRequest) {
   console.log('[send-invoice] Request received');
   try {
     const body = await req.json();
-    const { invoiceId, email, profile, isReminder } = body;
+    const { invoiceId, email, profile, isReminder, subject: customSubject, message: customMessage } = body;
 
     console.log('[send-invoice] invoiceId:', invoiceId, '| email:', email);
 
@@ -185,11 +188,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Erreur génération PDF: ${pdfErr.message}` }, { status: 500 });
     }
 
-    const subjectPrefix = isReminder ? '[Rappel] ' : '';
+    // Use custom subject if provided, otherwise generate default
     const firstItem = invoice.items?.[0]?.description || 'prestation';
-    const subject = isReminder
+    const emailSubject = customSubject || (isReminder
       ? `[Rappel] Facture ${invoice.number} de ${senderName}`
-      : `Votre facture pour ${firstItem} — ${senderName}`;
+      : `Votre facture pour ${firstItem} — ${senderName}`);
 
     console.log('[send-invoice] Appel Brevo → to:', email, '| from:', senderEmail, '| replyTo:', replyToEmail);
 
@@ -206,8 +209,8 @@ export async function POST(req: NextRequest) {
           sender: { name: senderName, email: senderEmail },
           to: [{ email }],
           replyTo: { name: senderName, email: replyToEmail },
-          subject,
-          htmlContent: buildEmailHtml(invoice, profile, senderName, isReminder),
+          subject: emailSubject,
+          htmlContent: buildEmailHtml(invoice, profile, senderName, isReminder, customMessage),
           attachment: [{ name: `${safe(invoice.number)}.pdf`, content: pdfBase64 }],
         }),
         signal: controller.signal,

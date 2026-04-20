@@ -7,6 +7,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { formatCurrency, formatDateShort, downloadCSV } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
+import { FacturXBatchExport } from '@/components/ui/FacturXBatchExport';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, FileText, Download, Zap, AlertTriangle,
@@ -730,6 +731,16 @@ export default function InvoicesPage() {
                   <Download size={13} />
                   Exporter CSV
                 </motion.button>
+
+                {/* Export Factur-X (Pro/Business uniquement) */}
+                {(sub.isPro || sub.isBusiness || sub.isTrialActive) && (
+                  <FacturXBatchExport
+                    selectedInvoices={invoices.filter((inv) => selectedIds.has(inv.id))}
+                    onClear={clearSelection}
+                    variant="button"
+                    className="!py-1.5 !px-3 !text-xs"
+                  />
+                )}
 
                 {/* Delete */}
                 {!sub.isFree && (

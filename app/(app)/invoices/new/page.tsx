@@ -132,6 +132,8 @@ export default function NewInvoicePage() {
   const [clientAddress, setClientAddress] = useState('');
   const [clientCity, setClientCity] = useState('');
   const [clientPostalCode, setClientPostalCode] = useState('');
+  const [clientSiret, setClientSiret] = useState('');
+  const [clientVatNumber, setClientVatNumber] = useState('');
 
   const [items, setItems] = useState<Omit<InvoiceItem, 'total'>[]>([
     { id: generateId(), description: '', quantity: 1, unit_price: 0, vat_rate: 20 },
@@ -155,6 +157,8 @@ export default function NewInvoicePage() {
         setClientAddress(c.address || '');
         setClientCity(c.city || '');
         setClientPostalCode(c.postal_code || '');
+        setClientSiret(c.siret || '');
+        setClientVatNumber(c.vat_number || '');
       }
     }
   }, [clientId, clients]);
@@ -205,6 +209,8 @@ export default function NewInvoicePage() {
       if (parsed?.client_address) setClientAddress(parsed.client_address);
       if (parsed?.client_city) setClientCity(parsed.client_city);
       if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
+      if (parsed?.client_siret) setClientSiret(parsed.client_siret);
+      if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),
@@ -281,6 +287,8 @@ export default function NewInvoicePage() {
       if (parsed?.client_address) setClientAddress(parsed.client_address);
       if (parsed?.client_city) setClientCity(parsed.client_city);
       if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
+      if (parsed?.client_siret) setClientSiret(parsed.client_siret);
+      if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),
@@ -357,6 +365,8 @@ export default function NewInvoicePage() {
         client_address: clientId ? undefined : clientAddress || undefined,
         client_city: clientId ? undefined : clientCity || undefined,
         client_postal_code: clientId ? undefined : clientPostalCode || undefined,
+        client_siret: clientId ? undefined : clientSiret || undefined,
+        client_vat_number: clientId ? undefined : clientVatNumber || undefined,
       }, profile);
       toast.success('Document créé avec succès !');
       router.push(`/invoices/${newInvoice.id}`);
@@ -815,6 +825,19 @@ export default function NewInvoicePage() {
                           placeholder="Ville"
                           value={clientCity}
                           onChange={(e) => setClientCity(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          placeholder="SIRET (14 chiffres)"
+                          value={clientSiret}
+                          onChange={(e) => setClientSiret(e.target.value)}
+                          maxLength={14}
+                        />
+                        <Input
+                          placeholder="N° TVA (ex: FRXX123456789)"
+                          value={clientVatNumber}
+                          onChange={(e) => setClientVatNumber(e.target.value)}
                         />
                       </div>
                     </motion.div>

@@ -90,9 +90,12 @@ Format attendu:
   "client_address": "string ou null — adresse rue du client",
   "client_city": "string ou null — ville du client",
   "client_postal_code": "string ou null — code postal du client",
+  "client_siret": "string ou null — numéro SIRET du client (14 chiffres)",
+  "client_vat_number": "string ou null — numéro de TVA intracommunautaire du client (format FRXX123456789)",
   "items": [{"description": "string", "quantity": number, "unit_price": number, "vat_rate": number}],
   "due_days": number,
-  "notes": "string ou null"
+  "notes": "string ou null",
+  "discount_percent": number
 }
 
 Règles ABSOLUES pour les descriptions :
@@ -103,9 +106,12 @@ Règles ABSOLUES pour les descriptions :
 - Ex: l'utilisateur dit "3 jours de conseil" → description: "Prestation de conseil et accompagnement stratégique"
 - La description doit être claire, professionnelle, entre 3 et 10 mots
 - unit_price est TOUJOURS HT (hors taxes)
-- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville
+- Extrais LES INFORMATIONS CLIENT si mentionnées : email, téléphone, adresse, code postal, ville, SIRET, numéro de TVA
+- SIRET : 14 chiffres sans espaces ni points
+- TVA : format français FRXX123456789 (où XX = numéro de clé, 9 chiffres = SIREN)
 - vat_rate par défaut = 20
 - due_days = délai de paiement en jours (30 par défaut)
+- IMPORTANT: discount_percent (remise globale) ne doit être ajouté QUE si l'utilisateur le demande explicitement (ex: "remise 10%", "10% de remise", "faire une remise"). Si l'utilisateur ne mentionne aucune remise, mets discount_percent à 0.
 - Si le montant est TTC, calcule le HT en divisant par (1 + vat_rate/100)`;
     }
 
