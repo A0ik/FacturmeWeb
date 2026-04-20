@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { X, AlertTriangle } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface UpgradeBannerProps {
@@ -54,18 +54,40 @@ export function UpgradeBanner({
 }: UpgradeBannerProps) {
   const [isHovered, setIsHovered] = React.useState(false);
 
-  const iconVariants = {
+  const iconVariantBase = {
     hidden: { x: 0, y: 0, opacity: 0, rotate: -15 },
-    visible: (custom: { x: number; y: number }) => ({
-      x: custom.x,
-      y: custom.y,
+    visible: {
       opacity: 1,
       rotate: 0,
       transition: {
         duration: 0.3,
         ease: [0.25, 0.46, 0.45, 0.94],
       },
-    }),
+    },
+  };
+
+  const iconVariants: Variants = {
+    hidden: { x: 0, y: 0, opacity: 0, rotate: -15 },
+    topLeft: {
+      x: -10,
+      y: -10,
+      opacity: 1,
+      rotate: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      },
+    },
+    bottomRight: {
+      x: 10,
+      y: 10,
+      opacity: 1,
+      rotate: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      },
+    },
   };
 
   const getColors = () => {
@@ -126,18 +148,16 @@ export function UpgradeBanner({
         >
           <motion.div
             initial="hidden"
-            animate={isHovered ? "visible" : "hidden"}
+            animate={isHovered ? "topLeft" : "hidden"}
             variants={iconVariants}
-            custom={{ x: -10, y: -10 }}
             className="pointer-events-none absolute left-[4px] top-[2px]"
           >
             <WarningIcon className={`w-4 h-4 ${colors.textSecondary} dark:${colors.darkTextSecondary}`} />
           </motion.div>
           <motion.div
             initial="hidden"
-            animate={isHovered ? "visible" : "hidden"}
+            animate={isHovered ? "bottomRight" : "hidden"}
             variants={iconVariants}
-            custom={{ x: 10, y: 10 }}
             className="pointer-events-none absolute bottom-[2px] right-[4px]"
           >
             <WarningIcon className={`w-4 h-4 ${colors.textSecondary} dark:${colors.darkTextSecondary}`} />

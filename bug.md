@@ -72,6 +72,31 @@ Les erreurs de compilation ont été corrigées :
 - `TiltCard` est un export par défaut → `import TiltCard from ...`
 - `createServerClient` → `createServerSupabaseClient`
 
+### 3. Bugs TypeScript et Imports Corrigés (2026-04-19)
+Analyse complète du codebase et corrections :
+
+**✓ Imports lucide-react corrigés** ([auth-page.tsx:5,269,301](components/ui/auth-page.tsx))
+- `AtSignIcon` → `AtSign`
+- `ChevronLeftIcon` → `ChevronLeft`
+
+**✓ Interface Profile mise à jour** ([types/index.ts:40-43](types/index.ts))
+- Ajout de `trial_start_date?: string`
+- Ajout de `trial_end_date?: string`
+- Ajout de `is_trial_active?: boolean`
+
+**✓ Type SubscriptionTier corrigé** ([types/index.ts:55](types/index.ts))
+- Ajout de `'trial'` au type union : `'free' | 'trial' | 'solo' | 'pro' | 'business'`
+
+**✓ Framer-motion variants corrigés** ([upgrade-banner.tsx:57-69](components/ui/upgrade-banner.tsx))
+- Remplacement des fonctions avec paramètres custom par des variants statiques
+- Création de variants `topLeft` et `bottomRight` pour les positions
+
+**✓ Import non utilisé retiré** ([TiltCard.tsx:3](components/ui/TiltCard.tsx))
+- Retrait de `useMotionTemplate` de l'import framer-motion
+
+**✓ Validation TypeScript**
+- `npx tsc --noEmit` passe sans erreur
+
 ## Solution de Secours
 
 Si la migration continue d'échouer, exécuter manuellement dans l'éditeur SQL Supabase:

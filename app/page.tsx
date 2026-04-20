@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Zap, ArrowRight, LogIn, Menu, Star, PlayCircle, AlertTriangle, Clock, TrendingDown, Puzzle, Layers, FileText, Sparkles, Send, Users, Calculator, LayoutGrid, Mic, Type, Pencil, ScanText, Camera, Tag, Link as LinkIcon, ShieldCheck, CreditCard, CheckCircle, ChevronDown, HelpCircle, MessageCircle, Lock, Rocket, Check, X, Minus, Palette, Building2, Code2, Store, Briefcase, HeartPulse, Share2, Twitter, Linkedin, Github, MailCheck, Calendar, Package, Truck, FileClock, Globe, Smartphone, Cloud, Shield, FileBadge, Scale, Eye
@@ -63,6 +63,37 @@ function Card3D({ children, className = '' }: { children: React.ReactNode; class
     return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
   }, []);
   return <div className="card-3d"><div ref={ref} className={`card-3d-inner transition-transform duration-500 ease-out ${className}`} style={{ transformStyle: 'preserve-3d' }}>{children}</div></div>;
+}
+
+/* ─── Voice Bars ─── */
+function VoiceBars() {
+  const [heights, setHeights] = useState<number[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    // Generate random heights only on client
+    setHeights([0, 1, 2, 3, 4, 5].map(() => 10 + Math.random() * 16));
+  }, []);
+
+  if (!isClient) {
+    // Return placeholder bars on server to avoid hydration mismatch
+    return (
+      <>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: '16px' }} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: `${heights[i] || 16}px`, animation: `voicePulse${(i % 3) + 1} 1s ease-in-out infinite`, animationDelay: `${i * 0.08}s` }} />
+      ))}
+    </>
+  );
 }
 
 /* ─── Scroll Reveal ─── */
@@ -266,15 +297,11 @@ export default function LandingPage() {
                   {/* Voice bars */}
                   <div className="flex items-center justify-center gap-1.5 sm:gap-2 lg:gap-2.5 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-3.5 lg:px-4 py-3 sm:py-4 lg:py-5 max-w-[280px] sm:max-w-[320px] lg:max-w-[360px] mx-auto lg:mx-0 backdrop-blur">
                     <div className="flex items-end gap-[1.5px] sm:gap-2 lg:gap-[2px] h-[22px] sm:h-[26px] lg:h-[32px] overflow-hidden">
-                      {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 16}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.08}s` }} />
-                      ))}
+                      <VoiceBars />
                     </div>
                     <Mic className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-brand-400 flex-shrink-0" />
                     <div className="flex items-end gap-[1.5px] sm:gap-2 lg:gap-[2px] h-[22px] sm:h-[26px] lg:h-[32px] overflow-hidden">
-                      {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="w-[2.5px] sm:w-[2.5px] lg:w-[3px] bg-brand-400 rounded-full" style={{ height: `${8 + Math.random() * 16}px`, animation: `voicePulse${(i % 3) + 1} 0.6s ease-in-out infinite`, animationDelay: `${i * 0.08}s` }} />
-                      ))}
+                      <VoiceBars />
                     </div>
                   </div>
                 </div>
@@ -669,7 +696,7 @@ export default function LandingPage() {
               <ScrollReveal direction="right">
                 <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 rounded-full px-3.5 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-300"><Sparkles className="w-4 h-4 lg:w-5 lg:h-5" />Propulsé par l&apos;IA</div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">Dites-le, l&apos;IA<br />le fait pour vous</h2>
-                <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+                <div className="space-y-6 sm:space-y-5 lg:space-y-6">
                   {[{ icon: Mic, title: 'Dictée vocale', desc: 'Parlez naturellement, l\'IA remplit tous les champs.' }, { icon: Type, title: 'Génération textuelle', desc: 'Tapez en langage naturel, descriptions professionnelles automatiques.' }, { icon: Pencil, title: 'Modification intelligente', desc: '"Ajoute 2 jours" — l\'IA comprend et modifie en conséquence.' }].map((item, i) => (
                     <div key={i} className="flex items-start gap-3 sm:gap-4 lg:gap-5">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-brand-500/10 rounded-xl flex items-center justify-center flex-shrink-0"><item.icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-brand-400" /></div>

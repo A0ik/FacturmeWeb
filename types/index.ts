@@ -37,6 +37,9 @@ export interface Profile {
   payment_terms?: string;
   legal_mention?: string;
   custom_payment_terms?: string;
+  trial_start_date?: string;
+  trial_end_date?: string;
+  is_trial_active?: boolean;
   created_at: string;
 }
 
@@ -52,7 +55,7 @@ export interface PaymentTerm {
 }
 
 export type LegalStatus = 'auto-entrepreneur' | 'eirl' | 'eurl' | 'sarl' | 'sas' | 'sasu' | 'sa' | 'autre';
-export type SubscriptionTier = 'free' | 'solo' | 'pro' | 'business';
+export type SubscriptionTier = 'free' | 'trial' | 'solo' | 'pro' | 'business';
 
 export interface Client {
   id: string;

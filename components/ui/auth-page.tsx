@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AtSignIcon, ChevronLeftIcon, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { AtSign, ChevronLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -266,7 +266,7 @@ export function AuthPage({
       {/* ——— Right panel (form) ——— */}
       <div className="relative flex min-h-screen flex-col justify-center p-4 bg-white">
         <Link href="/" className="absolute top-6 left-5 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          <ChevronLeftIcon className="size-4" /> Accueil
+          <ChevronLeft className="size-4" /> Accueil
         </Link>
 
         <div className="mx-auto w-full max-w-sm space-y-5">
@@ -298,7 +298,7 @@ export function AuthPage({
 
             <div className="relative">
               <input type="email" placeholder="votre@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
-              <AtSignIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <AtSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             </div>
 
             <div className="relative">

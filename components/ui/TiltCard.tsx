@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
-import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface TiltCardProps {
