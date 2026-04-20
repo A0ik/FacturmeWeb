@@ -370,7 +370,7 @@ export default function PaywallPage() {
                       }}
                       transition={{
                         duration: 3 + Math.random() * 2,
-                        repeat: Infinity,
+                        repeat: Number.POSITIVE_INFINITY,
                         delay: i * 0.5,
                       }}
                       style={{ left: `${20 + i * 30}%`, top: `${20 + i * 20}%` }}
@@ -392,7 +392,7 @@ export default function PaywallPage() {
                       </h3>
                       <motion.span
                         animate={{ scale: [1, 1.05, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
                         className="px-2.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full uppercase tracking-wider"
                       >
                         Nouveau
@@ -434,7 +434,7 @@ export default function PaywallPage() {
               <div className="relative flex items-start gap-5">
                 <motion.div
                   animate={remainingInvoices > 0 ? { rotate: [0, 5, -5, 0] } : {}}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
                   className={cn(
                     "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl shadow-lg",
                     remainingInvoices > 0
@@ -518,7 +518,7 @@ export default function PaywallPage() {
           <div className="flex items-center gap-4 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-5 backdrop-blur-xl">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
+              transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY }}
               className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10"
             >
               <Award size={24} className="text-primary" />

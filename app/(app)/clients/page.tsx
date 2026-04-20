@@ -77,7 +77,7 @@ const StatCard = ({
         </div>
         <motion.div
           animate={{ rotate: [0, 5, -5, 0] }}
-          transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+          transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatDelay: 1 }}
           className="text-white/30"
         >
           <Activity size={24} />
@@ -252,7 +252,7 @@ const ClientCard = ({ client, stats, idx, onDelete, viewMode }: {
             </div>
             <motion.div
               animate={{ x: [0, 4, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+              transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, repeatDelay: 1 }}
               className="text-gray-300 group-hover:text-primary transition-colors"
             >
               <ArrowUpRight size={16} />
