@@ -36,7 +36,14 @@
       "mcp__supabase__list_tables",
       "mcp__supabase__list_migrations",
       "mcp__supabase__execute_sql",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "Bash(uipro init *)",
+      "Bash(python3 \"c:/Users/salma/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"fintech saas dashboard professional elegant glassmorphism\" --design-system -p \"FacturmeWeb Dashboard\")",
+      "Bash(rtk init *)",
+      "Bash(rtk tsc *)",
+      "Bash(rtk eslint *)",
+      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"SaaS dashboard clients management modern glassmorphism\" --design-system -p \"FacturmeWeb\" --page \"clients\")",
+      "mcp__magic__21st_magic_component_inspiration"
     ]
   },
   "enableAllProjectMcpServers": true,

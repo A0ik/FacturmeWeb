@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
-  Zap, ArrowRight, LogIn, Menu, Star, PlayCircle, AlertTriangle, Clock, TrendingDown, Puzzle, Layers, FileText, Sparkles, Send, Users, Calculator, LayoutGrid, Mic, Type, Pencil, ScanText, Camera, Tag, Link as LinkIcon, ShieldCheck, CreditCard, CheckCircle, ChevronDown, HelpCircle, MessageCircle, Lock, Rocket, Check, X, Minus, Palette, Building2, Code2, Store, Briefcase, HeartPulse, Share2, Twitter, Linkedin, Github, MailCheck, Calendar, Package, Truck, FileClock, Globe, Smartphone, Cloud, Shield, FileBadge, Scale, Eye
+  Zap, ArrowRight, LogIn, Menu, Star, PlayCircle, AlertTriangle, Clock, TrendingDown, Puzzle, Layers, FileText, Sparkles, Send, Users, Calculator, LayoutGrid, Mic, Type, Pencil, ScanText, Camera, Tag, Link as LinkIcon, ShieldCheck, CreditCard, CheckCircle, ChevronDown, HelpCircle, MessageCircle, Lock, Rocket, Check, X, Minus, Palette, Building2, Code2, Store, Briefcase, HeartPulse, Share2, Twitter, Linkedin, Github, MailCheck, Calendar, Package, Truck, FileClock, Globe, Smartphone, Cloud, Shield, FileBadge, Scale, Eye, Wallet
 } from 'lucide-react';
 
 /* ─── Particles Canvas ─── */
@@ -967,7 +967,146 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ PRICING ═══════════ */}
+      {/* ═════════ COMMENT ÇA MARCHE ═══════════ */}
+      <section className="py-16 sm:py-24 lg:py-32 bg-slate-50 dark:bg-slate-900 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand-500/5 rounded-full blur-3xl" />
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal>
+            <div className="text-center mb-12 sm:mb-16">
+              <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-full px-4 py-1.5 text-xs sm:text-sm lg:text-base font-medium text-brand-700 mb-4">
+                <PlayCircle className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />Simple comme bonjour
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4">
+                Créez vos factures en <span className="gradient-text-light">3 étapes</span>
+              </h2>
+              <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                Pas de formation nécessaire. Intuitif dès la première utilisation.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+            {[
+              {
+                step: '01',
+                icon: <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />,
+                title: 'Dites-nous',
+                desc: 'Dictez ou décrivez votre facture en langage naturel. L\'IA génère tout automatiquement.'
+              },
+              {
+                step: '02',
+                icon: <Send className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />,
+                title: 'Envoyez en un clic',
+                desc: 'Partagez par email, lien sécurisé, ou envoyez directement depuis le tableau de bord.'
+              },
+              {
+                step: '03',
+                icon: <Wallet className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />,
+                title: 'Suivez tout',
+                desc: 'Tableau de bord complet avec graphiques, relances automatiques et export comptable.'
+              },
+            ].map((item, i) => (
+              <ScrollReveal key={i} delay={i * 0.1}>
+                <div className="relative bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-lg transition-shadow duration-300">
+                  <div className="absolute -top-4 -left-4 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-brand-500 rounded-full flex items-center justify-center text-white text-sm sm:text-base lg:text-lg font-black opacity-20">
+                    {item.step}
+                  </div>
+                  <div className="text-brand-500 mb-4 sm:mb-6">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          <ScrollReveal delay={0.3}>
+            <div className="text-center mt-12 sm:mt-16">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-semibold px-6 py-3 sm:px-8 sm:py-4 lg:px-10 lg:py-5 rounded-2xl sm:rounded-3xl text-sm sm:text-base lg:text-lg transition-all shadow-xl hover:shadow-2xl active:scale-[0.97]">
+                <Zap className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+                Commencer maintenant, c'est gratuit
+              </Link>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═════════ POURQUOI FACTU.ME ═══════════ */}
+      <section className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-950">
+        <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal>
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4">
+                Pourquoi choisir <span className="gradient-text-light">Factu.me</span> ?
+              </h2>
+              <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                La solution française complète pour votre facturation
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {[
+              {
+                icon: <Zap className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: 'Intelligence Artificielle',
+                desc: 'Dictée vocale et génération par IA. Créez vos factures en 10 secondes.'
+              },
+              {
+                icon: <Send className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: 'Relances automatiques',
+                desc: 'Envoyez des rappels automatiques à vos clients. Ne perdez plus d\'argent.'
+              },
+              {
+                icon: <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: '100% Conforme France',
+                desc: 'Export officiel FEC pour les impôts. Mentions légales automatiques.'
+              },
+              {
+                icon: <Cloud className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: '100% Cloud Français',
+                desc: 'Données hébergées en France. Conforme RGPD et sécurité bancaire.'
+              },
+              {
+                icon: <FileBadge className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: 'Templates professionnels',
+                desc: '6 modèles de factures PDF personnalisables avec votre logo et couleurs.'
+              },
+              {
+                icon: <Store className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: 'Multi-document',
+                desc: 'Factures, devis, avoirs, bons de commande et de livraison.'
+              },
+              {
+                icon: <Scale className="w-10 h-10 sm:w-12 sm:h-12" />,
+                title: 'Sans engagement',
+                desc: 'Gratuit pour toujours. Plan payant sans engagement, résiliable instantanément.'
+              },
+            ].map((item, i) => (
+              <ScrollReveal key={i} delay={i * 0.08}>
+                <div className="group bg-slate-50 dark:bg-slate-900 rounded-2xl p-5 sm:p-6 lg:p-8 text-center hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                  <div className="text-brand-500 mb-3 sm:mb-4 inline-flex">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════ PRICING ═══════════ */}
       <section id="tarifs" className="py-16 sm:py-24 lg:py-32 xl:py-40 bg-slate-50">
         <div className="max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">

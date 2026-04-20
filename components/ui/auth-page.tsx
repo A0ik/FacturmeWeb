@@ -65,8 +65,9 @@ function FloatingInvoice3D() {
         />
 
         {/* Accent bar at top */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" style={{ transform: 'translateZ(10px)' }} />
-
+        <div className="absolute top-0 left-0 right-0 rounded-t-2xl overflow-hidden" style={{ transform: 'translateZ(10px)' }}>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />
+        </div>
         <div className="flex justify-between items-start mb-7" style={{ transform: 'translateZ(15px)' }}>
           <div>
             <div className="h-5 w-24 rounded bg-primary/80 mb-2.5" />
