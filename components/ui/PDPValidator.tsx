@@ -401,7 +401,7 @@ export function PDPValidator({ invoice, profile, onFix, mode = 'inline' }: PDPVa
     );
   }
 
-  return result;
+  return null;
 }
 
 function FieldCheck({ label, present, error }: { label: string; present: boolean; error?: string }) {

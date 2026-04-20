@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
-import { generateFacturXXml, createFacturXPdf } from '@/lib/facturx';
+import { generatePdfBuffer } from '@/lib/pdf';
+import { createFacturXPdf } from '@/lib/facturx';
 
 /**
  * API PDP - Validation et préparation pour la transmission à l'État
@@ -57,7 +58,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Générer le Factur-X avec toutes les infos PDP
-    const facturXPdf = await createFacturXPdf(invoice, profile);
+    const pdfBuffer = await generatePdfBuffer(invoice, profile);
+    const facturXPdf = await createFacturXPdf(pdfBuffer, invoice, profile);
 
     // Enregistrer dans les logs d'audit
     await supabase.from('facturx_audit_logs').insert({

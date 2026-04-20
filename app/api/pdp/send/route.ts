@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
+import { generatePdfBuffer } from '@/lib/pdf';
 import { createFacturXPdf } from '@/lib/facturx';
 
 /**
@@ -69,7 +70,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Générer le Factur-X
-    const facturXPdf = await createFacturXPdf(invoice, profile);
+    const pdfBuffer = await generatePdfBuffer(invoice, profile);
+    const facturXPdf = await createFacturXPdf(pdfBuffer, invoice, profile);
     const pdfBase64 = Buffer.from(facturXPdf).toString('base64');
 
     // Préparer l'email avec Brevo
