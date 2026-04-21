@@ -54,7 +54,15 @@
       "Bash(rtk npm *)",
       "Bash(rtk find *)",
       "Bash(python3 scripts/search.py \"SaaS subscription pricing paywall conversion optimized\" --design-system -p \"FacturmeWeb\")",
-      "mcp__magic__21st_magic_component_refiner"
+      "mcp__magic__21st_magic_component_refiner",
+      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"fintech SaaS pricing modern glassmorphism\" --design-system -p \"Facturme\" -f markdown)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"fintech SaaS pricing modern glassmorphism\" --design-system -p \"Facturme\" -f markdown)",
+      "Bash(winget install *)",
+      "Bash(rtk which *)",
+      "Bash(rtk \"/c/Users/salma/AppData/Local/Programs/Python/Python312/python.exe\" --version)",
+      "Bash(rtk cat *)",
+      "mcp__magic__21st_magic_component_builder",
+      "Bash(rtk cp *)"
     ]
   },
   "enableAllProjectMcpServers": true,

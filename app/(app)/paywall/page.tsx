@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
@@ -98,6 +98,65 @@ export default function PaywallPage() {
   } | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
+  const handleSelectWithTrial = async (planId: string) => {
+    const selectedPlan = PLANS.find(p => p.id === planId);
+    if (!selectedPlan || !profile?.id) return;
+
+    setLoading(planId);
+    setSelectedPlan(selectedPlan);
+    try {
+      const res = await fetch('/api/stripe/trial-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planId, userId: profile.id }),
+      });
+      const data = await res.json();
+
+      if (data.clientSecret) {
+        const planInfo: PlanInfo = {
+          id: selectedPlan.id,
+          name: selectedPlan.name,
+          price: selectedPlan.price.replace('€', ''),
+          priceNote: '/ mois (après 4 jours d\'essai)',
+          features: selectedPlan.features
+            .filter(f => f.included)
+            .slice(0, 4)
+            .map(f => f.label),
+        };
+
+        setCheckoutData({
+          clientSecret: data.clientSecret,
+          userId: profile.id,
+          planInfo,
+        });
+      } else {
+        toast.error(data.error || "Impossible de créer l'essai");
+        setSelectedPlan(null);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur');
+      setSelectedPlan(null);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // Vérifier les paramètres URL pour l'essai business
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const planParam = params.get('plan');
+    const trialParam = params.get('trial');
+
+    if (planParam === 'business' && trialParam === 'true' && profile?.id) {
+      // Sélectionner automatiquement le plan business et ouvrir le checkout
+      const businessPlan = PLANS.find(p => p.id === 'business');
+      if (businessPlan) {
+        setSelectedPlan(businessPlan);
+        handleSelectWithTrial('business');
+      }
+    }
+  }, [profile?.id]);
+
   const handleSelect = async (planId: string) => {
     if (planId === sub.tier) return;
 
@@ -177,13 +236,13 @@ export default function PaywallPage() {
             className="mx-auto mb-8 max-w-3xl"
           >
             <Link href="/trial" className="block group">
-              <div className="relative overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 p-6 shadow-xl shadow-amber-200/50 hover:shadow-2xl hover:shadow-amber-300/60 transition-all">
+              <div className="relative overflow-hidden rounded-3xl border-2 border-purple-500 bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 p-6 shadow-xl shadow-purple-200/50 hover:shadow-2xl hover:shadow-purple-300/60 transition-all">
                 {/* Animated particles */}
                 <div className="absolute inset-0 overflow-hidden">
                   {[...Array(3)].map((_, i) => (
                     <motion.div
                       key={i}
-                      className="absolute w-2 h-2 bg-amber-400/30 rounded-full"
+                      className="absolute w-2 h-2 bg-purple-500/30 rounded-full"
                       animate={{
                         x: [0, Math.random() * 400 - 200],
                         y: [0, Math.random() * 100 - 50],
@@ -202,27 +261,27 @@ export default function PaywallPage() {
                 <div className="relative flex items-center gap-5">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
-                    className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg group-hover:shadow-xl transition-shadow"
+                    className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-violet-700 text-white shadow-lg group-hover:shadow-xl transition-shadow"
                   >
                     <Sparkles size={32} className="fill-current" />
                   </motion.div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-xl font-bold text-amber-700">
-                        Essai Gratuit 4 Jours
+                      <h3 className="text-xl font-bold text-purple-700">
+                        Essai Gratuit Business 4 Jours
                       </h3>
                       <motion.span
                         animate={{ scale: [1, 1.05, 1] }}
                         transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-                        className="px-2.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full uppercase tracking-wider"
+                        className="px-2.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-600 to-violet-700 text-white rounded-full uppercase tracking-wider"
                       >
                         Nouveau
                       </motion.span>
                     </div>
-                    <p className="text-sm text-amber-800 mb-2">
-                      Accédez à TOUTES les fonctionnalités Pro pendant 4 jours, sans engagement.
+                    <p className="text-sm text-purple-800 mb-2">
+                      Accédez à TOUTES les fonctionnalités Business pendant 4 jours, sans engagement.
                     </p>
-                    <div className="flex items-center gap-2 text-sm text-amber-700 font-semibold">
+                    <div className="flex items-center gap-2 text-sm text-purple-700 font-semibold">
                       <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                       <span>Commencer maintenant</span>
                     </div>

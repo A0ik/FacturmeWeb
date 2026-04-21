@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Factu.me' },
   icons: { icon: '/icons/icon.svg', apple: '/icons/icon.svg' },
+  verification: {
+    google: 'googleac46477cf91a4e5a.html',
+  },
 };
 
 export const viewport: Viewport = {

@@ -16,23 +16,25 @@ export default function TrialPage() {
   const handleActivateTrial = async () => {
     setIsActivating(true);
     try {
-      const response = await fetch('/api/subscription/activate-trial', {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        setIsActivated(true);
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Erreur lors de l\'activation de l\'essai');
-      }
+      // Rediriger vers le paywall avec sélection du plan business
+      setTimeout(() => {
+        window.location.href = '/paywall?plan=business&trial=true';
+      }, 500);
     } catch (error) {
       console.error('Error activating trial:', error);
       alert('Erreur lors de l\'activation de l\'essai');
-    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const handleActivateTrial = async () => {
+    setIsActivating(true);
+    try {
+      // Rediriger vers le paywall avec sélection du plan business
+      window.location.href = '/paywall?plan=business&trial=true';
+    } catch (error) {
+      console.error('Error activating trial:', error);
+      alert('Erreur lors de l\'activation de l\'essai');
       setIsActivating(false);
     }
   };
@@ -155,13 +157,13 @@ export default function TrialPage() {
               Offre limitée
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Essai Gratuit 4 Jours
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-800 bg-clip-text text-transparent">
+              Essai Gratuit Business 4 Jours
             </h1>
 
             <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
-              Découvrez toutes les fonctionnalités Pro de FacturmeWeb sans engagement.
-              Après l'essai, votre abonnement Pro continuera automatiquement.
+              Découvrez toutes les fonctionnalités Business de FacturmeWeb sans engagement.
+              Après l'essai, votre abonnement Business continuera automatiquement à 39.99€/mois.
             </p>
 
             <motion.div
@@ -177,7 +179,7 @@ export default function TrialPage() {
                 <Button
                   onClick={handleActivateTrial}
                   disabled={isActivating}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-full text-lg font-bold shadow-lg shadow-blue-500/25"
+                  className="bg-gradient-to-r from-purple-600 to-violet-700 hover:from-purple-700 hover:to-violet-800 text-white px-8 py-4 rounded-full text-lg font-bold shadow-lg shadow-purple-500/25"
                 >
                   {isActivating ? (
                     <>
@@ -188,11 +190,11 @@ export default function TrialPage() {
                       >
                         <Zap className="w-5 h-5" />
                       </motion.div>
-                      Activation en cours...
+                      Redirection vers le paiement...
                     </>
                   ) : (
                     <>
-                      Commencer mon essai gratuit
+                      Commencer mon essai Business
                       <ArrowRight className="ml-2 w-5 h-5" />
                     </>
                   )}
@@ -201,7 +203,7 @@ export default function TrialPage() {
             </motion.div>
 
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              Aucune carte bancaire requise • Annulation à tout moment
+              Carte bancaire requise • Essai 4 jours puis abonnement Business à 39.99€/mois
             </p>
           </motion.div>
         </div>

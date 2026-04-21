@@ -28,7 +28,7 @@ const TIER_CONFIG = {
     gradient: 'from-gray-600 to-gray-700',
     iconBg: 'from-gray-100 to-gray-200',
     icon: Zap,
-    iconColor: 'text-gray-700',
+    iconColor: 'text-white',
     message: 'Essai gratuit 4 jours',
     subtext: 'Accès complet · Sans engagement',
     cta: '/trial',
@@ -36,10 +36,10 @@ const TIER_CONFIG = {
   solo: {
     name: 'Solo',
     nextTier: 'pro',
-    gradient: 'from-primary to-primary-dark',
-    iconBg: 'from-primary/10 to-primary/20',
+    gradient: 'from-blue-800 via-blue-900 to-indigo-900',
+    iconBg: 'from-blue-800 to-indigo-900',
     icon: Rocket,
-    iconColor: 'text-primary',
+    iconColor: 'text-white',
     message: 'Passer à Pro',
     subtext: 'IA · FEC · CRM · Relances',
     cta: '/paywall',
@@ -47,10 +47,10 @@ const TIER_CONFIG = {
   pro: {
     name: 'Pro',
     nextTier: 'business',
-    gradient: 'from-orange-500 to-orange-600',
-    iconBg: 'from-orange-50 to-orange-100 dark:from-orange-500/10 dark:to-orange-500/20',
+    gradient: 'from-violet-500 to-violet-600',
+    iconBg: 'from-purple-600 via-violet-700 to-purple-800 dark:from-violet-500/10 dark:to-violet-500/20',
     icon: Crown,
-    iconColor: 'text-orange-600',
+    iconColor: 'text-white',
     message: 'Passer à Business',
     subtext: 'Multi-comptes · Webhooks · API',
     cta: '/paywall',
@@ -60,30 +60,30 @@ const TIER_CONFIG = {
 // Items visibles au premier regard — le Core Flow MVP
 const NAV_CORE = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
-  { href: '/invoices',  icon: FileText,        label: 'Factures',        badge: 'overdue' as null | 'overdue' | 'notif' },
-  { href: '/clients',   icon: Users,           label: 'Clients',         badge: null },
-  { href: '/settings',  icon: Settings,        label: 'Paramètres',      badge: null },
+  { href: '/invoices', icon: FileText, label: 'Factures', badge: 'overdue' as null | 'overdue' | 'notif' },
+  { href: '/clients', icon: Users, label: 'Clients', badge: null },
+  { href: '/settings', icon: Settings, label: 'Paramètres', badge: null },
 ];
 
 // Features avancées — code intact, UI cachée (Progressive Disclosure)
 const NAV_ADVANCED = [
-  { href: '/crm',         icon: Kanban,      label: 'Pipeline CRM' },
-  { href: '/recurring',   icon: RefreshCw,   label: 'Récurrentes' },
-  { href: '/expenses',    icon: Receipt,     label: 'Notes de frais' },
-  { href: '/capture',     icon: Camera,      label: 'Capture & OCR' },
-  { href: '/suppliers',   icon: Building2,   label: 'Fournisseurs' },
-  { href: '/connections', icon: Link2,       label: 'Connexions' },
-  { href: '/products',    icon: Package,     label: 'Catalogue' },
-  { href: '/calendar',    icon: Calendar,    label: 'Agenda' },
-  { href: '/accounting',  icon: Calculator,  label: 'Comptabilité' },
-  { href: '/activity',    icon: Activity,    label: 'Activité' },
-  { href: '/banking',     icon: Landmark,    label: 'Banque' },
+  { href: '/crm', icon: Kanban, label: 'Pipeline CRM' },
+  { href: '/recurring', icon: RefreshCw, label: 'Récurrentes' },
+  { href: '/expenses', icon: Receipt, label: 'Notes de frais' },
+  { href: '/capture', icon: Camera, label: 'Capture & OCR' },
+  { href: '/suppliers', icon: Building2, label: 'Fournisseurs' },
+  { href: '/connections', icon: Link2, label: 'Connexions' },
+  { href: '/products', icon: Package, label: 'Catalogue' },
+  { href: '/calendar', icon: Calendar, label: 'Agenda' },
+  { href: '/accounting', icon: Calculator, label: 'Comptabilité' },
+  { href: '/activity', icon: Activity, label: 'Activité' },
+  { href: '/banking', icon: Landmark, label: 'Banque' },
 ];
 
 const NAV_BOTTOM = [
-  { href: '/workspace',      icon: Building2,        label: 'Workspace',       badge: null as null | 'overdue' | 'notif' },
-  { href: '/notifications',  icon: Bell,             label: 'Notifications',   badge: 'notif' as null | 'overdue' | 'notif' },
-  { href: '/help',           icon: HelpCircle,       label: 'Aide',            badge: null },
+  { href: '/workspace', icon: Building2, label: 'Workspace', badge: null as null | 'overdue' | 'notif' },
+  { href: '/notifications', icon: Bell, label: 'Notifications', badge: 'notif' as null | 'overdue' | 'notif' },
+  { href: '/help', icon: HelpCircle, label: 'Aide', badge: null },
 ];
 
 export default function Sidebar() {
@@ -353,12 +353,12 @@ export default function Sidebar() {
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
           <UserDropdown
             user={{
-              name:     profile?.company_name || profile?.first_name || 'Mon compte',
-              email:    profile?.email || 'compte@factu.me',
+              name: profile?.company_name || profile?.first_name || 'Mon compte',
+              email: profile?.email || 'compte@factu.me',
               initials: getInitials(profile?.company_name || profile?.first_name || 'U'),
-              avatar:   profile?.logo_url || undefined,
-              status:   'online',
-              tier:     profile?.subscription_tier || 'free',
+              avatar: profile?.logo_url || undefined,
+              status: 'online',
+              tier: profile?.subscription_tier || 'free',
             }}
             onAction={async (action) => {
               if (action === 'logout') {
@@ -371,10 +371,10 @@ export default function Sidebar() {
                   console.error('Logout error:', error);
                 }
               }
-              if (action === 'settings')    { router.push('/settings'); }
-              if (action === 'profile')     { router.push('/settings'); }
+              if (action === 'settings') { router.push('/settings'); }
+              if (action === 'profile') { router.push('/settings'); }
               if (action === 'notifications') { router.push('/notifications'); }
-              if (action === 'help')        { router.push('/help'); }
+              if (action === 'help') { router.push('/help'); }
               if (action === 'add-account') {
                 try {
                   await signOut();
