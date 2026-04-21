@@ -1,0 +1,303 @@
+/**
+ * Signature Providers - Options de signature électronique (GRATUITES et payantes)
+ *
+ * Ce fichier liste les options de signature électronique pour Factur-X.
+ * Certaines sont gratuites, d'autres payantes mais avec offres d'essai.
+ */
+
+export interface SignatureProvider {
+  id: string;
+  name: string;
+  type: 'api' | 'certificate' | 'software';
+  pricing: 'free' | 'freemium' | 'paid';
+  website: string;
+  description: string;
+  features: string[];
+  limitations?: string;
+  rgsCompliant: boolean;
+}
+
+/**
+ * Options de signature électronique
+ */
+export const SIGNATURE_PROVIDERS: SignatureProvider[] = [
+  // ── OPTIONS GRATUITES (pour tests et petits volumes) ────────────────────────
+  {
+    id: 'openssl',
+    name: 'OpenSSL (auto-signé)',
+    type: 'software',
+    pricing: 'free',
+    website: 'https://www.openssl.org',
+    description: 'Génération de certificats auto-signés pour tests uniquement',
+    features: [
+      '100% gratuit',
+      'Certificat immédiat',
+      'Fonctionne en développement'
+    ],
+    limitations: 'Non conforme RGS - Tests uniquement',
+    rgsCompliant: false
+  },
+
+  // ── API avec offres GRATUITES / FREEMIUM ────────────────────────────────────
+  {
+    id: 'docusign',
+    name: 'DocuSign',
+    type: 'api',
+    pricing: 'freemium',
+    website: 'https://www.docusign.com',
+    description: 'API de signature avec offre gratuite (3 documents/mois)',
+    features: [
+      'Offre gratuite : 3 docs/mois',
+      'API REST complète',
+      'SDK JavaScript',
+      'Conformité eIDAS'
+    ],
+    limitations: 'Non conforme RGS français (conforme eIDAS européen)',
+    rgsCompliant: false
+  },
+
+  {
+    id: 'yousign',
+    name: 'YouSign (française)',
+    type: 'api',
+    pricing: 'freemium',
+    website: 'https://yousign.com',
+    description: 'Solution française avec essai gratuit',
+    features: [
+      'Essai gratuit disponible',
+      'API REST',
+      'Conformité eIDAS',
+      'Support en français'
+    ],
+    limitations: 'Vérifier conformité RGS*',
+    rgsCompliant: true
+  },
+
+  {
+    id: 'universign',
+    name: 'Universign',
+    type: 'api',
+    pricing: 'freemium',
+    website: 'https://www.universign.com/fr',
+    description: 'Solution française avec offre d\'essai',
+    features: [
+      'Essai gratuit',
+      'API REST',
+      'Certificats RGS possibles',
+      'Timestamp inclus'
+    ],
+    limitations: 'Contacter pour offres RGS',
+    rgsCompliant: true
+  },
+
+  // ── PDP avec envoi GRATUIT ────────────────────────────────────────────────────
+  {
+    id: 'titre-pdp',
+    name: 'Titre PDP',
+    type: 'api',
+    pricing: 'freemium',
+    website: 'https://www.titre.com',
+    description: 'Plateforme PDP avec envoi gratuit de base',
+    features: [
+      'Envoi PDP gratuit (limité)',
+      'Certificat inclus',
+      'Conforme réforme 2026+',
+      'Support français'
+    ],
+    limitations: 'Limites de volume sur offre gratuite',
+    rgsCompliant: true
+  },
+
+  {
+    id: 'sage-pdp',
+    name: 'Sage PDP',
+    type: 'api',
+    pricing: 'freemium',
+    website: 'https://www.sage.com/fr',
+    description: 'PDP avec offre gratuite pour petites entreprises',
+    features: [
+      'Offre gratuite disponible',
+      'Conforme réforme 2026+',
+      'Intégration logiciels Sage'
+    ],
+    limitations: 'Conditions à vérifier',
+    rgsCompliant: true
+  },
+
+  // ── CERTIFICATS RGS (payants mais obligatoires pour conformité stricte) ────────
+  {
+    id: 'certigna',
+    name: 'Certigna (Dhimyotis)',
+    type: 'certificate',
+    pricing: 'paid',
+    website: 'https://www.certigna.fr',
+    description: 'Certificats RGS* et RGS** - Autorité française',
+    features: [
+      'RGS* : ~200-500€/an',
+      'RGS** : ~500-1000€/an',
+      '100% conforme',
+      'Support en français'
+    ],
+    limitations: 'Payant - Requis pour conformité stricte',
+    rgsCompliant: true
+  },
+
+  {
+    id: 'igs',
+    name: 'IGS (Infogreffe)',
+    type: 'certificate',
+    pricing: 'paid',
+    website: 'https://www.igs.fr',
+    description: 'Certificats RGS pour les entreprises',
+    features: [
+      'RGS* et RGS**',
+      'Certificats pour entreprises',
+      'Prix compétitifs'
+    ],
+    rgsCompliant: true
+  },
+
+  // ── LOGICIELS LIBRES ────────────────────────────────────────────────────────────
+  {
+    id: 'jaspersign',
+    name: 'JasperSign',
+    type: 'software',
+    pricing: 'free',
+    website: 'https://www.jasperforge.org/projects/jasperserver',
+    description: 'Logiciel open source de signature Java',
+    features: [
+      '100% gratuit',
+      'Open source',
+      'Signature XAdES possible'
+    ],
+    limitations: 'Nécessite expertise technique',
+    rgsCompliant: false
+  }
+];
+
+/**
+ * Filtre les providers selon critères
+ */
+export function filterProviders(filters: {
+  pricing?: 'free' | 'freemium' | 'paid' | 'all';
+  rgsCompliant?: boolean;
+  type?: 'api' | 'certificate' | 'software' | 'all';
+}): SignatureProvider[] {
+  return SIGNATURE_PROVIDERS.filter(provider => {
+    if (filters.pricing && filters.pricing !== 'all' && provider.pricing !== filters.pricing) {
+      return false;
+    }
+    if (filters.rgsCompliant !== undefined && provider.rgsCompliant !== filters.rgsCompliant) {
+      return false;
+    }
+    if (filters.type && filters.type !== 'all' && provider.type !== filters.type) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Retourne les options gratuites uniquement
+ */
+export function getFreeProviders(): SignatureProvider[] {
+  return filterProviders({ pricing: 'free' });
+}
+
+/**
+ * Retourne les options freemium uniquement
+ */
+export function getFreemiumProviders(): SignatureProvider[] {
+  return filterProviders({ pricing: 'freemium' });
+}
+
+/**
+ * Retourne les options conformes RGS
+ */
+export function getRGSCompliantProviders(): SignatureProvider[] {
+  return SIGNATURE_PROVIDERS.filter(p => p.rgsCompliant);
+}
+
+/**
+ * Documentation pour l'implémentation avec chaque provider
+ */
+export const IMPLEMENTATION_GUIDES = {
+  openssl: {
+    install: 'brew install openssl', // ou apt-get install openssl
+    generate: `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365`,
+    usage: 'Tests uniquement - NON CONFORME POUR PRODUCTION'
+  },
+
+  docusign: {
+    signup: 'https://developers.docusign.com',
+    docs: 'https://developers.docusign.com/docs/esign-rest-api/reference/',
+    npm: 'npm install docusign-esign',
+    example: `const docusign = require('docusign-esign');
+const apiClient = new docusign.ApiClient();
+apiClient.addDefaultHeader('Authorization', 'Bearer ' + accessToken);`
+  },
+
+  yousign: {
+    signup: 'https://yousign.com',
+    docs: 'https://dev.yousign.com',
+    npm: 'npm install yousign',
+    example: `const Yousign = require('yousign');
+const yousign = new Yousign({ apiKey: process.env.YOUSIGN_API_KEY });`
+  },
+
+  certigna: {
+    purchase: 'https://www.certigna.fr/acheter',
+    docs: 'https://www.certigna.fr/documentation',
+    note: 'Acheter le certificat puis installer dans le navigateur/serveur'
+  }
+};
+
+/**
+ * Calcul du coût annuel selon les options
+ */
+export function calculateAnnualCost(
+  providerId: string,
+  volume: number // nombre de factures par an
+): { minCost: number; maxCost: number; recommendation: string } {
+  const provider = SIGNATURE_PROVIDERS.find(p => p.id === providerId);
+  if (!provider) {
+    return { minCost: 0, maxCost: 0, recommendation: 'Provider inconnu' };
+  }
+
+  switch (providerId) {
+    case 'openssl':
+      return {
+        minCost: 0,
+        maxCost: 0,
+        recommendation: 'Gratuit mais NON CONFORME - Tests uniquement'
+      };
+
+    case 'docusign':
+      if (volume <= 36) { // 3 par mois = 36 par an
+        return {
+          minCost: 0,
+          maxCost: 0,
+          recommendation: 'Offre gratuite suffisante'
+        };
+      }
+      return {
+        minCost: 300, // ~25€/mois
+        maxCost: 600,
+        recommendation: 'Passer à l\'offre payante au-delà de 3 factures/mois'
+      };
+
+    case 'certigna':
+      return {
+        minCost: 200,
+        maxCost: 500,
+        recommendation: 'Certificat RGS* - Obligatoire pour conformité stricte'
+      };
+
+    default:
+      return {
+        minCost: 0,
+        maxCost: 0,
+        recommendation: 'Contacter le provider pour un devis'
+      };
+  }
+}

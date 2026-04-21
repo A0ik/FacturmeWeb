@@ -53,6 +53,7 @@ const PLANS: Plan[] = [
       { label: 'Tout dans Solo', included: true },
       { label: 'IA & Relances', included: true },
       { label: 'Export FEC', included: true },
+      { label: 'Factur-X (Conforme 2026)', included: true, highlight: true },
       { label: 'Pipeline CRM', included: true },
       { label: 'Factures récurrentes', included: true },
       { label: 'Signature client', included: true },
@@ -68,6 +69,7 @@ const PLANS: Plan[] = [
     borderColor: 'purple-600', glowColor: 'shadow-purple-600',
     cta: 'Choisir Business', badge: 'Recommandé', features: [
       { label: 'Tout dans Pro', included: true },
+      { label: 'Factur-X + Transmission PDP', included: true, highlight: true },
       { label: '10 espaces de travail', included: true },
       { label: 'API & Webhooks', included: true },
       { label: 'Multi-utilisateurs', included: true },

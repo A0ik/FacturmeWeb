@@ -1,0 +1,614 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Settings, Shield, CheckCircle2, XCircle, AlertTriangle, Key,
+  Server, FileText, ExternalLink, Info, Lock, RefreshCw,
+  Upload, Download, Trash2, Plus, Eye, EyeOff, Save,
+  Building2, Clock, Zap, AlertCircle, Award
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+interface APIConfig {
+  id: string;
+  name: string;
+  status: 'configured' | 'not_configured' | 'error';
+  type: 'pdp' | 'chorus' | 'signature';
+  description: string;
+  required: boolean;
+  lastTest?: Date;
+  documentation?: string;
+  fields: APIField[];
+}
+
+interface APIField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'file' | 'certificate';
+  value?: string;
+  required: boolean;
+  placeholder?: string;
+  help?: string;
+}
+
+interface APIIntegrationsManagerProps {
+  mode?: 'full' | 'compact';
+}
+
+const API_CONFIGS: APIConfig[] = [
+  {
+    id: 'pdp',
+    name: 'API DGFiP / PDP',
+    status: 'not_configured',
+    type: 'pdp',
+    description: 'Transmission des factures à la Plateforme de Dématérialisation Partagée de l\'État',
+    required: true,
+    documentation: 'https://www.dgfip.gouv.fr',
+    fields: [
+      {
+        key: 'PDP_ENVIRONMENT',
+        label: 'Environnement',
+        type: 'text',
+        required: true,
+        placeholder: 'test ou production',
+        help: 'Utilisez "test" pour les tests, "production" pour la mise en production'
+      },
+      {
+        key: 'PDP_CLIENT_ID',
+        label: 'Client ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Identifiant client fourni par la DGFiP',
+        help: 'Disponible après inscription sur le portail DGFiP'
+      },
+      {
+        key: 'PDP_CLIENT_SECRET',
+        label: 'Client Secret',
+        type: 'password',
+        required: true,
+        placeholder: 'Secret client fourni par la DGFiP',
+        help: 'Gardez ce secret confidentiel'
+      }
+    ]
+  },
+  {
+    id: 'chorus',
+    name: 'API Chorus Pro',
+    status: 'not_configured',
+    type: 'chorus',
+    description: 'Facturation électronique pour les commandes publiques (B2G)',
+    required: false,
+    documentation: 'https://chorus-pro.gouv.fr',
+    fields: [
+      {
+        key: 'CHORUS_ENVIRONMENT',
+        label: 'Environnement',
+        type: 'text',
+        required: true,
+        placeholder: 'test ou production',
+        help: 'Environnement Chorus Pro'
+      },
+      {
+        key: 'CHORUS_API_KEY',
+        label: 'Clé API',
+        type: 'password',
+        required: true,
+        placeholder: 'Clé API Chorus Pro',
+        help: 'Disponible après habilitation Chorus Pro'
+      },
+      {
+        key: 'CHORUS_TECHNICAL_ACCOUNT',
+        label: 'Compte technique',
+        type: 'text',
+        required: true,
+        placeholder: 'Identifiant du compte technique',
+        help: 'Compte dédié à l\'intégration API'
+      }
+    ]
+  },
+  {
+    id: 'signature',
+    name: 'Signature Électronique',
+    status: 'not_configured',
+    type: 'signature',
+    description: 'Certificat de signature RGS pour authentifier les factures',
+    required: true,
+    documentation: 'https://www.ssi.gouv.fr/administration/reglementation/rgs/',
+    fields: [
+      {
+        key: 'CERTIFICATE_FILE',
+        label: 'Certificat (.p12 ou .pfx)',
+        type: 'file',
+        required: true,
+        help: 'Fichier de certificat RGS* ou RGS** délivré par une AC reconnue'
+      },
+      {
+        key: 'CERTIFICATE_PASSWORD',
+        label: 'Mot de passe du certificat',
+        type: 'password',
+        required: false,
+        placeholder: 'Mot de passe protégeant le certificat',
+        help: 'Laissez vide si le certificat n\'est pas protégé'
+      }
+    ]
+  }
+];
+
+const STATUS_CONFIG = {
+  configured: {
+    label: 'Configuré',
+    icon: CheckCircle2,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200'
+  },
+  not_configured: {
+    label: 'Non configuré',
+    icon: XCircle,
+    color: 'text-gray-400',
+    bg: 'bg-gray-50',
+    border: 'border-gray-200'
+  },
+  error: {
+    label: 'Erreur',
+    icon: AlertTriangle,
+    color: 'text-red-600',
+    bg: 'bg-red-50',
+    border: 'border-red-200'
+  }
+};
+
+export function APIIntegrationsManager({ mode = 'full' }: APIIntegrationsManagerProps) {
+  const [configs, setConfigs] = useState<APIConfig[]>(API_CONFIGS);
+  const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+
+  // Charger les configurations existantes
+  useEffect(() => {
+    loadConfigurations();
+  }, []);
+
+  const loadConfigurations = async () => {
+    try {
+      const response = await fetch('/api/admin/integrations/status');
+      if (response.ok) {
+        const data = await response.json();
+        setConfigs(prev => prev.map(config => ({
+          ...config,
+          status: data[config.id]?.status || 'not_configured',
+          lastTest: data[config.id]?.lastTest,
+          fields: config.fields.map(field => ({
+            ...field,
+            value: data[config.id]?.fields?.[field.key] || ''
+          }))
+        })));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des configurations:', error);
+    }
+  };
+
+  const handleSave = async (configId: string) => {
+    const config = configs.find(c => c.id === configId);
+    if (!config) return;
+
+    const values = config.fields.reduce((acc, field) => {
+      if (field.value !== undefined) {
+        acc[field.key] = field.value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+
+    try {
+      const response = await fetch('/api/admin/integrations/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: configId, values })
+      });
+
+      if (response.ok) {
+        toast.success('Configuration sauvegardée avec succès');
+        loadConfigurations();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleTest = async (configId: string) => {
+    setTesting(configId);
+    try {
+      const response = await fetch(`/api/admin/integrations/test/${configId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Connexion testée avec succès !', {
+          description: data.message
+        });
+      } else {
+        toast.error('Erreur de connexion', {
+          description: data.message
+        });
+      }
+      loadConfigurations();
+    } catch (error) {
+      toast.error('Erreur lors du test');
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const handleFileUpload = async (configId: string, fieldKey: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('configId', configId);
+    formData.append('fieldKey', fieldKey);
+
+    try {
+      const response = await fetch('/api/admin/integrations/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        toast.success('Fichier uploadé avec succès');
+        loadConfigurations();
+      } else {
+        toast.error('Erreur lors de l\'upload');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'upload');
+    }
+  };
+
+  const togglePasswordVisibility = (fieldKey: string) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [fieldKey]: !prev[fieldKey]
+    }));
+  };
+
+  const updateFieldValue = (configId: string, fieldKey: string, value: string) => {
+    setConfigs(prev => prev.map(config => {
+      if (config.id === configId) {
+        return {
+          ...config,
+          fields: config.fields.map(field =>
+            field.key === fieldKey ? { ...field, value } : field
+          )
+        };
+      }
+      return config;
+    }));
+  };
+
+  if (mode === 'compact') {
+    const requiredConfigs = configs.filter(c => c.required);
+    const configuredCount = requiredConfigs.filter(c => c.status === 'configured').length;
+
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-gray-700">Intégrations API</span>
+          <span className={cn(
+            'text-lg font-black',
+            configuredCount === requiredConfigs.length ? 'text-emerald-600' : 'text-amber-600'
+          )}>
+            {configuredCount}/{requiredConfigs.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          {configuredCount === requiredConfigs.length ? (
+            <CheckCircle2 size={12} className="text-emerald-500" />
+          ) : (
+            <AlertTriangle size={12} className="text-amber-500" />
+          )}
+          <span>
+            {configuredCount === requiredConfigs.length
+              ? 'Toutes les API requises sont configurées'
+              : `${requiredConfigs.length - configuredCount} API requise(s) manquante(s)`
+            }
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 rounded-2xl p-6 text-white"
+      >
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-white/20 rounded-xl">
+                <Server size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black">Intégrations API</h2>
+                <p className="text-indigo-100 text-sm">Conformité Réforme 2026+</p>
+              </div>
+            </div>
+            <p className="text-indigo-100 text-sm max-w-xl">
+              Configurez les API requises pour la transmission des factures à la PDP et la signature électronique.
+              Certaines intégrations sont obligatoires pour la conformité légale.
+            </p>
+          </div>
+
+          <div className="flex-shrink-0 text-center">
+            <div className="text-4xl font-black">
+              {configs.filter(c => c.required && c.status === 'configured').length}/
+              {configs.filter(c => c.required).length}
+            </div>
+            <p className="text-xs text-indigo-100 mt-1">API requises</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Liste des configurations */}
+      <div className="space-y-4">
+        {configs.map((config) => {
+          const statusConfig = STATUS_CONFIG[config.status];
+          const StatusIcon = statusConfig.icon;
+          const isExpanded = selectedConfig === config.id;
+
+          return (
+            <motion.div
+              key={config.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+            >
+              <button
+                onClick={() => setSelectedConfig(isExpanded ? null : config.id)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn('p-2 rounded-xl', statusConfig.bg)}>
+                    <StatusIcon size={20} className={statusConfig.color} />
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-900">{config.name}</h3>
+                      {config.required && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          Requis
+                        </span>
+                      )}
+                      <span className={cn(
+                        'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                        statusConfig.bg,
+                        statusConfig.color
+                      )}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-0.5">{config.description}</p>
+                  </div>
+                </div>
+                {isExpanded ? (
+                  <Zap size={20} className="text-gray-400" />
+                ) : (
+                  <ChevronRight size={20} className="text-gray-400" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="border-t border-gray-100"
+                  >
+                    <div className="p-6 space-y-6">
+                      {/* Description détaillée */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <Info size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-blue-900 mb-1">
+                              Pourquoi cette intégration ?
+                            </p>
+                            <p className="text-sm text-blue-700">
+                              {config.id === 'pdp' && 'La PDP est obligatoire pour la transmission des factures à l\'État selon la réforme 2026. Sans cette configuration, vous ne pourrez pas envoyer vos factures électroniques.'}
+                              {config.id === 'chorus' && 'Chorus Pro est nécessaire pour facturer les administrations publiques. Cette intégration est optionnelle si vous ne facturez pas l\'État.'}
+                              {config.id === 'signature' && 'Le certificat de signature RGS est obligatoire pour authentifier vos factures transmises à la PDP. Il garantit l\'authenticité et l\'intégrité de vos factures.'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Champs de configuration */}
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-gray-900">Configuration</h4>
+                        {config.fields.map((field) => (
+                          <div key={field.key} className="space-y-1.5">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                              {field.label}
+                              {field.required && (
+                                <span className="text-red-500">*</span>
+                              )}
+                            </label>
+                            {field.type === 'file' ? (
+                              <div className="flex items-center gap-3">
+                                <label className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-gray-300 hover:border-primary cursor-pointer transition-colors">
+                                  <Upload size={18} className="text-gray-400" />
+                                  <span className="text-sm text-gray-600">
+                                    {field.value || 'Choisir un fichier...'}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleFileUpload(config.id, field.key, file);
+                                    }}
+                                    accept=".p12,.pfx,.pem"
+                                  />
+                                </label>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type={showPasswords[field.key] ? 'text' : field.type}
+                                  value={field.value || ''}
+                                  onChange={(e) => updateFieldValue(config.id, field.key, e.target.value)}
+                                  placeholder={field.placeholder}
+                                  className={cn(
+                                    'w-full px-4 py-3 rounded-xl border-2',
+                                    'focus:border-primary focus:ring-4 focus:ring-primary/10',
+                                    'transition-all',
+                                    field.type === 'password' ? 'pr-12' : ''
+                                  )}
+                                />
+                                {field.type === 'password' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => togglePasswordVisibility(field.key)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showPasswords[field.key] ? (
+                                      <EyeOff size={18} />
+                                    ) : (
+                                      <Eye size={18} />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {field.help && (
+                              <p className="text-xs text-gray-500">{field.help}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleSave(config.id)}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors"
+                        >
+                          <Save size={16} />
+                          Sauvegarder
+                        </button>
+                        <button
+                          onClick={() => handleTest(config.id)}
+                          disabled={testing === config.id || config.status === 'not_configured'}
+                          className={cn(
+                            'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                            config.status === 'not_configured'
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                          )}
+                        >
+                          {testing === config.id ? (
+                            <RefreshCw size={16} className="animate-spin" />
+                          ) : (
+                            <RefreshCw size={16} />
+                          )}
+                          Tester la connexion
+                        </button>
+                        {config.documentation && (
+                          <a
+                            href={config.documentation}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition-colors"
+                          >
+                            <ExternalLink size={16} />
+                            Documentation
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Dernier test */}
+                      {config.lastTest && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Clock size={12} />
+                          Dernier test : {new Date(config.lastTest).toLocaleString('fr-FR')}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Guide d'installation */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6"
+      >
+        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Zap size={18} className="text-amber-600" />
+          Guide rapide de mise en conformité
+        </h3>
+        <div className="space-y-3">
+          <StepItem step={1} title="Inscription PDP (2-4 semaines)">
+            Inscrivez-vous sur le portail DGFiP pour obtenir vos identifiants API
+          </StepItem>
+          <StepItem step={2} title="Certificat RGS (1-2 semaines)">
+            Obtenez un certificat RGS* auprès d'une autorité reconnue (Certigna, Titre, etc.)
+          </StepItem>
+          <StepItem step={3} title="Configuration API">
+            Configurez les identifiants et uploadez le certificat ci-dessus
+          </StepItem>
+          <StepItem step={4} title="Tests et validation">
+            Testez les connexions et validez avec l'environnement de test DGFiP
+          </StepItem>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function StepItem({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+        {step}
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="text-sm text-gray-600">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChevronRight({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+export default APIIntegrationsManager;

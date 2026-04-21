@@ -1,0 +1,511 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  X, CheckCircle2, Info, ExternalLink, ArrowRight, Download,
+  User, Building2, Upload, FileText, Shield, Clock, ChevronRight,
+  AlertCircle, CheckCircle, BookOpen, Video, HelpCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+
+interface FacturXGuideModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  invoiceNumber?: string;
+}
+
+const STEPS = [
+  {
+    id: 'download',
+    title: 'Télécharger votre facture',
+    description: 'Votre fichier Factur-X est prêt',
+    icon: Download,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50'
+  },
+  {
+    id: 'choose',
+    title: 'Choisir comment transmettre',
+    description: 'Sélectionnez l\'option qui vous convient',
+    icon: Upload,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50'
+  },
+  {
+    id: 'transmit',
+    title: 'Transmettre à l\'État',
+    description: 'Envoyer selon la méthode choisie',
+    icon: CheckCircle,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50'
+  }
+];
+
+const TRANSMISSION_OPTIONS = [
+  {
+    id: 'accountant',
+    title: 'Via mon comptable',
+    description: 'La solution la plus simple - transmettez vos factures à votre comptable',
+    icon: User,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    price: 'Gratuit (inclus)',
+    time: '0 min',
+    steps: [
+      'Générer la facture Factur-X',
+      'Envoyer à votre comptable',
+      'Il se charge de la transmission PDP'
+    ],
+    link: null
+  },
+  {
+    id: 'titre',
+    title: 'Titre - Partenaire PDP gratuit',
+    description: 'Plateforme en ligne gratuite pour envoyer vos factures à l\'État',
+    icon: Building2,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+    price: 'Gratuit jusqu\'à 200 factures/mois',
+    time: '5 min',
+    steps: [
+      'Créer un compte sur titre.com',
+      'Uploader votre fichier Factur-X',
+      'Titre transmet automatiquement à l\'État'
+    ],
+    link: 'https://www.titre.com',
+    linkText: 'Créer un compte Titre'
+  },
+  {
+    id: 'dgfip',
+    title: 'Portail DGFiP direct',
+    description: 'Transmettez directement via le portail officiel de l\'État',
+    icon: Shield,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    price: '100% gratuit',
+    time: '10 min',
+    steps: [
+      'Connectez-vous sur pdp.dgfip.finances.gouv.fr',
+      'Uploader votre fichier Factur-X',
+      'Valider la transmission'
+    ],
+    link: 'https://pdp.dgfip.finances.gouv.fr',
+    linkText: 'Accéder au portail DGFiP'
+  }
+];
+
+export function FacturXGuideModal({ isOpen, onClose, invoiceNumber }: FacturXGuideModalProps) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const currentStepData = STEPS[currentStep];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        {/* Header avec progression */}
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-8 py-6 text-white">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black">Comment transmettre à l'État ?</h2>
+                  <p className="text-indigo-200 text-sm">Facture {invoiceNumber || 'Factur-X'}</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Progress steps */}
+          <div className="flex items-center justify-between">
+            {STEPS.map((step, idx) => {
+              const StepIcon = step.icon;
+              const isCurrent = idx === currentStep;
+              const isCompleted = idx < currentStep;
+
+              return (
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <motion.div
+                      animate={{
+                        scale: isCurrent ? 1.1 : 1,
+                        backgroundColor: isCompleted ? '#10b981' : isCurrent ? '#6366f1' : 'rgba(255,255,255,0.2)'
+                      }}
+                      className={cn(
+                        'w-12 h-12 rounded-xl flex items-center justify-center mb-2',
+                        isCompleted && 'bg-emerald-500',
+                        isCurrent && 'bg-indigo-500',
+                        !isCompleted && !isCurrent && 'bg-white/20'
+                      )}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle size={24} className="text-white" />
+                      ) : (
+                        <StepIcon size={24} className={isCurrent ? 'text-white' : 'text-white/60'} />
+                      )}
+                    </motion.div>
+                    <p className={cn(
+                      'text-xs font-medium text-center',
+                      isCurrent ? 'text-white' : 'text-white/60'
+                    )}>
+                      {step.title}
+                    </p>
+                  </div>
+                  {idx < STEPS.length - 1 && (
+                    <div className={cn(
+                      'flex-1 h-0.5 mx-2',
+                      idx < currentStep ? 'bg-emerald-400' : 'bg-white/20'
+                    )} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          {/* Step 1: Download */}
+          {currentStep === 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-emerald-100 rounded-xl">
+                    <CheckCircle size={28} className="text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Votre facture Factur-X est prête !
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Ce fichier est conforme à la norme EN 16931 et au format requis par la réforme de la facturation électronique 2026+.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-sm">
+                        <Shield size={16} className="text-emerald-600" />
+                        <span className="font-semibold">Conforme EN 16931</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-sm">
+                        <FileText size={16} className="text-emerald-600" />
+                        <span className="font-semibold">PDF + XML embarqué</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <Info size={24} className="text-blue-600 flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">
+                      Prochaine étape : Transmettre à l'État
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Pour être conforme à la réforme 2026, vous devez transmettre cette facture à la
+                      <strong> Plateforme de Dématérialisation Partagée (PDP)</strong> de l'État.
+                      Choisissez comment vous souhaitez procéder.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
+              >
+                Continuer - Choisir comment transmettre
+                <ArrowRight size={20} />
+              </button>
+            </motion.div>
+          )}
+
+          {/* Step 2: Choose transmission option */}
+          {currentStep === 1 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-4"
+            >
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Comment souhaitez-vous transmettre à l'État ?
+                </h3>
+                <p className="text-gray-600">
+                  Toutes les options ci-dessous sont conformes à la réforme 2026
+                </p>
+              </div>
+
+              {TRANSMISSION_OPTIONS.map((option) => {
+                const OptionIcon = option.icon;
+                const isSelected = selectedOption === option.id;
+                const isExpanded = showDetails === option.id;
+
+                return (
+                  <motion.button
+                    key={option.id}
+                    onClick={() => {
+                      setSelectedOption(option.id);
+                      setShowDetails(isExpanded ? null : option.id);
+                    }}
+                    className={cn(
+                      'w-full text-left p-6 rounded-2xl border-2 transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={cn('p-3 rounded-xl', option.bg)}>
+                        <OptionIcon size={24} className={option.color} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="text-lg font-bold text-gray-900">{option.title}</h4>
+                            <p className="text-sm text-gray-600">{option.description}</p>
+                          </div>
+                          <ChevronRight
+                            size={20}
+                            className={cn(
+                              'text-gray-400 transition-transform flex-shrink-0 mt-1',
+                              isExpanded && 'rotate-90 text-primary'
+                            )}
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} />
+                            {option.time}
+                          </span>
+                          <span>•</span>
+                          <span className="font-semibold text-gray-700">{option.price}</span>
+                        </div>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="pt-4 mt-4 border-t border-gray-200"
+                            >
+                              <div className="bg-white rounded-xl p-4 space-y-3">
+                                <p className="text-sm font-semibold text-gray-900 mb-3">Comment ça marche :</p>
+                                {option.steps.map((step, idx) => (
+                                  <div key={idx} className="flex items-start gap-3 text-sm text-gray-700">
+                                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                                      {idx + 1}
+                                    </div>
+                                    <span>{step}</span>
+                                  </div>
+                                                                ))}
+                                {option.link && (
+                                  <a
+                                    href={option.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors"
+                                  >
+                                    {option.linkText}
+                                    <ExternalLink size={14} />
+                                  </a>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setCurrentStep(0)}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Retour
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedOption) {
+                      setCurrentStep(2);
+                    }
+                  }}
+                  disabled={!selectedOption}
+                  className={cn(
+                    'flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2',
+                    selectedOption
+                      ? 'bg-primary text-white hover:bg-primary-dark'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  )}
+                >
+                  Continuer
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 3: Final instructions */}
+          {currentStep === 2 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-emerald-100 rounded-xl">
+                    <CheckCircle size={28} className="text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Vous savez comment transmettre !
+                    </h3>
+                    <p className="text-gray-600">
+                      N'oubliez pas de transmettre vos factures pour rester conforme à la réforme 2026.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedOption === 'titre' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <Building2 size={24} className="text-blue-600 flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 mb-3">Créer votre compte Titre</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Titre offre un service gratuit jusqu'à 200 factures par mois. Créez votre compte en quelques minutes.
+                      </p>
+                      <a
+                        href="https://www.titre.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Créer un compte Titre
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedOption === 'dgfip' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <Shield size={24} className="text-amber-600 flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 mb-3">Accéder au portail DGFiP</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Connectez-vous au portail officiel pour transmettre vos factures directement à l'État.
+                      </p>
+                      <a
+                        href="https://pdp.dgfip.finances.gouv.fr"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors"
+                      >
+                        Accéder au portail DGFiP
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-gray-50 rounded-2xl p-6">
+                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <BookOpen size={18} className="text-primary" />
+                  Ressources utiles
+                </h4>
+                <div className="space-y-3">
+                  <a
+                    href="https://fnfe-mpe.org/factur-x/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <FileText size={18} className="text-gray-400" />
+                    <span className="flex-1 text-sm font-medium text-gray-700">Comité Français Factur-X</span>
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </a>
+                  <a
+                    href="https://www.economie.gouv.fr/facture-electronique"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <HelpCircle size={18} className="text-gray-400" />
+                    <span className="flex-1 text-sm font-medium text-gray-700">Guide officiel Facture électronique</span>
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </a>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-3"
+              >
+                J'ai compris - Fermer
+                <CheckCircle size={20} />
+              </button>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Bouton compact pour afficher le guide
+ */
+export function FacturXGuideButton({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-2 px-4 py-2 rounded-xl',
+        'bg-gradient-to-r from-amber-50 to-orange-50',
+        'border border-amber-200',
+        'hover:border-amber-300 hover:shadow-md',
+        'text-amber-800 text-sm font-semibold',
+        'transition-all',
+        className
+      )}
+    >
+      <HelpCircle size={16} />
+      <span>Comment transmettre à l'État ?</span>
+      <ChevronRight size={14} />
+    </button>
+  );
+}

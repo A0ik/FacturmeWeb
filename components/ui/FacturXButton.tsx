@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileText, Loader2, Sparkles, Info } from 'lucide-react';
+import { Download, FileText, Loader2, Sparkles, Info, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -104,8 +104,10 @@ export function FacturXButton({
   };
 
   // Variant primary - Bouton principal mis en avant
+  let buttonElement: React.ReactNode = null;
+
   if (variant === 'primary') {
-    return (
+    buttonElement = (
       <button
         onClick={handleDownload}
         disabled={disabled || isDownloading}
@@ -150,8 +152,8 @@ export function FacturXButton({
   }
 
   // Variant secondary - Bouton secondaire avec icône
-  if (variant === 'secondary') {
-    return (
+  else if (variant === 'secondary') {
+    buttonElement = (
       <button
         onClick={handleDownload}
         disabled={disabled || isDownloading}
@@ -184,7 +186,8 @@ export function FacturXButton({
   }
 
   // Variant compact - Version compacte pour menus déroulants
-  return (
+  else {
+    buttonElement = (
     <button
       onClick={handleDownload}
       disabled={disabled || isDownloading}
@@ -205,7 +208,11 @@ export function FacturXButton({
         <div className="text-xs text-gray-400">Format EN 16931 (réforme 2026+)</div>
       </div>
     </button>
-  );
+    );
+  }
+
+  // Return final du composant
+  return buttonElement;
 }
 
 /**

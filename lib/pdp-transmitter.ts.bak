@@ -1,0 +1,441 @@
+/**
+ * PDP Transmitter - Service de transmission des factures à la PDP
+ *
+ * Ce service gère l'envoi des factures à la Plateforme de Dématérialisation Partagée
+ * de l'État français selon la réforme de la facturation électronique 2026+.
+ *
+ * Documentation officielle :
+ * - DGFiP : https://www.dgfip.gouv.fr
+ * - Réforme facture électronique : https://www.economie.gouv.fr/facture-electronique
+ *
+ * Environnement :
+ * - Production : https://pdp.dgfip.finances.gouv.fr
+ * - Test : https://pdp-test.dgfip.finances.gouv.fr
+ */
+
+import { generateFacturXXml } from './facturx';
+import { Invoice, Profile } from '@/types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface PDPTransmissionResult {
+  success: boolean;
+  transmissionId?: string;
+  timestamp: string;
+  acknowledgment?: PDPAcknowledgment;
+  error?: PDPError;
+}
+
+export interface PDPAcknowledgment {
+  code: string;
+  message: string;
+  factureId: string;
+  dateReception: string;
+  statut: 'ACCEPTE' | 'ACCEPTE_PARTIEL' | 'REJETE';
+}
+
+export interface PDPError {
+  code: string;
+  message: string;
+  details?: string;
+  retryable: boolean;
+}
+
+export interface PDPTransmissionConfig {
+  environment: 'production' | 'test';
+  apiBaseUrl: string;
+  clientId: string;
+  clientSecret: string;
+  certificate?: {
+    content: string;
+    password?: string;
+  };
+}
+
+// ── Configuration ─────────────────────────────────────────────────────────────
+
+/**
+ * Récupère la configuration PDP depuis les variables d'environnement
+ */
+export function getPDPConfig(): PDPTransmissionConfig {
+  const environment = (process.env.PDP_ENVIRONMENT || 'test') as 'production' | 'test';
+
+  const baseUrls = {
+    production: 'https://pdp.dgfip.finances.gouv.fr',
+    test: 'https://pdp-test.dgfip.finances.gouv.fr'
+  };
+
+  const clientId = process.env.PDP_CLIENT_ID;
+  const clientSecret = process.env.PDP_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('PDP_CLIENT_ID et PDP_CLIENT_SECRET doivent être définis dans .env');
+  }
+
+  return {
+    environment,
+    apiBaseUrl: baseUrls[environment],
+    clientId,
+    clientSecret,
+    certificate: process.env.PDP_CERTIFICATE ? {
+      content: process.env.PDP_CERTIFICATE,
+      password: process.env.PDP_CERTIFICATE_PASSWORD
+    } : undefined
+  };
+}
+
+/**
+ * Vérifie si la configuration PDP est complète
+ */
+export function isPDPConfigured(): boolean {
+  return !!(
+    process.env.PDP_CLIENT_ID &&
+    process.env.PDP_CLIENT_SECRET
+  );
+}
+
+// ── Transmission ───────────────────────────────────────────────────────────────
+
+/**
+ * Transmet une facture à la PDP
+ *
+ * @param invoice - La facture à transmettre
+ * @param profile - Le profil de l'entreprise
+ * @returns Le résultat de la transmission
+ */
+export async function transmitInvoiceToPDP(
+  invoice: Invoice,
+  profile: Profile
+): Promise<PDPTransmissionResult> {
+  const startTime = new Date().toISOString();
+
+  try {
+    // 1. Vérifier la configuration
+    if (!isPDPConfigured()) {
+      return {
+        success: false,
+        timestamp: startTime,
+        error: {
+          code: 'CONFIG_MISSING',
+          message: 'Configuration PDP manquante. Veuillez configurer les identifiants PDP.',
+          retryable: false
+        }
+      };
+    }
+
+    const config = getPDPConfig();
+
+    // 2. Vérifier l'éligibilité de la facture
+    const eligibilityCheck = await checkEligibility(invoice, profile);
+    if (!eligibilityCheck.eligible) {
+      return {
+        success: false,
+        timestamp: startTime,
+        error: {
+          code: 'INELIGIBLE',
+          message: eligibilityCheck.reason || 'Facture non éligible à la transmission PDP',
+          details: eligibilityCheck.warnings?.join(', '),
+          retryable: false
+        }
+      };
+    }
+
+    // 3. Générer le XML Factur-X
+    const facturXXml = generateFacturXXml(invoice, profile);
+
+    // 4. Préparer le payload pour la PDP
+    const payload = {
+      version: '1.0',
+      emetteur: {
+        siret: profile.siret,
+        raisonSociale: profile.company_name,
+        tvanumber: profile.vat_number
+      },
+      facture: {
+        id: invoice.number,
+        dateEmission: invoice.issue_date,
+        dateEcheance: invoice.due_date,
+        montantTtc: invoice.total,
+        montantHt: invoice.subtotal,
+        montantTva: invoice.vat_amount,
+        destinataire: {
+          siret: invoice.client_siret || invoice.client?.siret,
+          raisonSociale: invoice.client?.name || invoice.client_name_override,
+          tvanumber: invoice.client_vat_number || invoice.client?.vat_number
+        }
+      },
+      contenuXml: facturXXml
+    };
+
+    // 5. Signer le payload si un certificat est configuré
+    let signedPayload = payload;
+    if (config.certificate) {
+      signedPayload = await signPayload(payload, config.certificate);
+    }
+
+    // 6. Envoyer à l'API PDP
+    const response = await fetch(`${config.apiBaseUrl}/api/v1/factures`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getAccessToken(config)}`,
+        'X-PDP-Version': '1.0'
+      },
+      body: JSON.stringify(signedPayload)
+    });
+
+    // 7. Traiter la réponse
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Erreur inconnue' }));
+
+      return {
+        success: false,
+        timestamp: startTime,
+        error: {
+          code: errorData.code || 'HTTP_ERROR',
+          message: errorData.message || `Erreur HTTP ${response.status}`,
+          retryable: isRetryableError(response.status)
+        }
+      };
+    }
+
+    const data = await response.json();
+
+    // 8. Logger le succès
+    await logTransmission(invoice.id, 'success', data);
+
+    return {
+      success: true,
+      transmissionId: data.transmissionId,
+      timestamp: startTime,
+      acknowledgment: {
+        code: data.code,
+        message: data.message,
+        factureId: data.factureId,
+        dateReception: data.dateReception,
+        statut: data.statut
+      }
+    };
+
+  } catch (error) {
+    console.error('Erreur lors de la transmission PDP:', error);
+
+    // Logger l'erreur
+    await logTransmission(invoice.id, 'error', error);
+
+    return {
+      success: false,
+      timestamp: startTime,
+      error: {
+        code: 'TRANSMISSION_ERROR',
+        message: error instanceof Error ? error.message : 'Erreur inconnue',
+        retryable: true
+      }
+    };
+  }
+}
+
+/**
+ * Vérifie si une erreur est réessayerie
+ */
+function isRetryableError(statusCode: number): boolean {
+  return statusCode >= 500 || statusCode === 429 || statusCode === 408;
+}
+
+/**
+ * Vérifie l'éligibilité d'une facture à la transmission PDP
+ */
+async function checkEligibility(
+  invoice: Invoice,
+  profile: Profile
+): Promise<{ eligible: boolean; reason?: string; warnings?: string[] }> {
+  const warnings: string[] = [];
+
+  // Vérifications obligatoires
+  if (!invoice.number?.trim()) {
+    return { eligible: false, reason: 'Numéro de facture manquant' };
+  }
+
+  if (!invoice.issue_date) {
+    return { eligible: false, reason: 'Date d\'émission manquante' };
+  }
+
+  if (!profile.siret?.trim() || !/^\d{14}$/.test(profile.siret)) {
+    return { eligible: false, reason: 'SIRET de l\'entreprise invalide (14 chiffres requis)' };
+  }
+
+  if (!profile.company_name?.trim()) {
+    return { eligible: false, reason: 'Nom de l\'entreprise manquant' };
+  }
+
+  if (!invoice.client?.name && !invoice.client_name_override) {
+    return { eligible: false, reason: 'Nom du client manquant' };
+  }
+
+  const clientSiret = invoice.client_siret || invoice.client?.siret;
+  if (!clientSiret?.trim()) {
+    warnings.push('SIRET du client manquant (recommandé pour la PDP)');
+  }
+
+  // Vérifications recommandées
+  if (!profile.vat_number?.trim()) {
+    warnings.push('Numéro de TVA manquant (recommandé)');
+  }
+
+  if (!invoice.due_date) {
+    warnings.push('Date d\'échéance manquante (recommandée)');
+  }
+
+  return { eligible: true, warnings };
+}
+
+/**
+ * Signe le payload avec le certificat numérique
+ */
+async function signPayload(
+  payload: any,
+  certificate: { content: string; password?: string }
+): Promise<any> {
+  // Note: Pour une vraie implémentation, utiliser une bibliothèque de signature
+  // comme node-forge ou @peculiar/webcrypto
+
+  // Pour l'instant, on retourne le payload sans signature
+  // La signature sera implémentée avec le module electronic-signature.ts
+
+  return {
+    ...payload,
+    signature: 'SIGNATURE_NOT_IMPLEMENTED'
+  };
+}
+
+/**
+ * Obtient un token d'accès à l'API PDP
+ */
+async function getAccessToken(config: PDPTransmissionConfig): Promise<string> {
+  // Implémentation OAuth 2.0 client credentials
+  const response = await fetch(`${config.apiBaseUrl}/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: config.clientId,
+      client_secret: config.clientSecret
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error('Impossible d\'obtenir le token d\'accès PDP');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+/**
+ * Logger les tentatives de transmission
+ */
+async function logTransmission(
+  invoiceId: string,
+  status: 'success' | 'error',
+  data: any
+): Promise<void> {
+  try {
+    const { createAdminClient } = await import('./supabase-server');
+    const supabase = createAdminClient();
+
+    await supabase.from('facturx_audit_logs').insert({
+      invoice_id: invoiceId,
+      action: 'pdp_transmission',
+      status,
+      details: JSON.stringify(data),
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Erreur lors du logging de la transmission:', error);
+  }
+}
+
+// ── Utilitaires ────────────────────────────────────────────────────────────────
+
+/**
+ * Récupère le statut d'une transmission PDP
+ */
+export async function getPDPTransmissionStatus(transmissionId: string): Promise<any> {
+  const config = getPDPConfig();
+
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/v1/transmissions/${transmissionId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${await getAccessToken(config)}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Impossible de récupérer le statut de la transmission');
+  }
+
+  return response.json();
+}
+
+/**
+ * Annule une transmission PDP en attente
+ */
+export async function cancelPDPTransmission(transmissionId: string): Promise<boolean> {
+  const config = getPDPConfig();
+
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/v1/transmissions/${transmissionId}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${await getAccessToken(config)}`
+      }
+    }
+  );
+
+  return response.ok;
+}
+
+/**
+ * Teste la connexion à l'API PDP
+ */
+export async function testPDPConnection(): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!isPDPConfigured()) {
+      return {
+        success: false,
+        message: 'Configuration PDP manquante'
+      };
+    }
+
+    const config = getPDPConfig();
+
+    const response = await fetch(`${config.apiBaseUrl}/api/v1/health`, {
+      headers: {
+        'Authorization': `Bearer ${await getAccessToken(config)}`
+      }
+    });
+
+    if (response.ok) {
+      return {
+        success: true,
+        message: `Connexion PDP OK (${config.environment})`
+      };
+    }
+
+    return {
+      success: false,
+      message: `Erreur de connexion PDP: ${response.status}`
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      message: `Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+    };
+  }
+}
