@@ -27,18 +27,6 @@ export default function TrialPage() {
     }
   };
 
-  const handleActivateTrial = async () => {
-    setIsActivating(true);
-    try {
-      // Rediriger vers le paywall avec sélection du plan business
-      window.location.href = '/paywall?plan=business&trial=true';
-    } catch (error) {
-      console.error('Error activating trial:', error);
-      alert('Erreur lors de l\'activation de l\'essai');
-      setIsActivating(false);
-    }
-  };
-
   const features = [
     {
       icon: FileText,
