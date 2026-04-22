@@ -18,6 +18,45 @@ export async function GET(req: NextRequest) {
     }
 
     const cookieStore = await cookies();
+
+    // Get state from cookie for verification
+    const stateCookie = cookieStore.get('google_oauth_state');
+    const storedState = stateCookie ? decodeURIComponent(stateCookie.value) : null;
+
+    console.log('[google-callback] State verification:', {
+      receivedState: state,
+      storedState: storedState,
+      hasCookie: !!stateCookie
+    });
+
+    if (!storedState) {
+      console.error('[google-callback] No state cookie found');
+      return NextResponse.redirect(new URL('/calendar?error=no_stored_state', req.url));
+    }
+
+    if (storedState !== state) {
+      console.error('[google-callback] State mismatch:', {
+        received: state,
+        stored: storedState
+      });
+      return NextResponse.redirect(new URL('/calendar?error=state_mismatch', req.url));
+    }
+
+    // Verify state is not too old (10 minutes max)
+    const stateTimestamp = parseInt(state.split('_')[0]);
+    const stateAge = Date.now() - stateTimestamp;
+    if (stateAge > 10 * 60 * 1000 || isNaN(stateAge)) {
+      console.error('[google-callback] State too old or invalid:', { stateAge, stateTimestamp });
+      return NextResponse.redirect(new URL('/calendar?error=state_expired', req.url));
+    }
+
+    // Extract user ID from state
+    const userId = state.split('_')[2];
+    if (!userId) {
+      console.error('[google-callback] No user ID in state');
+      return NextResponse.redirect(new URL('/calendar?error=invalid_state', req.url));
+    }
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,44 +75,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?redirect=/calendar', req.url));
     }
 
-    // Verify state parameter
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('google_oauth_state')
-      .eq('id', user.id)
-      .single();
-
-    console.log('[google-callback] State verification:', {
-      receivedState: state,
-      storedState: profile?.google_oauth_state,
-      userId: user.id,
-      hasProfile: !!profile
-    });
-
-    if (!profile) {
-      console.error('[google-callback] No profile found for user:', user.id);
-      return NextResponse.redirect(new URL('/calendar?error=no_profile', req.url));
-    }
-
-    if (!profile.google_oauth_state) {
-      console.error('[google-callback] No stored state in profile');
-      return NextResponse.redirect(new URL('/calendar?error=no_stored_state', req.url));
-    }
-
-    if (profile.google_oauth_state !== state) {
-      console.error('[google-callback] State mismatch:', {
-        received: state,
-        stored: profile.google_oauth_state
-      });
-      return NextResponse.redirect(new URL('/calendar?error=state_mismatch', req.url));
-    }
-
-    // Verify state is not too old (10 minutes max)
-    const stateTimestamp = parseInt(state.split('_')[0]);
-    const stateAge = Date.now() - stateTimestamp;
-    if (stateAge > 10 * 60 * 1000) {
-      console.error('[google-callback] State too old:', { stateAge, stateTimestamp });
-      return NextResponse.redirect(new URL('/calendar?error=state_expired', req.url));
+    // Verify user ID matches
+    if (user.id !== userId) {
+      console.error('[google-callback] User ID mismatch:', { userId: user.id, stateUserId: userId });
+      return NextResponse.redirect(new URL('/calendar?error=user_mismatch', req.url));
     }
 
     // Exchange code for tokens
@@ -126,13 +131,21 @@ export async function GET(req: NextRequest) {
         google_name: userInfo.name,
         google_picture: userInfo.picture,
         google_connected_at: new Date().toISOString(),
-        google_oauth_state: null,
       })
       .eq('id', user.id);
 
-    return NextResponse.redirect(new URL('/calendar?success=google_connected', req.url));
+    // Clear the state cookie
+    const redirectUrl = new URL('/calendar?success=google_connected', req.url);
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.delete('google_oauth_state');
+    return response;
   } catch (error: any) {
     console.error('[google-callback] Error:', error);
-    return NextResponse.redirect(new URL('/calendar?error=unknown_error', req.url));
+
+    // Clear the state cookie even on error
+    const redirectUrl = new URL('/calendar?error=unknown_error', req.url);
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.delete('google_oauth_state');
+    return response;
   }
 }
