@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
     if (!checkoutRes.ok) {
       const err = await checkoutRes.json().catch(() => ({}));
       console.error('[sumup-payment-link] SumUp API error:', checkoutRes.status, JSON.stringify(err));
+      if (checkoutRes.status === 401) {
+        return NextResponse.json({ error: 'Clé API SumUp invalide ou expirée. Reconnectez votre compte dans Paramètres > Paiement en ligne.' }, { status: 400 });
+      }
       const errorMsg = err.message || err.error_code || err.error || `Erreur SumUp (${checkoutRes.status})`;
       return NextResponse.json({ error: errorMsg }, { status: 500 });
     }

@@ -40,7 +40,32 @@ export async function POST(req: NextRequest) {
 
     console.log('[sumup-connect] Attempting connection for merchant:', trimmedCode);
 
-    // Sauvegarder les credentials dans la base de données
+    // Valider la clé via l'API SumUp AVANT de sauvegarder
+    let merchantName: string | null = null;
+    try {
+      const res = await fetch('https://api.sumup.com/v0.1/me', {
+        headers: { Authorization: `Bearer ${trimmedKey}` },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.warn('[sumup-connect] API validation failed:', res.status, JSON.stringify(errBody));
+        const hint = res.status === 401
+          ? 'Clé API invalide ou expirée. Vérifiez votre clé dans le portail développeur SumUp.'
+          : `Erreur SumUp (${res.status}) lors de la validation.`;
+        return NextResponse.json({ error: hint }, { status: 400 });
+      }
+
+      const data = await res.json();
+      merchantName = data.company_name || data.merchant_code || trimmedCode;
+      console.log('[sumup-connect] Successfully validated SumUp credentials for:', merchantName);
+    } catch (fetchError: any) {
+      console.warn('[sumup-connect] API validation request failed:', fetchError?.message || 'Network error');
+      return NextResponse.json({ error: 'Impossible de joindre l\'API SumUp. Vérifiez votre connexion.' }, { status: 400 });
+    }
+
+    // Sauvegarder les credentials seulement si la clé est valide
     const supabase = createAdminClient();
     const { error: updateError } = await supabase.from('profiles')
       .update({ sumup_api_key: trimmedKey, sumup_merchant_code: trimmedCode })
@@ -51,33 +76,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Erreur lors de la sauvegarde des credentials' }, { status: 500 });
     }
 
-    // Tenter de valider via l'API SumUp (non-bloquant pour la connexion)
-    let validationSuccess = false;
-    let merchantName: string | null = null;
-    try {
-      const res = await fetch('https://api.sumup.com/v0.1/me', {
-        headers: { Authorization: `Bearer ${trimmedKey}` },
-        signal: AbortSignal.timeout(10000), // Timeout de 10 secondes
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        validationSuccess = true;
-        merchantName = data.company_name || data.merchant_code || trimmedCode;
-        console.log('[sumup-connect] Successfully validated SumUp credentials');
-      } else {
-        console.warn('[sumup-connect] API validation failed (continuing anyway):', res.status);
-      }
-    } catch (fetchError: any) {
-      // Ne pas échouer la connexion si l'API SumUp ne répond pas
-      console.warn('[sumup-connect] API validation request failed (continuing anyway):', fetchError?.message || 'Network error');
-    }
-
     return NextResponse.json({
       success: true,
       merchantCode: trimmedCode,
       merchantName: merchantName || trimmedCode,
-      validated: validationSuccess
+      validated: true
     });
   } catch (error: any) {
     console.error('[sumup-connect] Unexpected error:', error);
