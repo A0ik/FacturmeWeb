@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
       .single();
     if (invError || !invoice) return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 });
 
-    // Get profile with SumUp keys
+    // Get profile with SumUp keys and email (pay_to_email required by SumUp API)
     const { data: profile } = await supabase.from('profiles')
-      .select('sumup_api_key, sumup_merchant_code, currency')
+      .select('sumup_api_key, sumup_merchant_code, currency, email')
       .eq('id', user.id)
       .single();
     if (!profile?.sumup_api_key || !profile?.sumup_merchant_code) {
@@ -50,7 +50,20 @@ export async function POST(req: NextRequest) {
 
     // SumUp API requires amount in major currency units (e.g. 10.50 for €10.50), NOT cents
     const amount = Number(invoice.total);
-    console.log('[sumup-payment-link] Creating checkout for invoice:', invoiceId, 'amount:', amount, 'currency:', profile.currency || 'EUR');
+    if (!amount || amount <= 0) {
+      return NextResponse.json({ error: 'Le montant de la facture doit être supérieur à 0.' }, { status: 400 });
+    }
+
+    const merchantEmail = profile.email || user.email;
+    console.log('[sumup-payment-link] Creating checkout for invoice:', invoiceId, 'amount:', amount, 'currency:', profile.currency || 'EUR', 'merchant:', merchantEmail);
+
+    const checkoutBody: Record<string, unknown> = {
+      checkout_reference: invoiceId,
+      amount,
+      currency: profile.currency || 'EUR',
+      description: `${invoice.document_type === 'quote' ? 'Devis' : 'Facture'} ${invoice.number}`,
+    };
+    if (merchantEmail) checkoutBody.pay_to_email = merchantEmail;
 
     const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
       method: 'POST',
@@ -58,12 +71,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${profile.sumup_api_key}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        checkout_reference: invoiceId,
-        amount,
-        currency: profile.currency || 'EUR',
-        description: `${invoice.document_type === 'quote' ? 'Devis' : 'Facture'} ${invoice.number}`,
-      }),
+      body: JSON.stringify(checkoutBody),
     });
 
     if (!checkoutRes.ok) {
