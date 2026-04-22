@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     // Vérifier si l'utilisateur a un abonnement actif
     if (!profile?.subscription_id || !profile?.stripe_customer_id) {
-      return NextResponse.json({ error: 'Aucun abonnement actif trouvé. Veuillez vous abonner d'abord.' }, { status: 400 });
+      return NextResponse.json({ error: "Aucun abonnement actif trouvé. Veuillez vous abonner d'abord." }, { status: 400 });
     }
 
     try {

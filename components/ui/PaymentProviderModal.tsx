@@ -1,6 +1,6 @@
 'use client';
 
-import { CreditCard, Stripe, Wallet } from 'lucide-react';
+import { CreditCard, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
 interface PaymentProviderModalProps {

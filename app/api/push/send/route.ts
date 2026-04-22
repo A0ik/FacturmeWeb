@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { userId, title, body, url } = await req.json();
 
   // Target user defaults to current session user
-  const targetUserId = userId || session.user.id;
+  const targetUserId = userId || user.id;
 
   const supabase = createAdminClient();
   const { data: profile } = await supabase

@@ -98,7 +98,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 
   // Calculer les warnings Factur-X pour cette facture
-  const facturXEligibility = isFacturXEligible(invoice, profile || {});
+  const facturXEligibility = profile ? isFacturXEligible(invoice, profile) : { eligible: false, reason: 'Profil utilisateur manquant', warnings: [] };
   const facturXWarnings = facturXEligibility.warnings || [];
 
   const handleDownloadPdf = async () => {
