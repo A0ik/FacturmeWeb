@@ -27,8 +27,12 @@ export interface Profile {
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
   stripe_connect_id?: string;
-  sumup_api_key?: string;
+  sumup_access_token?: string;
+  sumup_refresh_token?: string;
+  sumup_token_expires_at?: string;
+  sumup_merchant_id?: string;
   sumup_merchant_code?: string;
+  sumup_email?: string;
   signature_url?: string;
   language?: 'fr' | 'en';
   web_push_subscription?: string;

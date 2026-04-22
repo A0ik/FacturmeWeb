@@ -11,7 +11,7 @@ import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils'
 import Modal from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus, Sparkles, Eye, Upload, Lock } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus, Sparkles, Eye, Upload, Lock, Smartphone, RefreshCw } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
 import { SumUpTutorialModal } from '@/components/ui/SumUpTutorialModal';
 
@@ -63,14 +63,12 @@ export default function SettingsPage() {
   const [stripeStatus, setStripeStatus] = useState<'connected' | 'error' | null>(null);
 
   // SumUp state
-  const [sumupApiKey, setSumupApiKey] = useState('');
   const [sumupMerchantCode, setSumupMerchantCode] = useState('');
-  const [sumupMerchantName, setSumupMerchantName] = useState('');
   const [sumupEmail, setSumupEmail] = useState('');
   const [sumupEmailMissing, setSumupEmailMissing] = useState(false);
   const [sumupConnected, setSumupConnected] = useState(false);
+  const [sumupTokenExpiresAt, setSumupTokenExpiresAt] = useState<string | null>(null);
   const [sumupLoading, setSumupLoading] = useState(false);
-  const [sumupStatus, setSumupStatus] = useState<'connected' | 'error' | null>(null);
   const [showSumupTutorial, setShowSumupTutorial] = useState(false);
 
   // Webhook state
@@ -218,36 +216,18 @@ export default function SettingsPage() {
         if (d.connected) {
           setSumupConnected(true);
           setSumupMerchantCode(d.merchantCode || '');
-          if (d.merchantName) setSumupMerchantName(d.merchantName);
           if (d.sumupEmail) setSumupEmail(d.sumupEmail);
           setSumupEmailMissing(!!d.emailMissing);
+          if (d.tokenExpiresAt) setSumupTokenExpiresAt(d.tokenExpiresAt);
         }
       })
       .catch(() => {});
   }, []);
 
-  const handleConnectSumUp = async () => {
-    setSumupLoading(true); setSumupStatus(null);
-    try {
-      const res = await fetch('/api/sumup/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: sumupApiKey, merchantCode: sumupMerchantCode, merchantEmail: sumupEmail || undefined }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setSumupConnected(true);
-      if (data.merchantName) setSumupMerchantName(data.merchantName);
-      if (data.sumupEmail) setSumupEmail(data.sumupEmail);
-      setSumupEmailMissing(!data.emailDetected);
-      setSumupStatus('connected');
-      toast.success('SumUp connecté avec succès !');
-    } catch (e: any) {
-      setSumupStatus('error');
-      toast.error(e.message || 'Erreur de connexion SumUp');
-    } finally {
-      setSumupLoading(false);
-    }
+  const handleConnectSumUp = () => {
+    setSumupLoading(true);
+    // Redirect to SumUp OAuth flow
+    window.location.href = '/api/sumup/oauth';
   };
 
   const handleDisconnectSumUp = async () => {
@@ -257,11 +237,11 @@ export default function SettingsPage() {
       const res = await fetch('/api/sumup/connect', { method: 'DELETE' });
       if (res.ok) {
         setSumupConnected(false);
-        setSumupApiKey('');
         setSumupMerchantCode('');
         setSumupEmail('');
         setSumupEmailMissing(false);
-        setSumupStatus(null);
+        setSumupTokenExpiresAt(null);
+        toast.success('SumUp déconnecté avec succès !');
       }
     } catch (e: any) { toast.error(e.message || 'Erreur lors de la déconnexion SumUp'); }
     finally { setSumupLoading(false); }
@@ -799,21 +779,8 @@ export default function SettingsPage() {
       fields: (
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Acceptez des paiements en ligne directement sur vos factures avec SumUp. Simple, rapide et sécurisé.
+            Acceptez des paiements en ligne directement sur vos factures avec SumUp. Connexion sécurisée via OAuth 2.0.
           </p>
-
-          {sumupStatus === 'connected' && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
-              <CheckCircle2 size={15} className="text-green-600 flex-shrink-0" />
-              <p className="text-sm font-semibold text-green-700">SumUp connecté avec succès !</p>
-            </div>
-          )}
-          {sumupStatus === 'error' && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-              <XCircle size={15} className="text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-600">Erreur lors de la connexion. Vérifiez vos identifiants.</p>
-            </div>
-          )}
 
           {sumupConnected ? (
             <div className="space-y-3">
@@ -824,24 +791,21 @@ export default function SettingsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-green-800">Compte SumUp connecté</p>
                   <p className="text-xs text-green-600 font-mono truncate">{sumupMerchantCode}</p>
+                  {sumupTokenExpiresAt && (
+                    <p className="text-[10px] text-green-500 mt-0.5">
+                      Token expire: {new Date(sumupTokenExpiresAt).toLocaleDateString('fr-FR')}
+                    </p>
+                  )}
                 </div>
               </div>
-              {sumupEmailMissing ? (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                  <XCircle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-bold text-amber-800">Email SumUp manquant — liens de paiement bloqués</p>
-                    <p className="text-[10px] text-amber-700 mt-0.5">Déconnectez votre compte et reconnectez-le en renseignant votre email SumUp pour débloquer la création de liens de paiement.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                  <Link2 size={14} className="text-blue-500 flex-shrink-0" />
-                  <p className="text-xs text-blue-700">
-                    Un bouton <strong>Payer avec SumUp</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte SumUp.
-                  </p>
-                </div>
-              )}
+
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <Link2 size={14} className="text-blue-500 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  Un bouton <strong>Payer avec SumUp</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte SumUp.
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={handleDisconnectSumUp}
@@ -854,88 +818,44 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setShowSumupTutorial(true)}
-                className="w-full relative overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1D9E75] via-[#188A66] to-[#166958] transition-all duration-500 group-hover:scale-[1.02]" />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite]" />
-                </div>
-                <div className="relative flex items-center justify-center gap-3 py-6 px-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Lock size={24} className="text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-lg font-black text-white">Connecter SumUp</p>
-                    <p className="text-sm text-white/80">Suivez le guide pour trouver vos identifiants</p>
-                  </div>
-                  <ArrowUpRight size={20} className="text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
-                </div>
-              </button>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+              {/* Feature highlights */}
+              <div className="grid grid-cols-3 gap-2 text-center">
                 {[
-                  { label: 'Paiement par carte', desc: 'Visa, Mastercard', icon: '💳' },
-                  { label: 'Terminal SumUp', desc: 'Paiement en personne', icon: '📱' },
-                  { label: 'Mise à jour auto', desc: 'Facture → Payée', icon: '✨' },
+                  { label: 'Carte', desc: 'Visa, Mastercard', icon: CreditCard },
+                  { label: 'Terminal', desc: 'En personne', icon: Smartphone },
+                  { label: 'Auto', desc: 'Statut mis à jour', icon: RefreshCw },
                 ].map((f) => (
-                  <div key={f.label} className="p-3 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200">
-                    <p className="text-lg mb-1">{f.icon}</p>
-                    <p className="text-xs font-bold text-gray-700">{f.label}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{f.desc}</p>
+                  <div key={f.label} className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                    <f.icon size={16} className="text-gray-400 mx-auto mb-1" />
+                    <p className="text-[10px] font-semibold text-gray-700">{f.label}</p>
+                    <p className="text-[9px] text-gray-400">{f.desc}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <p className="text-xs text-blue-700">
-                  <strong>Comment ça marche ?</strong> Cliquez sur "Connecter SumUp", suivez le tutoriel pour récupérer votre clé API et code marchand, puis entrez-les pour activer les paiements en ligne.
-                </p>
-              </div>
-
-              {sumupStatus === 'error' && (
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Ou entrez vos identifiants directement :</p>
-                  <div className="space-y-2">
-                    <input
-                      type="password"
-                      value={sumupApiKey}
-                      onChange={(e) => setSumupApiKey(e.target.value)}
-                      placeholder="Clé API SumUp (sup_sk_...)"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
-                    />
-                    <input
-                      type="text"
-                      value={sumupMerchantCode}
-                      onChange={(e) => setSumupMerchantCode(e.target.value)}
-                      placeholder="Code marchand"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
-                    />
-                    <input
-                      type="email"
-                      value={sumupEmail}
-                      onChange={(e) => setSumupEmail(e.target.value)}
-                      placeholder="Email du compte SumUp"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleConnectSumUp}
-                    disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode || !sumupEmail}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D9E75] text-white text-sm font-bold hover:bg-[#188A66] transition-colors disabled:opacity-50 shadow-sm"
-                  >
-                    {sumupLoading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Link2 size={15} />
-                    )}
-                    Connecter
-                  </button>
+              {/* OAuth connect button */}
+              <button
+                type="button"
+                onClick={handleConnectSumUp}
+                disabled={sumupLoading}
+                className="w-full relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1D9E75] via-[#188A66] to-[#166958] transition-all duration-300 rounded-xl group-hover:scale-[1.02]" />
+                <div className="relative flex items-center justify-center gap-2 py-3 px-4">
+                  {sumupLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Lock size={18} className="text-white" />
+                      <span className="text-white font-semibold">Connecter avec SumUp</span>
+                    </>
+                  )}
                 </div>
-              )}
+              </button>
+
+              <p className="text-[10px] text-gray-400 text-center">
+                Vous serez redirigé vers SumUp pour autoriser l'accès à votre compte.
+              </p>
             </div>
           )}
         </div>

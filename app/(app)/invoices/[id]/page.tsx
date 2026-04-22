@@ -13,6 +13,7 @@ import {
   Clock, AlertTriangle, FileText, Send, Trash2, MoreVertical,
   Receipt, ShoppingCart, Truck, RefreshCw, Banknote, Check,
   ExternalLink, X, Loader2, Building2, Calendar, Hash, Eye,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailPreviewModal from '@/components/ui/EmailPreviewModal';
@@ -20,6 +21,7 @@ import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
 import PaymentProviderModal from '@/components/ui/PaymentProviderModal';
 import { FacturXButton, FacturXInfoTooltip } from '@/components/ui/FacturXButton';
 import { isFacturXEligible } from '@/lib/facturx';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bg: string; icon: any }> = {
   draft:    { label: 'Brouillon',  color: 'text-gray-500',   bg: 'bg-gray-100',   icon: FileText },
@@ -62,6 +64,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showFacturXDetails, setShowFacturXDetails] = useState(false);
 
   useEffect(() => {
     const found = invoices.find((inv) => inv.id === id);
@@ -550,49 +553,86 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </button>
           </div>
 
-          {/* Factur-X Info - Visible pour tous les factures, avec incitation à l'upgrade si nécessaire */}
+          {/* Factur-X Info - Menu déroulant animé */}
           {invoice.document_type === 'invoice' && (
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 shadow-sm p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Factur-X</h3>
-                {canUseFacturX && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                    Actif
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-gray-600 leading-relaxed">
-                Format de facture électronique conforme à la <span className="font-semibold text-indigo-600">réforme 2026+</span>.
-              </p>
-
-              {canUseFacturX ? (
-                <div className="w-full">
-                  <FacturXButton
-                    invoiceId={invoice.id}
-                    invoiceNumber={invoice.number}
-                    variant="primary"
-                    className="w-full"
-                    warnings={facturXWarnings}
-                  />
-                </div>
-              ) : (
-                <button
-                  onClick={() => router.push('/paywall')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                >
-                  Débloquer Factur-X
-                </button>
-              )}
-
-              <a
-                href="https://fnfe-mpe.org/factur-x/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-indigo-600 hover:underline block text-center"
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden">
+              <button
+                onClick={() => setShowFacturXDetails(!showFacturXDetails)}
+                className="w-full flex items-center justify-between gap-3 p-4 hover:from-indigo-100/50 hover:to-purple-100/50 transition-all text-left"
               >
-                Qu'est-ce que Factur-X ? →
-              </a>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-indigo-100">
+                    <FileText size={16} className="text-indigo-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-indigo-700">Factur-X</h3>
+                      {canUseFacturX && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                          Actif
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      Format conforme à la <span className="font-semibold text-indigo-600">réforme 2026+</span>
+                    </p>
+                  </div>
+                </div>
+                <motion.div
+                  animate={{ rotate: showFacturXDetails ? 90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex-shrink-0"
+                >
+                  <ChevronRight size={18} className="text-indigo-600" />
+                </motion.div>
+              </button>
+
+              <AnimatePresence>
+                {showFacturXDetails && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 pt-2 border-t border-indigo-200/50 space-y-3">
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        Format de facture électronique conforme aux obligations légales françaises.
+                        Intégre les données XML structurées directement dans le PDF.
+                      </p>
+
+                      {canUseFacturX ? (
+                        <div className="w-full">
+                          <FacturXButton
+                            invoiceId={invoice.id}
+                            invoiceNumber={invoice.number}
+                            variant="primary"
+                            className="w-full"
+                            warnings={facturXWarnings}
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => router.push('/paywall')}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                        >
+                          Débloquer Factur-X
+                        </button>
+                      )}
+
+                      <a
+                        href="https://fnfe-mpe.org/factur-x/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-indigo-600 hover:underline block text-center"
+                      >
+                        Qu'est-ce que Factur-X ? →
+                      </a>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
