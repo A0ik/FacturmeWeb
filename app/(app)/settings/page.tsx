@@ -65,6 +65,8 @@ export default function SettingsPage() {
   const [sumupApiKey, setSumupApiKey] = useState('');
   const [sumupMerchantCode, setSumupMerchantCode] = useState('');
   const [sumupMerchantName, setSumupMerchantName] = useState('');
+  const [sumupEmail, setSumupEmail] = useState('');
+  const [sumupEmailMissing, setSumupEmailMissing] = useState(false);
   const [sumupConnected, setSumupConnected] = useState(false);
   const [sumupLoading, setSumupLoading] = useState(false);
   const [sumupStatus, setSumupStatus] = useState<'connected' | 'error' | null>(null);
@@ -215,6 +217,8 @@ export default function SettingsPage() {
           setSumupConnected(true);
           setSumupMerchantCode(d.merchantCode || '');
           if (d.merchantName) setSumupMerchantName(d.merchantName);
+          if (d.sumupEmail) setSumupEmail(d.sumupEmail);
+          setSumupEmailMissing(!!d.emailMissing);
         }
       })
       .catch(() => {});
@@ -226,12 +230,14 @@ export default function SettingsPage() {
       const res = await fetch('/api/sumup/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: sumupApiKey, merchantCode: sumupMerchantCode }),
+        body: JSON.stringify({ apiKey: sumupApiKey, merchantCode: sumupMerchantCode, merchantEmail: sumupEmail || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSumupConnected(true);
       if (data.merchantName) setSumupMerchantName(data.merchantName);
+      if (data.sumupEmail) setSumupEmail(data.sumupEmail);
+      setSumupEmailMissing(!data.emailDetected);
       setSumupStatus('connected');
       toast.success('SumUp connecté avec succès !');
     } catch (e: any) {
@@ -251,6 +257,8 @@ export default function SettingsPage() {
         setSumupConnected(false);
         setSumupApiKey('');
         setSumupMerchantCode('');
+        setSumupEmail('');
+        setSumupEmailMissing(false);
         setSumupStatus(null);
       }
     } catch (e: any) { toast.error(e.message || 'Erreur lors de la déconnexion SumUp'); }
@@ -816,12 +824,22 @@ export default function SettingsPage() {
                   <p className="text-xs text-green-600 font-mono truncate">{sumupMerchantCode}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <Link2 size={14} className="text-blue-500 flex-shrink-0" />
-                <p className="text-xs text-blue-700">
-                  Un bouton <strong>Payer avec SumUp</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte SumUp.
-                </p>
-              </div>
+              {sumupEmailMissing ? (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <XCircle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-800">Email SumUp manquant — liens de paiement bloqués</p>
+                    <p className="text-[10px] text-amber-700 mt-0.5">Déconnectez votre compte et reconnectez-le en renseignant votre email SumUp pour débloquer la création de liens de paiement.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <Link2 size={14} className="text-blue-500 flex-shrink-0" />
+                  <p className="text-xs text-blue-700">
+                    Un bouton <strong>Payer avec SumUp</strong> apparaît sur vos factures. Les paiements arrivent directement sur votre compte SumUp.
+                  </p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleDisconnectSumUp}
@@ -853,7 +871,7 @@ export default function SettingsPage() {
                     type="password"
                     value={sumupApiKey}
                     onChange={(e) => setSumupApiKey(e.target.value)}
-                    placeholder="sup_pk_..."
+                    placeholder="sup_sk_..."
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   />
                 </div>
@@ -863,15 +881,28 @@ export default function SettingsPage() {
                     type="text"
                     value={sumupMerchantCode}
                     onChange={(e) => setSumupMerchantCode(e.target.value)}
-                    placeholder="MH4K9XY5"
+                    placeholder="MCGKP3GE"
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                    Email du compte SumUp <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={sumupEmail}
+                    onChange={(e) => setSumupEmail(e.target.value)}
+                    placeholder="votre@email.com"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">L&apos;adresse email de connexion à votre compte SumUp. Obligatoire pour créer des liens de paiement.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleConnectSumUp}
-                disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode}
+                disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode || !sumupEmail}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D9E75] text-white text-sm font-bold hover:bg-[#188A66] transition-colors disabled:opacity-50 shadow-sm"
               >
                 {sumupLoading ? (

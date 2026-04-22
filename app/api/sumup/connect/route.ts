@@ -21,14 +21,14 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
-    const { apiKey, merchantCode } = await req.json();
+    const { apiKey, merchantCode, merchantEmail: manualEmail } = await req.json();
     if (!apiKey || !merchantCode) {
       return NextResponse.json({ error: 'Clé API et code marchand requis' }, { status: 400 });
     }
 
-    // Validation basique - plus permissive sur le format de clé
     const trimmedKey = apiKey.trim();
     const trimmedCode = merchantCode.trim();
+    const trimmedManualEmail = manualEmail?.trim() || null;
 
     if (trimmedKey.length < 10) {
       return NextResponse.json({ error: 'Clé API trop courte (minimum 10 caractères)' }, { status: 400 });
@@ -40,8 +40,9 @@ export async function POST(req: NextRequest) {
 
     console.log('[sumup-connect] Attempting connection for merchant:', trimmedCode);
 
-    // Valider la clé via l'API SumUp AVANT de sauvegarder
     let merchantName: string | null = null;
+    let sumupEmail: string | null = trimmedManualEmail;
+
     try {
       const res = await fetch('https://api.sumup.com/v0.1/me', {
         headers: { Authorization: `Bearer ${trimmedKey}` },
@@ -59,11 +60,19 @@ export async function POST(req: NextRequest) {
 
       const data = await res.json();
       merchantName = data.merchant_profile?.company_name || data.company_name || data.merchant_code || trimmedCode;
-      // Extract the SumUp account email (differs from the FacturMe account email)
-      const sumupEmail = data.merchant_profile?.personal_profile?.email || data.email || null;
-      console.log('[sumup-connect] Successfully validated SumUp credentials for:', merchantName, 'email:', sumupEmail);
 
-      // Sauvegarder les credentials seulement si la clé est valide
+      // Try multiple paths to extract the SumUp account email
+      if (!sumupEmail) {
+        sumupEmail =
+          data.merchant_profile?.personal_profile?.email ||
+          data.account?.username ||
+          data.email ||
+          data.username ||
+          null;
+      }
+
+      console.log('[sumup-connect] Validated SumUp credentials for:', merchantName, 'email:', sumupEmail);
+
       const supabase = createAdminClient();
       const { error: updateError } = await supabase.from('profiles')
         .update({ sumup_api_key: trimmedKey, sumup_merchant_code: trimmedCode, sumup_email: sumupEmail })
@@ -78,7 +87,9 @@ export async function POST(req: NextRequest) {
         success: true,
         merchantCode: trimmedCode,
         merchantName,
-        validated: true
+        sumupEmail,
+        emailDetected: !!sumupEmail,
+        validated: true,
       });
     } catch (fetchError: any) {
       console.warn('[sumup-connect] API validation request failed:', fetchError?.message || 'Network error');
@@ -110,13 +121,15 @@ export async function GET() {
 
     const supabase = createAdminClient();
     const { data: profile } = await supabase.from('profiles')
-      .select('sumup_api_key, sumup_merchant_code')
+      .select('sumup_api_key, sumup_merchant_code, sumup_email')
       .eq('id', user.id)
       .single();
 
     return NextResponse.json({
       connected: !!(profile?.sumup_api_key && profile?.sumup_merchant_code),
       merchantCode: profile?.sumup_merchant_code || null,
+      sumupEmail: profile?.sumup_email || null,
+      emailMissing: !!(profile?.sumup_api_key && !profile?.sumup_email),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -143,7 +156,7 @@ export async function DELETE() {
 
     const supabase = createAdminClient();
     await supabase.from('profiles')
-      .update({ sumup_api_key: null, sumup_merchant_code: null })
+      .update({ sumup_api_key: null, sumup_merchant_code: null, sumup_email: null })
       .eq('id', user.id);
 
     return NextResponse.json({ success: true });
