@@ -11,8 +11,9 @@ import { CURRENCIES, LEGAL_STATUSES, SECTORS, ACCENT_COLORS } from '@/lib/utils'
 import Modal from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 
-import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus, Sparkles, Eye, Upload } from 'lucide-react';
+import { Camera, Crown, LogOut, Trash2, Download, AlertTriangle, ShieldAlert, Zap, CreditCard, XCircle, ArrowUpRight, PenTool, X, Link2, CheckCircle2, Unlink, Webhook, Globe, Plus, Sparkles, Eye, Upload, Lock } from 'lucide-react';
 import { changeLanguage } from '@/i18n';
+import { SumUpTutorialModal } from '@/components/ui/SumUpTutorialModal';
 
 const CURRENCY_OPTS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol} ${c.label}` }));
 const LANG_OPTS = [{ value: 'fr', label: '🇫🇷 Français' }, { value: 'en', label: '🇬🇧 English' }];
@@ -70,6 +71,7 @@ export default function SettingsPage() {
   const [sumupConnected, setSumupConnected] = useState(false);
   const [sumupLoading, setSumupLoading] = useState(false);
   const [sumupStatus, setSumupStatus] = useState<'connected' | 'error' | null>(null);
+  const [showSumupTutorial, setShowSumupTutorial] = useState(false);
 
   // Webhook state
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
@@ -797,7 +799,7 @@ export default function SettingsPage() {
       fields: (
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Connectez votre compte SumUp pour accepter des paiements en ligne directement sur vos factures. Entrez votre clé API et code marchand SumUp.
+            Acceptez des paiements en ligne directement sur vos factures avec SumUp. Simple, rapide et sécurisé.
           </p>
 
           {sumupStatus === 'connected' && (
@@ -851,67 +853,89 @@ export default function SettingsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setShowSumupTutorial(true)}
+                className="w-full relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1D9E75] via-[#188A66] to-[#166958] transition-all duration-500 group-hover:scale-[1.02]" />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite]" />
+                </div>
+                <div className="relative flex items-center justify-center gap-3 py-6 px-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Lock size={24} className="text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-lg font-black text-white">Connecter SumUp</p>
+                    <p className="text-sm text-white/80">Suivez le guide pour trouver vos identifiants</p>
+                  </div>
+                  <ArrowUpRight size={20} className="text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                </div>
+              </button>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                 {[
-                  { label: 'Paiement par carte', desc: 'Visa, Mastercard, Amex' },
-                  { label: 'Terminal SumUp', desc: 'Paiement en personne' },
-                  { label: 'Mise à jour auto', desc: 'Facture passée en "Payée"' },
+                  { label: 'Paiement par carte', desc: 'Visa, Mastercard', icon: '💳' },
+                  { label: 'Terminal SumUp', desc: 'Paiement en personne', icon: '📱' },
+                  { label: 'Mise à jour auto', desc: 'Facture → Payée', icon: '✨' },
                 ].map((f) => (
-                  <div key={f.label} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div key={f.label} className="p-3 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200">
+                    <p className="text-lg mb-1">{f.icon}</p>
                     <p className="text-xs font-bold text-gray-700">{f.label}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">{f.desc}</p>
                   </div>
                 ))}
               </div>
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Clé API SumUp</label>
-                  <input
-                    type="password"
-                    value={sumupApiKey}
-                    onChange={(e) => setSumupApiKey(e.target.value)}
-                    placeholder="sup_sk_..."
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Code marchand</label>
-                  <input
-                    type="text"
-                    value={sumupMerchantCode}
-                    onChange={(e) => setSumupMerchantCode(e.target.value)}
-                    placeholder="MCGKP3GE"
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                    Email du compte SumUp <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={sumupEmail}
-                    onChange={(e) => setSumupEmail(e.target.value)}
-                    placeholder="votre@email.com"
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">L&apos;adresse email de connexion à votre compte SumUp. Obligatoire pour créer des liens de paiement.</p>
-                </div>
+
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <p className="text-xs text-blue-700">
+                  <strong>Comment ça marche ?</strong> Cliquez sur "Connecter SumUp", suivez le tutoriel pour récupérer votre clé API et code marchand, puis entrez-les pour activer les paiements en ligne.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={handleConnectSumUp}
-                disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode || !sumupEmail}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D9E75] text-white text-sm font-bold hover:bg-[#188A66] transition-colors disabled:opacity-50 shadow-sm"
-              >
-                {sumupLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Link2 size={15} />
-                )}
-                Connecter SumUp
-              </button>
+
+              {sumupStatus === 'error' && (
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Ou entrez vos identifiants directement :</p>
+                  <div className="space-y-2">
+                    <input
+                      type="password"
+                      value={sumupApiKey}
+                      onChange={(e) => setSumupApiKey(e.target.value)}
+                      placeholder="Clé API SumUp (sup_sk_...)"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+                    />
+                    <input
+                      type="text"
+                      value={sumupMerchantCode}
+                      onChange={(e) => setSumupMerchantCode(e.target.value)}
+                      placeholder="Code marchand"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+                    />
+                    <input
+                      type="email"
+                      value={sumupEmail}
+                      onChange={(e) => setSumupEmail(e.target.value)}
+                      placeholder="Email du compte SumUp"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleConnectSumUp}
+                    disabled={sumupLoading || !sumupApiKey || !sumupMerchantCode || !sumupEmail}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D9E75] text-white text-sm font-bold hover:bg-[#188A66] transition-colors disabled:opacity-50 shadow-sm"
+                  >
+                    {sumupLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Link2 size={15} />
+                    )}
+                    Connecter
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1409,6 +1433,12 @@ export default function SettingsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* SumUp Tutorial Modal */}
+      <SumUpTutorialModal
+        isOpen={showSumupTutorial}
+        onClose={() => setShowSumupTutorial(false)}
+      />
     </div>
   );
 }

@@ -83,7 +83,9 @@
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Vercel__get_runtime_logs",
       "mcp__claude_ai_Vercel__get_deployment_build_logs",
-      "mcp__claude_ai_Vercel__list_deployments"
+      "mcp__claude_ai_Vercel__list_deployments",
+      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"SaaS calendar dashboard premium glassmorphism modern\" --design-system -p \"Facturme\" -f markdown)",
+      "Bash(python skills/ui-ux-pro-max/scripts/search.py \"SaaS calendar dashboard premium glassmorphism modern\" --design-system -p \"Facturme\" -f markdown)"
     ]
   },
   "enableAllProjectMcpServers": true,

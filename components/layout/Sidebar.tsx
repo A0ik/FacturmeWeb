@@ -8,7 +8,7 @@ import {
   RefreshCw, Settings, Zap, ChevronRight, ChevronDown,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar, Camera,
   Calculator, Activity, Landmark, Search, Link2, TrendingUp,
-  Rocket, Crown, Sparkles, Star, ArrowUpRight,
+  Rocket, Crown, Sparkles, ArrowUpRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -55,6 +55,17 @@ const TIER_CONFIG = {
     subtext: 'Multi-comptes · Webhooks · API',
     cta: '/paywall',
   },
+  business: {
+    name: 'Business',
+    nextTier: 'business',
+    gradient: 'from-amber-500 to-orange-600',
+    iconBg: 'from-amber-600 to-orange-700 dark:from-amber-500/10 dark:to-orange-500/20',
+    icon: Sparkles,
+    iconColor: 'text-white',
+    message: 'Tout inclus',
+    subtext: 'Fonctionnalités illimitées',
+    cta: '/paywall',
+  },
 } as const;
 
 // Items visibles au premier regard — le Core Flow MVP
@@ -62,6 +73,7 @@ const NAV_CORE = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
   { href: '/invoices', icon: FileText, label: 'Factures', badge: 'overdue' as null | 'overdue' | 'notif' },
   { href: '/clients', icon: Users, label: 'Clients', badge: null },
+  { href: '/calendar', icon: Calendar, label: 'Agenda', badge: null },
   { href: '/settings', icon: Settings, label: 'Paramètres', badge: null },
 ];
 
@@ -74,7 +86,6 @@ const NAV_ADVANCED = [
   { href: '/suppliers', icon: Building2, label: 'Fournisseurs' },
   { href: '/connections', icon: Link2, label: 'Connexions' },
   { href: '/products', icon: Package, label: 'Catalogue' },
-  { href: '/calendar', icon: Calendar, label: 'Agenda' },
   { href: '/accounting', icon: Calculator, label: 'Comptabilité' },
   { href: '/activity', icon: Activity, label: 'Activité' },
   { href: '/banking', icon: Landmark, label: 'Banque' },
@@ -92,13 +103,13 @@ export default function Sidebar() {
   const { profile, user, signOut } = useAuthStore();
   const { invoices } = useDataStore();
   const { unreadCount, fetchNotifications } = useWorkspaceStore();
-  const { isFree, tier } = useSubscription();
+  const { tier } = useSubscription();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
 
   // Get current tier configuration — only show upgrade for non-business users
-  const currentTier = (tier === 'free' ? 'free' : tier === 'solo' ? 'solo' : tier === 'pro' ? 'pro' : 'free') as keyof typeof TIER_CONFIG;
+  const currentTier = (tier === 'business' ? 'business' : tier === 'free' ? 'free' : tier === 'solo' ? 'solo' : tier === 'pro' ? 'pro' : 'free') as keyof typeof TIER_CONFIG;
   const tierConfig = TIER_CONFIG[currentTier];
   const shouldShowUpgrade = tier !== 'business';
 
@@ -393,7 +404,14 @@ export default function Sidebar() {
               }
             }}
           />
-          <div className="flex-1 min-w-0">
+          <div
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={() => {
+              // Ouvrir le menu utilisateur en cliquant sur le nom
+              const dropdownTrigger = document.querySelector('[data-user-dropdown-trigger]') as HTMLButtonElement;
+              if (dropdownTrigger) dropdownTrigger.click();
+            }}
+          >
             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary transition-colors">
               {profile?.company_name || profile?.first_name || 'Mon compte'}
             </p>
