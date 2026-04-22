@@ -567,13 +567,13 @@ export default function CalendarPage() {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Calendar Grid - Premium Glassmorphism */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="lg:col-span-2"
+            className="xl:col-span-3"
           >
             <div className="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl shadow-black/5 overflow-hidden">
               {/* Month Navigation */}
@@ -745,6 +745,107 @@ export default function CalendarPage() {
 
           {/* Side Panel - Premium Stats & Details */}
           <div className="space-y-6">
+            {/* Invoices of the Month - New Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-white/20 shadow-xl overflow-hidden"
+            >
+              <div className="px-6 py-5 border-b border-gray-100/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl shadow-lg shadow-amber-500/20">
+                      <FileText size={16} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-sm">Factures du mois</p>
+                      <p className="text-xs text-gray-500">{thisMonthInvoices.length} facture(s)</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/invoices"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
+                    title="Voir toutes les factures"
+                  >
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </Link>
+                </div>
+              </div>
+
+              {thisMonthInvoices.length === 0 ? (
+                <div className="p-8 text-center">
+                  <FileText size={32} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
+                  <p className="text-xs text-gray-400">Aucune facture ce mois</p>
+                  <Link
+                    href="/invoices/new"
+                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-colors"
+                  >
+                    <Plus size={12} /> Créer
+                  </Link>
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+                  {thisMonthInvoices.slice(0, 10).map((inv, idx) => {
+                    const isOverdue = inv.status === 'overdue' ||
+                      (inv.due_date && new Date(inv.due_date) < today && inv.status !== 'paid');
+                    return (
+                      <Link key={inv.id} href={`/invoices/${inv.id}`} className="block group">
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 + idx * 0.05 }}
+                          className="flex items-center gap-3 px-5 py-3.5 hover:bg-gradient-to-r hover:from-amber-500/5 hover:to-transparent transition-all duration-300"
+                        >
+                          <div className={cn(
+                            'w-10 h-10 rounded-xl flex items-center justify-center shadow-md flex-shrink-0',
+                            inv.status === 'paid' ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-green-500/20' :
+                            isOverdue ? 'bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20' :
+                            'bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/20'
+                          )}>
+                            {inv.status === 'paid'
+                              ? <CheckCircle2 size={14} className="text-white" />
+                              : isOverdue
+                                ? <AlertTriangle size={14} className="text-white" />
+                                : <FileText size={14} className="text-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                {inv.client?.name || inv.client_name_override || 'Sans client'}
+                              </p>
+                              <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">
+                                {formatCurrency(inv.total)}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between mt-0.5">
+                              <p className="text-[10px] text-gray-400">{inv.number}</p>
+                              {inv.due_date && (
+                                <p className={cn(
+                                  'text-[10px] font-medium',
+                                  isOverdue ? 'text-red-500' : inv.status === 'paid' ? 'text-green-500' : 'text-amber-500'
+                                )}>
+                                  {inv.due_date}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      </Link>
+                    );
+                  })}
+                  {thisMonthInvoices.length > 10 && (
+                    <Link
+                      href="/invoices"
+                      className="block text-center py-3 text-xs font-bold text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      Voir les {thisMonthInvoices.length - 10} autres factures →
+                    </Link>
+                  )}
+                </div>
+              )}
+            </motion.div>
+
             {/* Month Stats - Glassmorphism Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

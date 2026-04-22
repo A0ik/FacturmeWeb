@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Google Calendar non configuré' }, { status: 500 });
     }
 
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/google/callback';
+    // Use dynamic redirect URL based on request origin
+    const redirectUri = `${req.nextUrl.origin}/api/google/callback`;
     const scopes = [
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/calendar.events',
