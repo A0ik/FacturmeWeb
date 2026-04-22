@@ -58,30 +58,32 @@ export async function POST(req: NextRequest) {
       }
 
       const data = await res.json();
-      merchantName = data.company_name || data.merchant_code || trimmedCode;
-      console.log('[sumup-connect] Successfully validated SumUp credentials for:', merchantName);
+      merchantName = data.merchant_profile?.company_name || data.company_name || data.merchant_code || trimmedCode;
+      // Extract the SumUp account email (differs from the FacturMe account email)
+      const sumupEmail = data.merchant_profile?.personal_profile?.email || data.email || null;
+      console.log('[sumup-connect] Successfully validated SumUp credentials for:', merchantName, 'email:', sumupEmail);
+
+      // Sauvegarder les credentials seulement si la clé est valide
+      const supabase = createAdminClient();
+      const { error: updateError } = await supabase.from('profiles')
+        .update({ sumup_api_key: trimmedKey, sumup_merchant_code: trimmedCode, sumup_email: sumupEmail })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('[sumup-connect] Database update error:', updateError);
+        return NextResponse.json({ error: 'Erreur lors de la sauvegarde des credentials' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        merchantCode: trimmedCode,
+        merchantName,
+        validated: true
+      });
     } catch (fetchError: any) {
       console.warn('[sumup-connect] API validation request failed:', fetchError?.message || 'Network error');
       return NextResponse.json({ error: 'Impossible de joindre l\'API SumUp. Vérifiez votre connexion.' }, { status: 400 });
     }
-
-    // Sauvegarder les credentials seulement si la clé est valide
-    const supabase = createAdminClient();
-    const { error: updateError } = await supabase.from('profiles')
-      .update({ sumup_api_key: trimmedKey, sumup_merchant_code: trimmedCode })
-      .eq('id', user.id);
-
-    if (updateError) {
-      console.error('[sumup-connect] Database update error:', updateError);
-      return NextResponse.json({ error: 'Erreur lors de la sauvegarde des credentials' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      merchantCode: trimmedCode,
-      merchantName: merchantName || trimmedCode,
-      validated: true
-    });
   } catch (error: any) {
     console.error('[sumup-connect] Unexpected error:', error);
     return NextResponse.json({ error: error.message || 'Erreur inconnue lors de la connexion SumUp' }, { status: 500 });

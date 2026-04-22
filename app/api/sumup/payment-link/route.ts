@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
       .single();
     if (invError || !invoice) return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 });
 
-    // Get profile with SumUp keys and email (pay_to_email required by SumUp API)
+    // Get profile with SumUp keys — sumup_email is the SumUp account email, distinct from the FacturMe email
     const { data: profile } = await supabase.from('profiles')
-      .select('sumup_api_key, sumup_merchant_code, currency, email')
+      .select('sumup_api_key, sumup_merchant_code, currency, sumup_email')
       .eq('id', user.id)
       .single();
     if (!profile?.sumup_api_key || !profile?.sumup_merchant_code) {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Le montant de la facture doit être supérieur à 0.' }, { status: 400 });
     }
 
-    const merchantEmail = profile.email || user.email;
+    const merchantEmail = profile.sumup_email;
     console.log('[sumup-payment-link] Creating checkout for invoice:', invoiceId, 'amount:', amount, 'currency:', profile.currency || 'EUR', 'merchant:', merchantEmail);
 
     const checkoutBody: Record<string, unknown> = {
