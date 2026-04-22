@@ -1,8 +1,10 @@
 'use client';
 
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, CheckCircle2, Info, ChevronDown, ChevronRight } from 'lucide-react';
 import { Invoice, Profile } from '@/types';
 import { isFacturXEligible } from '@/lib/facturx';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FacturXWarningsProps {
   invoice: {
@@ -35,7 +37,7 @@ interface FacturXWarningsProps {
     }>;
   } | Partial<Invoice>;
   profile?: Profile | null;
-  variant?: 'inline' | 'banner' | 'card';
+  variant?: 'inline' | 'banner' | 'card' | 'accordion';
 }
 
 /**
@@ -43,6 +45,8 @@ interface FacturXWarningsProps {
  * Affiche les champs manquants pour être conforme au format Factur-X
  */
 export function FacturXWarnings({ invoice, profile, variant = 'inline' }: FacturXWarningsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // Vérifier l'éligibilité Factur-X
   const eligibility = isFacturXEligible(invoice as Invoice, (profile || {}) as Profile);
 
@@ -263,6 +267,80 @@ export function FacturXWarnings({ invoice, profile, variant = 'inline' }: Factur
       )}
     </div>
   );
+
+  // Variant accordion - replié par défaut
+  if (variant === 'accordion') {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 overflow-hidden">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-3 p-3 hover:bg-amber-100/50 dark:hover:bg-amber-500/20 transition-colors text-left"
+        >
+          <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex-shrink-0">
+            <AlertCircle size={16} className="text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-amber-900 dark:text-amber-300 truncate">
+              Factur-X : {criticalFields.length > 0 ? 'Champs obligatoires manquants' : 'Informations incomplètes'}
+            </p>
+            <p className="text-[10px] text-amber-700 dark:text-amber-500">
+              {criticalFields.length > 0 ? `${criticalFields.length} champ(s) obligatoire(s)` : `${missingFields.length} champ(s) recommandé(s)`}
+            </p>
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0"
+          >
+            <ChevronRight size={16} className="text-amber-600 dark:text-amber-400" />
+          </motion.div>
+        </button>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 pt-1 border-t border-amber-200/50 dark:border-amber-500/20">
+                {criticalFields.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1">
+                      Obligatoires
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {criticalFields.map((field, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 rounded text-[10px] font-semibold">
+                          {field}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {missingFields.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-700 dark:text-amber-500 uppercase mb-1">
+                      Recommandés
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {missingFields.map((field, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-500 rounded text-[10px] font-semibold">
+                          {field}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 }
 
 function FieldStatus({ label, present }: { label: string; present: boolean }) {

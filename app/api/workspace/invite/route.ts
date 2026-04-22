@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       .from('workspace_members')
       .select('role')
       .eq('workspace_id', tokenData.workspace_id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (memberError || !memberData || memberData.role !== 'admin') {
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_name, first_name, email')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     const inviterName = profile?.company_name || profile?.first_name || profile?.email || 'Un utilisateur';

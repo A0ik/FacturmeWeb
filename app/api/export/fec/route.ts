@@ -10,8 +10,8 @@ function esc(s: string) { return (s || '').replace(/\t/g, ' ').replace(/\n/g, ' 
 
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
   const url = new URL(req.url);
   const year = url.searchParams.get('year') || new Date().getFullYear().toString();
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const { data: invoices, error } = await supabase
     .from('invoices')
     .select('*, client:clients(*)')
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .eq('document_type', 'invoice')
     .in('status', ['paid', 'sent'])
     .gte('issue_date', `${year}-01-01`)
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const siren = (profile?.siret || '').slice(0, 9) || '000000000';
 
   // FEC columns (tab-separated per spec)

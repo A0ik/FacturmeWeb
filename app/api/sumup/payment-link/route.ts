@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
         },
       }
     );
-    const { data: { session } } = await supabaseAuth.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
     const { invoiceId } = await req.json();
     if (!invoiceId) return NextResponse.json({ error: 'invoiceId requis' }, { status: 400 });
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // Get profile with SumUp keys
     const { data: profile } = await supabase.from('profiles')
       .select('sumup_api_key, sumup_merchant_code, currency')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
     if (!profile?.sumup_api_key || !profile?.sumup_merchant_code) {
       return NextResponse.json({ error: 'SumUp non configuré. Connectez votre compte dans les paramètres.' }, { status: 400 });

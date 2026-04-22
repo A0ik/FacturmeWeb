@@ -20,15 +20,15 @@ export async function POST(req: NextRequest) {
         },
       }
     );
-    const { data: { session } } = await supabaseAuth.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: process.env.STRIPE_CONNECT_CLIENT_ID!,
       scope: 'read_write',
       redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/connect`,
-      state: session.user.id,
+      state: user.id,
     });
 
     return NextResponse.json({ url: `https://connect.stripe.com/oauth/authorize?${params}` });
@@ -77,13 +77,13 @@ export async function DELETE(req: NextRequest) {
         },
       }
     );
-    const { data: { session } } = await supabaseAuth.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
     const supabase = createAdminClient();
     const { data: profile } = await supabase.from('profiles')
       .select('stripe_connect_id')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (profile?.stripe_connect_id) {
@@ -98,7 +98,7 @@ export async function DELETE(req: NextRequest) {
 
     await supabase.from('profiles')
       .update({ stripe_connect_id: null })
-      .eq('id', session.user.id);
+      .eq('id', user.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

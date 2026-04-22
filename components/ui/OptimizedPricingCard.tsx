@@ -22,6 +22,10 @@ interface OptimizedPricingCardProps {
   onClick: () => void;
   delay: number;
   userCount?: string;
+  // Prorata props
+  prorataAmount?: number;
+  prorataPercent?: number;
+  currentPlan?: string;
 }
 
 const PlanFeature = ({ feature, delay }: { feature: PlanFeature; delay: number }) => (
@@ -85,8 +89,18 @@ export function OptimizedPricingCard({
   onClick,
   delay,
   userCount = '+2,500',
+  prorataAmount = 0,
+  prorataPercent = 0,
+  currentPlan,
 }: OptimizedPricingCardProps) {
   const Icon = plan.icon;
+
+  // Calculer le prix affiché avec prorata
+  const displayPrice = prorataAmount > 0
+    ? `${prorataAmount.toFixed(2)}€`
+    : plan.price;
+
+  const hasProrata = prorataAmount > 0 && !isCurrent && !isDowngrade;
 
   return (
     <motion.div
@@ -215,12 +229,31 @@ export function OptimizedPricingCard({
             {/* Pricing Anchor */}
             <div className="relative mt-6">
               <div className="flex items-end gap-1">
-                <span className="text-5xl font-black text-white">{plan.price}</span>
-                <span className="text-lg text-white/70 mb-2">/ mois</span>
+                <span className="text-5xl font-black text-white">{displayPrice}</span>
+                <span className="text-lg text-white/70 mb-2">
+                  {hasProrata ? 'à payer' : '/ mois'}
+                </span>
               </div>
+
+              {hasProrata && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: delay + 0.3 }}
+                  className="mt-2 flex items-center gap-2"
+                >
+                  <span className="px-2 py-0.5 bg-emerald-400/30 text-white text-[10px] font-bold rounded-full">
+                    Prorata {prorataPercent}%
+                  </span>
+                  <span className="text-xs text-white/80">
+                    Au lieu de {plan.price}
+                  </span>
+                </motion.div>
+              )}
+
               <p className="text-xs text-white/90 mt-2">Sans engagement • Résiliable à tout moment</p>
 
-              {isHighlighted && (
+              {isHighlighted && !hasProrata && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}

@@ -100,6 +100,52 @@ export default function PaywallPage() {
   } | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
+  // État pour stocker les informations de prorata pour chaque plan
+  const [prorataData, setProrataData] = useState<Record<string, {
+    amount: number;
+    percent: number;
+  }>>({});
+
+  // Récupérer les informations de prorata au chargement de la page
+  useEffect(() => {
+    const fetchProrataData = async () => {
+      if (!profile?.id || sub.isFree) return; // Pas de prorata pour les utilisateurs gratuits
+
+      // Pour chaque plan, récupérer les infos de prorata
+      const promises = PLANS.map(async (plan) => {
+        try {
+          const res = await fetch(`/api/stripe/change-subscription?userId=${profile.id}&plan=${plan.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            return {
+              planId: plan.id,
+              data: {
+                amount: data.prorataAmount || 0,
+                percent: data.prorataPercent || 0,
+              }
+            };
+          }
+        } catch (error) {
+          console.error(`Erreur fetching prorata for ${plan.id}:`, error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const prorataMap: Record<string, { amount: number; percent: number }> = {};
+
+      results.forEach(result => {
+        if (result) {
+          prorataMap[result.planId] = result.data;
+        }
+      });
+
+      setProrataData(prorataMap);
+    };
+
+    fetchProrataData();
+  }, [profile?.id, sub.isFree, sub.tier]);
+
   const handleSelectWithTrial = async (planId: string) => {
     const selectedPlan = PLANS.find(p => p.id === planId);
     if (!selectedPlan || !profile?.id) return;
@@ -227,10 +273,10 @@ export default function PaywallPage() {
       {/* Optimized Header with Social Proof */}
       <PaywallHeader onCTAClick={() => {}} />
 
-      {/* Free User Alerts */}
-      {sub.isFree && (
+      {/* Free User Alerts - Only for truly free users (no active subscription) */}
+      {sub.isFree && !sub.isTrialActive && (
         <>
-          {/* Trial Banner */}
+          {/* Trial Banner - Only show for free users (not for Pro/Business) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -522,6 +568,9 @@ export default function PaywallPage() {
               const isDowngrade = PLANS.findIndex(p => p.id === plan.id) < PLANS.findIndex(p => p.id === sub.tier);
               const isLoading = loading === plan.id;
 
+              // Récupérer les données de prorata pour ce plan
+              const prorata = prorataData[plan.id] || { amount: 0, percent: 0 };
+
               return (
                 <OptimizedPricingCard
                   key={plan.id}
@@ -533,6 +582,9 @@ export default function PaywallPage() {
                   onClick={() => handleSelect(plan.id)}
                   delay={index * 0.1}
                   userCount="+2,500"
+                  prorataAmount={prorata.amount}
+                  prorataPercent={prorata.percent}
+                  currentPlan={sub.tier}
                 />
               );
             })}

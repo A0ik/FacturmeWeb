@@ -712,7 +712,7 @@ export default function NewInvoicePage() {
                       items: items,
                     }}
                     profile={profile}
-                    variant="banner"
+                    variant="accordion"
                   />
 
                   {/* PDP Validator - Conformité État */}
@@ -731,7 +731,7 @@ export default function NewInvoicePage() {
                       items: items,
                     }}
                     profile={profile}
-                    mode="inline"
+                    mode="accordion"
                   />
                 </>
               )}

@@ -12,11 +12,14 @@ import {
   ArrowLeft, Edit2, Download, Mail, CreditCard, Copy, CheckCircle,
   Clock, AlertTriangle, FileText, Send, Trash2, MoreVertical,
   Receipt, ShoppingCart, Truck, RefreshCw, Banknote, Check,
-  ExternalLink, X, Loader2, Building2, Calendar, Hash,
+  ExternalLink, X, Loader2, Building2, Calendar, Hash, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailPreviewModal from '@/components/ui/EmailPreviewModal';
+import PdfPreviewModal from '@/components/ui/PdfPreviewModal';
+import PaymentProviderModal from '@/components/ui/PaymentProviderModal';
 import { FacturXButton, FacturXInfoTooltip } from '@/components/ui/FacturXButton';
+import { isFacturXEligible } from '@/lib/facturx';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bg: string; icon: any }> = {
   draft:    { label: 'Brouillon',  color: 'text-gray-500',   bg: 'bg-gray-100',   icon: FileText },
@@ -49,6 +52,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [isReminder, setIsReminder] = useState(false);
   const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
@@ -91,6 +96,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const clientEmail = invoice.client?.email || '';
 
   const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+
+  // Calculer les warnings Factur-X pour cette facture
+  const facturXEligibility = isFacturXEligible(invoice, profile || {});
+  const facturXWarnings = facturXEligibility.warnings || [];
 
   const handleDownloadPdf = async () => {
     await downloadInvoicePdf(invoice, profile);
@@ -143,7 +152,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success('Lien de paiement créé ! Ouverture dans un nouvel onglet.');
+      toast.success('Lien de paiement Stripe créé ! Ouverture dans un nouvel onglet.');
       window.open(data.url, '_blank');
     } catch (e: any) {
       toast.error(e.message || 'Erreur lors de la création du lien.');
@@ -168,6 +177,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       toast.error(e.message || 'Erreur lors de la création du lien SumUp.');
     } finally {
       setGeneratingSumUpLink(false);
+    }
+  };
+
+  // Handler pour la sélection du provider via la modale
+  const handleSelectPaymentProvider = async (provider: 'stripe' | 'sumup') => {
+    if (provider === 'stripe') {
+      await handleCreatePaymentLink();
+    } else {
+      await handleSumUpLink();
     }
   };
 
@@ -243,54 +261,13 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Download PDF */}
-          <button
-            onClick={handleDownloadPdf}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition-colors"
-          >
-            <Download size={15} />
-            PDF
-          </button>
-
-          {/* Send email */}
-          <button
-            onClick={() => { setIsReminder(false); setShowEmailModal(true); }}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
-          >
-            <Mail size={15} />
-            Envoyer
-          </button>
-
-          {/* Payment link Stripe */}
-          {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
-            <button
-              onClick={handleCreatePaymentLink}
-              disabled={generatingPaymentLink}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold transition-colors disabled:opacity-50"
-            >
-              {generatingPaymentLink ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
-              Stripe
-            </button>
-          )}
-
-          {/* Payment link SumUp */}
-          {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
-            <button
-              onClick={handleSumUpLink}
-              disabled={generatingSumUpLink}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50"
-            >
-              {generatingSumUpLink ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
-              SumUp
-            </button>
-          )}
-
           {/* Factur-X - Uniquement pour les factures, pas devis/avoirs */}
           {invoice.document_type === 'invoice' && canUseFacturX && (
             <FacturXButton
               invoiceId={invoice.id}
               invoiceNumber={invoice.number}
               variant="secondary"
+              warnings={facturXWarnings}
             />
           )}
 
@@ -349,6 +326,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                       invoiceId={invoice.id}
                       invoiceNumber={invoice.number}
                       variant="compact"
+                      warnings={facturXWarnings}
                     />
                   )}
                   <div className="h-px bg-gray-100 mx-4" />
@@ -515,6 +493,14 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Actions rapides</h3>
 
             <button
+              onClick={() => setShowPdfPreview(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-sm font-semibold transition-colors"
+            >
+              <Eye size={16} />
+              Prévisualiser le PDF
+            </button>
+
+            <button
               onClick={() => { setIsReminder(false); setShowEmailModal(true); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold transition-colors"
             >
@@ -522,25 +508,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               Envoyer par e-mail
             </button>
 
-            {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (<>
+            {invoice.document_type === 'invoice' && invoice.status !== 'paid' && (
               <button
-                onClick={handleCreatePaymentLink}
-                disabled={generatingPaymentLink}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold transition-colors disabled:opacity-50"
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-50 to-orange-50 hover:from-emerald-100 hover:to-orange-100 text-gray-700 text-sm font-semibold transition-colors border border-gray-200"
               >
-                {generatingPaymentLink ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-                Lien de paiement Stripe
+                <CreditCard size={16} />
+                Créer un lien de paiement
               </button>
-
-              <button
-                onClick={handleSumUpLink}
-                disabled={generatingSumUpLink}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50"
-              >
-                {generatingSumUpLink ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-                Lien de paiement SumUp
-              </button>
-            </>)}
+            )}
 
             <button
               onClick={handleDownloadPdf}
@@ -587,17 +563,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               </p>
 
               {canUseFacturX ? (
-                <button
-                  onClick={() => {
-                    // Scroller vers le bouton Factur-X
-                    const facturXButton = document.querySelector('[data-facturx-button]');
-                    facturXButton?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white border-2 border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition-colors"
-                >
-                  <Download size={14} />
-                  Télécharger Factur-X
-                </button>
+                <div className="w-full">
+                  <FacturXButton
+                    invoiceId={invoice.id}
+                    invoiceNumber={invoice.number}
+                    variant="primary"
+                    className="w-full"
+                    warnings={facturXWarnings}
+                  />
+                </div>
               ) : (
                 <button
                   onClick={() => router.push('/paywall')}
@@ -663,6 +637,25 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           isReminder={isReminder}
         />
       )}
+
+      {/* PDF preview modal */}
+      {showPdfPreview && (
+        <PdfPreviewModal
+          invoice={invoice}
+          profile={profile}
+          onClose={() => setShowPdfPreview(false)}
+        />
+      )}
+
+      {/* Payment provider selection modal */}
+      <PaymentProviderModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSelectProvider={handleSelectPaymentProvider}
+        hasStripe={!!(profile?.stripe_connect_id || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)}
+        hasSumUp={!!(profile?.sumup_api_key && profile?.sumup_merchant_code)}
+        amount={invoice.total}
+      />
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (

@@ -1,7 +1,8 @@
 'use client';
 
-import { AlertTriangle, Shield, CheckCircle2, XCircle, Info, Lock, FileText, Clock, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { AlertTriangle, Shield, CheckCircle2, XCircle, Info, Lock, FileText, Clock, Users, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface PDPValidationResult {
@@ -48,7 +49,7 @@ interface PDPValidatorProps {
     country?: string;
   } | null;
   onFix?: (field: string) => void;
-  mode?: 'inline' | 'full' | 'minimal';
+  mode?: 'inline' | 'full' | 'minimal' | 'accordion';
 }
 
 /**
@@ -61,6 +62,8 @@ interface PDPValidatorProps {
  * - L'interopérabilité PDP
  */
 export function PDPValidator({ invoice, profile, onFix, mode = 'inline' }: PDPValidatorProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const errors: string[] = [];
   const warnings: string[] = [];
   const recommendations: string[] = [];
@@ -180,6 +183,101 @@ export function PDPValidator({ invoice, profile, onFix, mode = 'inline' }: PDPVa
           )}
         </div>
       </motion.div>
+    );
+  }
+
+  // Mode accordion - replié par défaut
+  if (mode === 'accordion') {
+    if (result.isValid) {
+      return null; // Pas d'affichage si tout est bon
+    }
+
+    return (
+      <div className={cn(
+        'rounded-xl border overflow-hidden',
+        result.complianceLevel === 'none'
+          ? 'border-red-200 bg-red-50 dark:bg-red-500/10 dark:border-red-500/30'
+          : 'border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30'
+      )}>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-3 p-3 hover:bg-white/50 dark:hover:bg-black/10 transition-colors text-left"
+        >
+          <div className="flex-shrink-0">
+            {result.complianceLevel === 'none' ? (
+              <XCircle size={16} className="text-red-600 dark:text-red-400" />
+            ) : (
+              <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+              {result.complianceLevel === 'none' ? 'Facture non conforme PDP' : 'Facture partiellement conforme'}
+            </p>
+            <p className="text-[10px] text-gray-600 dark:text-gray-400">
+              {result.errors.length > 0 ? `${result.errors.length} erreur(s)` : `${warnings.length} avertissement(s)`}
+            </p>
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0"
+          >
+            <ChevronRight size={16} className={cn(
+              result.complianceLevel === 'none' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+            )} />
+          </motion.div>
+        </button>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className={cn(
+                'px-3 pb-3 pt-1 border-t',
+                result.complianceLevel === 'none'
+                  ? 'border-red-200/50 dark:border-red-500/20'
+                  : 'border-amber-200/50 dark:border-amber-500/20'
+              )}>
+                {result.errors.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-1">Erreurs</p>
+                    <ul className="space-y-0.5">
+                      {result.errors.slice(0, 5).map((error, idx) => (
+                        <li key={idx} className="text-xs text-red-700 dark:text-red-400">
+                          • {error}
+                        </li>
+                      ))}
+                      {result.errors.length > 5 && (
+                        <li className="text-xs text-red-700 dark:text-red-400">
+                          • ...et {result.errors.length - 5} autres
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                {warnings.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">Avertissements</p>
+                    <ul className="space-y-0.5">
+                      {warnings.slice(0, 3).map((warning, idx) => (
+                        <li key={idx} className="text-xs text-amber-700 dark:text-amber-400">
+                          • {warning}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 

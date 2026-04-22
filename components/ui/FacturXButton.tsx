@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileText, Loader2, Sparkles, Info, HelpCircle } from 'lucide-react';
+import { Download, FileText, Loader2, Sparkles, Info, HelpCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface FacturXButtonProps {
   disabled?: boolean;
   className?: string;
   variant?: 'primary' | 'secondary' | 'compact';
+  warnings?: string[];
 }
 
 /**
@@ -27,13 +28,25 @@ export function FacturXButton({
   disabled = false,
   className,
   variant = 'primary',
+  warnings = [],
 }: FacturXButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleDownload = async () => {
-    if (isDownloading) return;
+    // Afficher la modal de confirmation s'il y a des avertissements
+    if (warnings && warnings.length > 0) {
+      setShowConfirmModal(true);
+      return;
+    }
 
+    // Pas d'avertissements, télécharger directement
+    performDownload();
+  };
+
+  const performDownload = async () => {
     setIsDownloading(true);
+    setShowConfirmModal(false);
     try {
       console.log('[FacturXButton] Téléchargement Factur-X pour facture:', invoiceId);
 
@@ -212,7 +225,67 @@ export function FacturXButton({
   }
 
   // Return final du composant
-  return buttonElement;
+  return (
+    <>
+      {buttonElement}
+
+      {/* Modal de confirmation avec avertissements */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-black text-gray-900">Avertissements Factur-X</h2>
+              <p className="text-sm text-gray-500 mt-2">
+                Certains champs recommandés pour la conformité Factur-X sont manquants.
+              </p>
+            </div>
+
+            {warnings && warnings.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <h3 className="text-sm font-bold text-amber-800">Champs manquants ou non conformes :</h3>
+                </div>
+                <ul className="space-y-1.5">
+                  {warnings.map((warning, idx) => (
+                    <li key={idx} className="text-sm text-amber-700 flex items-start gap-2">
+                      <span className="text-amber-500 mt-1">•</span>
+                      <span>{warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <p className="text-xs text-blue-700 leading-relaxed">
+                <strong>Note :</strong> Le PDF sera généré mais pourrait ne pas être 100% conforme au standard Factur-X. Pour une conformité optimale, ajoutez les informations manquantes.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={performDownload}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold hover:opacity-90 transition-all"
+              >
+                <Download size={16} />
+                Télécharger quand même
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 /**

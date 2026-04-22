@@ -56,7 +56,26 @@ export const LEGAL_STATUSES = [
   { value: 'autre', label: 'Autre' },
 ];
 
-export const ACCENT_COLORS = ['#1D9E75', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444', '#0F172A'];
+export const ACCENT_COLORS = [
+  '#1D9E75', // Émeraude (default)
+  '#3B82F6', // Bleu royal
+  '#8B5CF6', // Violet
+  '#EC4899', // Rose
+  '#F59E0B', // Ambre
+  '#EF4444', // Rouge
+  '#0F172A', // Noir ardoise
+  '#06B6D4', // Cyan
+  '#10B981', // Vert
+  '#F97316', // Orange
+  '#6366F1', // Indigo
+  '#84CC16', // Lime
+  '#14B8A6', // Turquoise
+  '#D946EF', // Fuchsia
+  '#F43F5E', // Rose foncé
+  '#8B5A2B', // Bronze
+  '#1E3A8A', // Bleu foncé
+  '#4B5563', // Gris
+];
 
 export const DOC_LABELS: Record<string, string> = {
   invoice: 'Facture', quote: 'Devis', credit_note: 'Avoir',

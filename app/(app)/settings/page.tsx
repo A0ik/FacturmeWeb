@@ -64,6 +64,7 @@ export default function SettingsPage() {
   // SumUp state
   const [sumupApiKey, setSumupApiKey] = useState('');
   const [sumupMerchantCode, setSumupMerchantCode] = useState('');
+  const [sumupMerchantName, setSumupMerchantName] = useState('');
   const [sumupConnected, setSumupConnected] = useState(false);
   const [sumupLoading, setSumupLoading] = useState(false);
   const [sumupStatus, setSumupStatus] = useState<'connected' | 'error' | null>(null);
@@ -213,6 +214,7 @@ export default function SettingsPage() {
         if (d.connected) {
           setSumupConnected(true);
           setSumupMerchantCode(d.merchantCode || '');
+          if (d.merchantName) setSumupMerchantName(d.merchantName);
         }
       })
       .catch(() => {});
@@ -229,7 +231,9 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSumupConnected(true);
+      if (data.merchantName) setSumupMerchantName(data.merchantName);
       setSumupStatus('connected');
+      toast.success('SumUp connecté avec succès !');
     } catch (e: any) {
       setSumupStatus('error');
       toast.error(e.message || 'Erreur de connexion SumUp');
@@ -927,10 +931,56 @@ export default function SettingsPage() {
           <Select label="Langue" value={form.language} onChange={(e) => set('language', e.target.value)} options={LANG_OPTS} />
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-2">Couleur accent</label>
-            <div className="flex gap-2 flex-wrap">
-              {ACCENT_COLORS.map((c) => (
-                <button key={c} type="button" onClick={() => set('accent_color', c)} className={`w-8 h-8 rounded-full border-2 transition-all ${form.accent_color === c ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105'}`} style={{ backgroundColor: c }} />
-              ))}
+            <div className="space-y-3">
+              {/* Couleurs prédéfinies */}
+              <div className="flex gap-2 flex-wrap">
+                {ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => set('accent_color', c)}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${form.accent_color === c ? 'border-gray-900 scale-110 ring-2 ring-gray-300' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
+
+              {/* Couleur customisée */}
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 mb-1 block">Ou choisir une couleur personnalisée :</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={form.accent_color}
+                      onChange={(e) => set('accent_color', e.target.value)}
+                      className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                      title="Sélectionner une couleur personnalisée"
+                    />
+                    <input
+                      type="text"
+                      value={form.accent_color}
+                      onChange={(e) => {
+                        // Valider que c'est un code hex valide
+                        const hexColor = e.target.value;
+                        if (/^#[0-9A-F]{6}$/i.test(hexColor)) {
+                          set('accent_color', hexColor);
+                        }
+                      }}
+                      placeholder="#000000"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Ex: #FF5733"
+                    />
+                  </div>
+                </div>
+                {/* Aperçu de la couleur sélectionnée */}
+                <div
+                  className="w-12 h-12 rounded-xl border-2 border-gray-200 shadow-sm"
+                  style={{ backgroundColor: form.accent_color }}
+                  title={`Couleur actuelle: ${form.accent_color}`}
+                />
+              </div>
             </div>
           </div>
         </div>

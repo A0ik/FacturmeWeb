@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabaseAuth.auth.getSession();
-  if (!session) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+  if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
   const subscription = await req.json();
   const supabase = createAdminClient();
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase
     .from('profiles')
     .update({ web_push_subscription: JSON.stringify(subscription) })
-    .eq('id', session.user.id);
+    .eq('id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -4,10 +4,10 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase-se
 export async function DELETE(req: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
-    const userId = session.user.id;
+    const userId = user.id;
     const admin = createAdminClient();
 
     // Delete user data from all tables (order matters for FK constraints)
