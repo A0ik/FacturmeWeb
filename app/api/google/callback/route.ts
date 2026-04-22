@@ -43,14 +43,44 @@ export async function GET(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.google_oauth_state !== state) {
-      return NextResponse.redirect(new URL('/calendar?error=invalid_state', req.url));
+    console.log('[google-callback] State verification:', {
+      receivedState: state,
+      storedState: profile?.google_oauth_state,
+      userId: user.id,
+      hasProfile: !!profile
+    });
+
+    if (!profile) {
+      console.error('[google-callback] No profile found for user:', user.id);
+      return NextResponse.redirect(new URL('/calendar?error=no_profile', req.url));
+    }
+
+    if (!profile.google_oauth_state) {
+      console.error('[google-callback] No stored state in profile');
+      return NextResponse.redirect(new URL('/calendar?error=no_stored_state', req.url));
+    }
+
+    if (profile.google_oauth_state !== state) {
+      console.error('[google-callback] State mismatch:', {
+        received: state,
+        stored: profile.google_oauth_state
+      });
+      return NextResponse.redirect(new URL('/calendar?error=state_mismatch', req.url));
+    }
+
+    // Verify state is not too old (10 minutes max)
+    const stateTimestamp = parseInt(state.split('_')[0]);
+    const stateAge = Date.now() - stateTimestamp;
+    if (stateAge > 10 * 60 * 1000) {
+      console.error('[google-callback] State too old:', { stateAge, stateTimestamp });
+      return NextResponse.redirect(new URL('/calendar?error=state_expired', req.url));
     }
 
     // Exchange code for tokens
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/google/callback';
+    // Use dynamic redirect URL based on request origin
+    const redirectUri = `${req.nextUrl.origin}/api/google/callback`;
 
     if (!clientId || !clientSecret) {
       return NextResponse.redirect(new URL('/calendar?error=google_not_configured', req.url));

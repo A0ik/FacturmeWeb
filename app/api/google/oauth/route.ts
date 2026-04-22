@@ -35,15 +35,22 @@ export async function GET(req: NextRequest) {
       'https://www.googleapis.com/auth/calendar.events',
     ].join(' ');
 
-    // Generate state parameter for CSRF protection
-    const state = Math.random().toString(36).substring(2, 15) +
-                  Math.random().toString(36).substring(2, 15);
+    // Generate state parameter for CSRF protection with timestamp
+    const timestamp = Date.now();
+    const state = `${timestamp}_${Math.random().toString(36).substring(2, 15)}`;
+
+    console.log('[google-oauth] Generated state:', { state, userId: user.id, timestamp });
 
     // Store state in user metadata for verification in callback
-    await supabase
+    const { error: updateError } = await supabase
       .from('profiles')
       .update({ google_oauth_state: state })
       .eq('id', user.id);
+
+    if (updateError) {
+      console.error('[google-oauth] Failed to save state:', updateError);
+      return NextResponse.json({ error: 'Failed to initialize OAuth flow' }, { status: 500 });
+    }
 
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', clientId);
