@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useInvoiceRealtime } from '@/hooks/use-invoice-realtime';
 import { formatCurrency } from '@/lib/utils';
 import { downloadInvoicePdf } from '@/lib/pdf';
 import { Invoice, InvoiceStatus } from '@/types';
@@ -65,11 +66,32 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [deleting, setDeleting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showFacturXDetails, setShowFacturXDetails] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
 
+  // Use realtime updates for invoice
+  const { invoice: realtimeInvoice } = useInvoiceRealtime(invoice ? invoice.id : undefined);
+
+  // Update local invoice when realtime updates come in
   useEffect(() => {
-    const found = invoices.find((inv) => inv.id === id);
-    if (found) setInvoice(found);
-  }, [invoices, id]);
+    if (realtimeInvoice) {
+      // Check if status changed to paid
+      if (previousStatus && previousStatus !== 'paid' && realtimeInvoice.status === 'paid') {
+        toast.success('💰 Paiement reçu ! La facture a été marquée comme payée.', {
+          duration: 5000,
+          position: 'top-right',
+        });
+      }
+      setPreviousStatus(realtimeInvoice.status);
+      setInvoice(realtimeInvoice);
+    } else {
+      // Fallback to store data for initial load
+      const found = invoices.find((inv) => inv.id === id);
+      if (found) {
+        setInvoice(found);
+        setPreviousStatus(found.status);
+      }
+    }
+  }, [realtimeInvoice, invoices, id]);
 
   // Handle ?paid=true redirect from Stripe
   useEffect(() => {
