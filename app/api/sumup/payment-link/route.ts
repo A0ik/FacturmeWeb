@@ -42,8 +42,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'SumUp non configuré. Connectez votre compte dans les paramètres.' }, { status: 400 });
     }
 
-    // Create SumUp checkout
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://factu.me';
+    // If a checkout already exists for this invoice, return the existing URL
+    if (invoice.sumup_checkout_id) {
+      const existingUrl = `https://pay.sumup.com/b2c/${invoice.sumup_checkout_id}`;
+      return NextResponse.json({ url: existingUrl, checkoutId: invoice.sumup_checkout_id });
+    }
+
+    // SumUp API requires amount in major currency units (e.g. 10.50 for €10.50), NOT cents
+    const amount = Number(invoice.total);
+    console.log('[sumup-payment-link] Creating checkout for invoice:', invoiceId, 'amount:', amount, 'currency:', profile.currency || 'EUR');
+
     const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
       method: 'POST',
       headers: {
@@ -52,28 +60,30 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         checkout_reference: invoiceId,
-        amount: invoice.total,
+        amount,
         currency: profile.currency || 'EUR',
-        merchant_code: profile.sumup_merchant_code,
         description: `${invoice.document_type === 'quote' ? 'Devis' : 'Facture'} ${invoice.number}`,
-        return_url: `${baseUrl}/share/${invoiceId}`,
-        redirect_url: `${baseUrl}/share/${invoiceId}`,
       }),
     });
 
     if (!checkoutRes.ok) {
       const err = await checkoutRes.json().catch(() => ({}));
-      return NextResponse.json({ error: err.message || 'Erreur SumUp' }, { status: 500 });
+      console.error('[sumup-payment-link] SumUp API error:', checkoutRes.status, JSON.stringify(err));
+      const errorMsg = err.message || err.error_code || err.error || `Erreur SumUp (${checkoutRes.status})`;
+      return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 
     const checkout = await checkoutRes.json();
 
+    // SumUp does not return a url field — construct the payment link from the checkout id
+    const paymentUrl = `https://pay.sumup.com/b2c/${checkout.id}`;
+
     // Save checkout ID on invoice
     await supabase.from('invoices')
-      .update({ sumup_checkout_id: checkout.id, payment_link: checkout.url })
+      .update({ sumup_checkout_id: checkout.id, payment_link: paymentUrl })
       .eq('id', invoiceId);
 
-    return NextResponse.json({ url: checkout.url, checkoutId: checkout.id });
+    return NextResponse.json({ url: paymentUrl, checkoutId: checkout.id });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     let validationSuccess = false;
     let merchantName: string | null = null;
     try {
-      const res = await fetch(`https://api.sumup.com/v0.1/merchants/${trimmedCode}/profile`, {
+      const res = await fetch('https://api.sumup.com/v0.1/me', {
         headers: { Authorization: `Bearer ${trimmedKey}` },
         signal: AbortSignal.timeout(10000), // Timeout de 10 secondes
       });
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         console.warn('[sumup-connect] API validation failed (continuing anyway):', res.status);
       }
     } catch (fetchError: any) {
-      // Ne pas échouer la connexion si l'API SumDown ne répond pas
+      // Ne pas échouer la connexion si l'API SumUp ne répond pas
       console.warn('[sumup-connect] API validation request failed (continuing anyway):', fetchError?.message || 'Network error');
     }
 

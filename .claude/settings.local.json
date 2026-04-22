@@ -78,7 +78,10 @@
       "Bash(rtk file *)",
       "Bash(rtk rm *)",
       "Bash(rtk awk *)",
-      "Bash(rtk curl *)"
+      "Bash(rtk curl *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__get_runtime_logs"
     ]
   },
   "enableAllProjectMcpServers": true,
