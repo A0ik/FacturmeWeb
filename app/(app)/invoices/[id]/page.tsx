@@ -171,8 +171,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success('Lien SumUp créé !');
-      window.open(data.url, '_blank');
+      if (data.warning) {
+        toast.error(data.warning, { duration: 8000 });
+      } else {
+        toast.success('Lien SumUp créé !');
+        window.open(data.url, '_blank');
+      }
     } catch (e: any) {
       toast.error(e.message || 'Erreur lors de la création du lien SumUp.');
     } finally {

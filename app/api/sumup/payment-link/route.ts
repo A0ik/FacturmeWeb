@@ -126,9 +126,33 @@ export async function POST(req: NextRequest) {
     }
 
     const checkout = await checkoutRes.json();
+    console.log('[sumup-payment-link] Checkout created:', JSON.stringify(checkout));
 
-    // SumUp does not return a url field — construct from checkout id
+    if (!checkout.id) {
+      console.error('[sumup-payment-link] SumUp response has no id field:', JSON.stringify(checkout));
+      return NextResponse.json({ error: 'SumUp n\'a pas retourné d\'identifiant de checkout. Contactez le support SumUp.' }, { status: 500 });
+    }
+
     const paymentUrl = `https://pay.sumup.com/b2c/${checkout.id}`;
+
+    // Verify the payment page is accessible before returning
+    try {
+      const verifyRes = await fetch(paymentUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      if (verifyRes.status === 404) {
+        console.warn('[sumup-payment-link] Payment URL returns 404 — merchant account may not have online payments enabled:', checkout.id);
+        // Still save the checkout ID but warn the user
+        await supabase.from('invoices')
+          .update({ sumup_checkout_id: checkout.id, payment_link: paymentUrl })
+          .eq('id', invoiceId);
+        return NextResponse.json({
+          url: paymentUrl,
+          checkoutId: checkout.id,
+          warning: 'Le checkout a été créé mais la page de paiement retourne une erreur 404. Activez les paiements en ligne dans votre portail SumUp (merchants.sumup.com → Boutique en ligne).',
+        });
+      }
+    } catch {
+      // If the HEAD request fails for network reasons, proceed anyway
+    }
 
     await supabase.from('invoices')
       .update({ sumup_checkout_id: checkout.id, payment_link: paymentUrl })
