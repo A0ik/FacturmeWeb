@@ -73,26 +73,26 @@ const NAV_CORE = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
   { href: '/invoices', icon: FileText, label: 'Factures', badge: 'overdue' as null | 'overdue' | 'notif' },
   { href: '/clients', icon: Users, label: 'Clients', badge: null },
+  { href: '/products', icon: Package, label: 'Articles', badge: null },
+  { href: '/recurring', icon: RefreshCw, label: 'Récurrentes', badge: null },
   { href: '/calendar', icon: Calendar, label: 'Agenda', badge: null },
   { href: '/settings', icon: Settings, label: 'Paramètres', badge: null },
 ];
 
 // Features avancées — code intact, UI cachée (Progressive Disclosure)
 const NAV_ADVANCED = [
-  { href: '/crm', icon: Kanban, label: 'Pipeline CRM' },
-  { href: '/recurring', icon: RefreshCw, label: 'Récurrentes' },
-  { href: '/expenses', icon: Receipt, label: 'Notes de frais' },
-  { href: '/capture', icon: Camera, label: 'Capture & OCR' },
-  { href: '/suppliers', icon: Building2, label: 'Fournisseurs' },
-  { href: '/connections', icon: Link2, label: 'Connexions' },
-  { href: '/products', icon: Package, label: 'Catalogue' },
-  { href: '/accounting', icon: Calculator, label: 'Comptabilité' },
-  { href: '/activity', icon: Activity, label: 'Activité' },
-  { href: '/banking', icon: Landmark, label: 'Banque' },
+  { href: '/crm', icon: Kanban, label: 'Pipeline CRM', enabled: false },
+  { href: '/expenses', icon: Receipt, label: 'Notes de frais', enabled: false },
+  { href: '/capture', icon: Camera, label: 'Capture & OCR', enabled: false },
+  { href: '/suppliers', icon: Building2, label: 'Fournisseurs', enabled: false },
+  { href: '/connections', icon: Link2, label: 'Connexions', enabled: false },
+  { href: '/accounting', icon: Calculator, label: 'Comptabilité', enabled: false },
+  { href: '/activity', icon: Activity, label: 'Activité', enabled: false },
+  { href: '/banking', icon: Landmark, label: 'Banque', enabled: false },
 ];
 
 const NAV_BOTTOM = [
-  { href: '/workspace', icon: Building2, label: 'Workspace', badge: null as null | 'overdue' | 'notif' },
+  { href: '/offline/workspace', icon: Building2, label: 'Workspace', badge: null as null | 'overdue' | 'notif' },
   { href: '/notifications', icon: Bell, label: 'Notifications', badge: 'notif' as null | 'overdue' | 'notif' },
   { href: '/help', icon: HelpCircle, label: 'Aide', badge: null },
 ];
@@ -257,20 +257,42 @@ export default function Sidebar() {
           </button>
           {showAdvanced && (
             <div className="space-y-0.5 mt-1">
-              {NAV_ADVANCED.map(({ href, icon: Icon, label }) => (
-                <div
-                  key={href}
-                  className="relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-500 group cursor-pointer"
-                >
-                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                    <Icon size={16} strokeWidth={1.8} />
-                  </span>
-                  <span className="flex-1 font-medium">{label}</span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-white/10 text-gray-400 dark:text-gray-500 border border-gray-300 dark:border-white/10 uppercase tracking-wide flex-shrink-0">
-                    Bientôt
-                  </span>
-                </div>
-              ))}
+              {NAV_ADVANCED.map(({ href, icon: Icon, label, enabled }) => {
+                if (enabled) {
+                  // Element activé - lien fonctionnel
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="relative group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary/5 hover:via-transparent hover:to-transparent"
+                    >
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 text-primary group-hover:from-primary/20 group-hover:to-purple-500/20 transition-all">
+                        <Icon size={16} strokeWidth={2} />
+                      </span>
+                      <span className="flex-1 font-medium text-gray-600 dark:text-gray-400 group-hover:text-primary transition-colors">{label}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 text-primary border border-primary/30 uppercase tracking-wide flex-shrink-0">
+                        Actif
+                      </span>
+                    </Link>
+                  );
+                } else {
+                  // Element désactivé - affichage avec badge "Bientôt"
+                  return (
+                    <div
+                      key={href}
+                      className="relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-gray-400 dark:text-gray-500 group cursor-not-allowed opacity-60"
+                    >
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-400 transition-all">
+                        <Icon size={16} strokeWidth={1.8} />
+                      </span>
+                      <span className="flex-1 font-medium">{label}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-white/10 text-gray-400 dark:text-gray-500 border border-gray-300 dark:border-white/10 uppercase tracking-wide flex-shrink-0">
+                        Bientôt
+                      </span>
+                    </div>
+                  );
+                }
+              })}
             </div>
           )}
         </div>

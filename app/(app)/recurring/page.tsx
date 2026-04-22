@@ -4,14 +4,18 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { cn, formatCurrency, formatDateShort } from '@/lib/utils';
 import {
   RefreshCw, Plus, Trash2, Edit2, Mail, Calendar,
   Clock, DollarSign, TrendingUp, Users, Check,
   X, Sparkles, Zap, Bell, Settings, Play, Pause,
   FileText, CreditCard, AlertCircle, ChevronDown,
-  Filter, Search, Eye, Copy, MoreHorizontal,
+  Filter, Search, Eye, Copy, MoreHorizontal, Mic, Send, AtSign,
 } from 'lucide-react';
+import { VoiceInput } from '@/components/ui/VoiceInput'; // Gardé pour compatibilité mais plus utilisé
+import { VoiceAssistant, VoiceAnalysisResult } from '@/components/ui/VoiceAssistant';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 
 interface RecurringInvoice {
   id: string;
@@ -104,6 +108,7 @@ const StatCard = ({
 
 export default function RecurringInvoicesPage() {
   const { user } = useAuthStore();
+  const { canUseVoice } = useSubscription();
   const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +116,7 @@ export default function RecurringInvoicesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEmailConfigModal, setShowEmailConfigModal] = useState(false);
+  const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringInvoice | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -140,18 +146,44 @@ export default function RecurringInvoicesPage() {
     setLoading(true);
     try {
       const supabase = getSupabaseClient();
-      if (!supabase) return;
+      if (!supabase) {
+        console.warn('Supabase client not available');
+        setRecurringInvoices([]);
+        return;
+      }
 
-      const { data, error } = await supabase
+      // Vérifier d'abord si la table existe
+      const { data, error, status } = await supabase
+        .from('recurring_invoices')
+        .select('*, client:clients(id, name, email, company_name)')
+        .order('next_run_date', { ascending: true })
+        .limit(1);
+
+      // Si la table n'existe pas
+      if (error) {
+        if (error.code === '42P01' || status === 404 || error.message.includes('does not exist')) {
+          console.log('Recurring invoices table does not exist yet');
+          setRecurringInvoices([]);
+          return;
+        }
+        throw error;
+      }
+
+      // Récupérer toutes les factures récurrentes
+      const { data: allInvoices, error: allError } = await supabase
         .from('recurring_invoices')
         .select('*, client:clients(id, name, email, company_name)')
         .order('next_run_date', { ascending: true });
 
-      if (error) throw error;
-      setRecurringInvoices(data || []);
+      if (allError) throw allError;
+      setRecurringInvoices(allInvoices || []);
     } catch (e: any) {
       console.error('Error fetching recurring invoices:', e);
-      toast.error('Erreur lors du chargement des factures récurrentes');
+      // Pas de toast d'erreur pour les problèmes de connexion
+      if (e.message && !e.message.includes('Failed to fetch')) {
+        toast.error('Erreur lors du chargement des factures récurrentes');
+      }
+      setRecurringInvoices([]);
     } finally {
       setLoading(false);
     }
@@ -160,18 +192,96 @@ export default function RecurringInvoicesPage() {
   const fetchClients = async () => {
     try {
       const supabase = getSupabaseClient();
-      if (!supabase) return;
+      if (!supabase) {
+        setClients([]);
+        return;
+      }
 
-      const { data, error } = await supabase
+      // Vérifier d'abord si la table existe
+      const { data, error, status } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name', { ascending: true })
+        .limit(1);
+
+      // Si la table n'existe pas
+      if (error) {
+        if (error.code === '42P01' || status === 404 || error.message.includes('does not exist')) {
+          console.log('Clients table does not exist yet');
+          setClients([]);
+          return;
+        }
+        throw error;
+      }
+
+      // Récupérer tous les clients
+      const { data: allClients, error: allError } = await supabase
         .from('clients')
         .select('*')
         .order('name', { ascending: true });
 
-      if (error) throw error;
-      setClients(data || []);
+      if (allError) throw allError;
+      setClients(allClients || []);
     } catch (e: any) {
       console.error('Error fetching clients:', e);
+      setClients([]);
     }
+  };
+
+  const handleVoiceResult = (data: VoiceAnalysisResult) => {
+    // Find client by name if provided
+    let clientId = form.client_id;
+    let clientNameOverride = form.client_name_override;
+
+    if (data.client) {
+      const matchingClient = clients.find(c =>
+        c.name.toLowerCase().includes(data.client!.toLowerCase()) ||
+        c.name.toLowerCase() === data.client!.toLowerCase()
+      );
+      if (matchingClient) {
+        clientId = matchingClient.id;
+        clientNameOverride = matchingClient.name;
+      } else {
+        clientId = '';
+        clientNameOverride = data.client;
+      }
+    }
+
+    // Set frequency if provided
+    const frequencyMap: Record<string, RecurringInvoice['frequency']> = {
+      'hebdomadaire': 'weekly',
+      'mensuel': 'monthly',
+      'trimestrielle': 'quarterly',
+      'annuelle': 'yearly',
+    };
+
+    // Build new item from voice data
+    const newItem = {
+      name: data.name || '',
+      description: data.description || '',
+      quantity: data.quantity || 1,
+      unit_price: data.price ? String(data.price) : '',
+      vat_rate: data.vatRate || 20,
+    };
+
+    // Only update form if we have meaningful data
+    const updates: any = {};
+
+    if (clientId) updates.client_id = clientId;
+    if (clientNameOverride) updates.client_name_override = clientNameOverride;
+    if (data.frequency && frequencyMap[data.frequency]) updates.frequency = frequencyMap[data.frequency];
+    if (data.startDate) updates.start_date = data.startDate;
+
+    // Update items: replace first empty item or add new one
+    const hasEmptyItem = form.items.length === 1 && !form.items[0].name;
+    updates.items = hasEmptyItem
+      ? [newItem]
+      : [...form.items, newItem];
+
+    setForm({
+      ...form,
+      ...updates,
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -612,41 +722,58 @@ export default function RecurringInvoicesPage() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-white/20"
             >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {editingId ? 'Modifier' : 'Nouvelle'} facture récurrente
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Configurez l'automatisation de vos factures périodiques
-                </p>
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {editingId ? 'Modifier' : 'Nouvelle'} facture récurrente
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configurez l'automatisation de vos factures périodiques
+                  </p>
+                </div>
+                {canUseVoice && !editingId && (
+                  <button
+                    onClick={() => setShowVoiceAssistant(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:shadow-lg transition-all"
+                  >
+                    <Mic size={16} />
+                    Créer à la voix
+                  </button>
+                )}
               </div>
 
               <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-                {/* Client selection */}
+                {/* Client selection - Improved with CustomSelect */}
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
-                    Client *
-                  </label>
-                  <select
-                    required
+                  <CustomSelect
+                    options={[
+                      { value: '', label: 'Sélectionner un client...' },
+                      ...clients.map(client => ({
+                        value: client.id,
+                        label: client.name || client.company_name,
+                        description: client.email || '',
+                      }))
+                    ]}
                     value={form.client_id}
-                    onChange={(e) => {
-                      const client = clients.find(c => c.id === e.target.value);
+                    onChange={(value) => {
+                      const client = clients.find(c => c.id === value);
                       setForm({
                         ...form,
-                        client_id: e.target.value,
+                        client_id: value,
                         client_name_override: client?.name || '',
                       });
                     }}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white/50"
-                  >
-                    <option value="">Sélectionner un client</option>
-                    {clients.map(client => (
-                      <option key={client.id} value={client.id}>
-                        {client.name || client.company_name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Sélectionner un client..."
+                    label="Client *"
+                    icon={AtSign}
+                    variant="client"
+                  />
+                  {form.client_id && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 ml-1">
+                      <Check size={12} className="text-green-500" />
+                      <span>{clients.find(c => c.id === form.client_id)?.name || 'Client sélectionné'}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Frequency */}
@@ -701,7 +828,8 @@ export default function RecurringInvoicesPage() {
                 {/* Items */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                      <FileText size={14} className="text-purple-600" />
                       Articles
                     </label>
                     <button
@@ -710,119 +838,283 @@ export default function RecurringInvoicesPage() {
                         ...form,
                         items: [...form.items, { name: '', description: '', quantity: 1, unit_price: '', vat_rate: 20 }]
                       })}
-                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                      className="flex items-center gap-1 px-3 py-2 rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white text-xs font-semibold shadow hover:shadow-lg transition-all"
                     >
                       <Plus size={12} />
-                      Ajouter un article
+                      Ajouter
                     </button>
                   </div>
                   <div className="space-y-3">
-                    {form.items.map((item, idx) => (
-                      <div key={idx} className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            placeholder="Nom de l'article"
-                            value={item.name}
-                            onChange={(e) => {
-                              const newItems = [...form.items];
-                              newItems[idx].name = e.target.value;
-                              setForm({ ...form, items: newItems });
-                            }}
-                            className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-                            required
-                          />
-                          <div className="flex gap-2">
+                    {form.items.map((item, idx) => {
+                      const itemTotal = (item.quantity || 0) * (parseFloat(item.unit_price as string) || 0);
+                      return (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800/50 dark:to-slate-800 rounded-2xl p-5 space-y-4 border border-gray-200 dark:border-white/10 hover:border-primary/30 transition-all"
+                        >
+                          {/* Article header */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                                {idx + 1}
+                              </span>
+                              Article {idx + 1}
+                            </span>
+                            {form.items.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newItems = form.items.filter((_, i) => i !== idx);
+                                  setForm({ ...form, items: newItems });
+                                }}
+                                className="p-2 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors"
+                                title="Supprimer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Name */}
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Nom de l'article *</label>
                             <input
-                              type="number"
-                              placeholder="Prix"
-                              value={item.unit_price}
+                              placeholder="Ex: Développement site web v3"
+                              value={item.name}
                               onChange={(e) => {
                                 const newItems = [...form.items];
-                                newItems[idx].unit_price = e.target.value;
+                                newItems[idx].name = e.target.value;
                                 setForm({ ...form, items: newItems });
                               }}
-                              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+                              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                               required
                             />
-                            <input
-                              type="number"
-                              placeholder="Qté"
-                              value={item.quantity}
+                          </div>
+
+                          {/* Description */}
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Description</label>
+                            <textarea
+                              placeholder="Description détaillée..."
+                              value={item.description}
                               onChange={(e) => {
                                 const newItems = [...form.items];
-                                newItems[idx].quantity = parseInt(e.target.value) || 1;
+                                newItems[idx].description = e.target.value;
                                 setForm({ ...form, items: newItems });
                               }}
-                              className="w-20 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-                              min="1"
+                              rows={2}
+                              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none transition-all"
                             />
                           </div>
-                        </div>
-                        {form.items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newItems = form.items.filter((_, i) => i !== idx);
-                              setForm({ ...form, items: newItems });
-                            }}
-                            className="text-xs text-red-500 hover:underline"
-                          >
-                            Supprimer cet article
-                          </button>
-                        )}
-                      </div>
-                    ))}
+
+                          {/* Price and quantity */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Prix HT (€) *</label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">€</span>
+                                <input
+                                  type="number"
+                                  placeholder="0.00"
+                                  value={item.unit_price}
+                                  onChange={(e) => {
+                                    const newItems = [...form.items];
+                                    newItems[idx].unit_price = e.target.value;
+                                    setForm({ ...form, items: newItems });
+                                  }}
+                                  className="w-full pl-8 pr-3 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                  required
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Quantité</label>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const newItems = [...form.items];
+                                  newItems[idx].quantity = parseInt(e.target.value) || 1;
+                                  setForm({ ...form, items: newItems });
+                                }}
+                                className="w-full px-3 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                min="1"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <CustomSelect
+                                options={[
+                                  { value: '0', label: '0%' },
+                                  { value: '5.5', label: '5.5%' },
+                                  { value: '10', label: '10%' },
+                                  { value: '20', label: '20%' },
+                                ]}
+                                value={String(item.vat_rate)}
+                                onChange={(value) => {
+                                  const newItems = [...form.items];
+                                  newItems[idx].vat_rate = parseFloat(value);
+                                  setForm({ ...form, items: newItems });
+                                }}
+                                placeholder="TVA"
+                                className="!py-3"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Item total */}
+                          <div className="pt-3 border-t border-gray-200 dark:border-white/10 flex items-center justify-between">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Total ligne</span>
+                            <span className="text-sm font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                              {formatCurrency(itemTotal)}
+                            </span>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Email config */}
-                <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Mail size={18} className="text-primary" />
-                    <label className="text-sm font-bold text-gray-900">Configuration email</label>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, email_enabled: !form.email_enabled })}
-                      className={cn(
-                        'ml-auto w-12 h-7 rounded-full transition-all relative flex-shrink-0',
-                        form.email_enabled ? 'bg-gradient-to-r from-primary to-purple-600' : 'bg-gray-300'
-                      )}
-                    >
-                      <span className={cn(
-                        'absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all',
-                        form.email_enabled ? 'left-6' : 'left-1'
-                      )} />
-                    </button>
+                {/* Email config - Enhanced Design */}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-gray-100 dark:border-white/10 bg-white dark:bg-slate-800/50">
+                  {/* Header */}
+                  <div className="relative p-5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iMTAiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-10" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <Mail size={22} className="text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Automatisation par email</h3>
+                          <p className="text-xs text-white/80">Envoyez vos factures automatiquement</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, email_enabled: !form.email_enabled })}
+                        className={cn(
+                          'relative px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2',
+                          form.email_enabled
+                            ? 'bg-white text-purple-600 shadow-lg'
+                            : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+                        )}
+                      >
+                        <Send size={16} />
+                        {form.email_enabled ? 'Activé' : 'Désactivé'}
+                        <div className={cn(
+                          'absolute w-5 h-5 rounded-full transition-all',
+                          form.email_enabled ? 'right-1 bg-green-400' : 'left-1 bg-white/50'
+                        )} />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Content */}
                   {form.email_enabled && (
-                    <div className="space-y-3">
-                      <input
-                        placeholder="Sujet de l'email"
-                        value={form.email_subject}
-                        onChange={(e) => setForm({ ...form, email_subject: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-                      />
-                      <textarea
-                        placeholder="Message (utilisez {{client_name}} pour le nom du client)"
-                        value={form.email_message}
-                        onChange={(e) => setForm({ ...form, email_message: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white"
-                      />
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="p-5 space-y-4"
+                    >
+                      {/* Subject with icon */}
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">
-                          Envoyer l'email (jours avant la date d'échéance)
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <AtSign size={12} className="text-blue-600" />
+                          </span>
+                          Sujet de l'email
                         </label>
                         <input
-                          type="number"
-                          value={form.email_send_before_days}
-                          onChange={(e) => setForm({ ...form, email_send_before_days: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-                          min="0"
-                          max="30"
+                          placeholder="Votre facture récurrente"
+                          value={form.email_subject}
+                          onChange={(e) => setForm({ ...form, email_subject: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                         />
                       </div>
-                    </div>
+
+                      {/* Message with template variables */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <FileText size={12} className="text-purple-600" />
+                          </span>
+                          Message personnalisé
+                        </label>
+                        <textarea
+                          placeholder="Bonjour {{client_name}},&#10;&#10;Veuillez trouver ci-joint votre facture..."
+                          value={form.email_message}
+                          onChange={(e) => setForm({ ...form, email_message: e.target.value })}
+                          rows={4}
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all"
+                        />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {[
+                            { var: '{{client_name}}', label: 'Nom du client', color: 'bg-pink-100 text-pink-700' },
+                            { var: '{{amount}}', label: 'Montant', color: 'bg-green-100 text-green-700' },
+                            { var: '{{due_date}}', label: 'Date d\'échéance', color: 'bg-blue-100 text-blue-700' },
+                            { var: '{{invoice_id}}', label: 'ID facture', color: 'bg-purple-100 text-purple-700' },
+                          ].map((v) => (
+                            <button
+                              key={v.var}
+                              type="button"
+                              onClick={() => {
+                                setForm({ ...form, email_message: (form.email_message || '') + ' ' + v.var });
+                              }}
+                              className={cn(
+                                'px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105',
+                                v.color
+                              )}
+                            >
+                              +{v.var}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Timing */}
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1 flex items-center gap-2">
+                              <Clock size={14} className="text-amber-600" />
+                              Envoi automatique
+                            </label>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              Jours avant la date d'échéance
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setForm({ ...form, email_send_before_days: Math.max(0, form.email_send_before_days - 1) })}
+                              className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-gray-300 dark:border-white/10 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                            >
+                              <ChevronDown size={16} />
+                            </button>
+                            <input
+                              type="number"
+                              value={form.email_send_before_days}
+                              onChange={(e) => setForm({ ...form, email_send_before_days: parseInt(e.target.value) || 0 })}
+                              className="w-16 text-center px-2 py-2 rounded-xl border-2 border-gray-300 dark:border-white/10 bg-white dark:bg-slate-800 text-sm font-bold text-gray-900 dark:text-white"
+                              min="0"
+                              max="30"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setForm({ ...form, email_send_before_days: Math.min(30, form.email_send_before_days + 1) })}
+                              className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-gray-300 dark:border-white/10 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                            >
+                              <ChevronDown size={16} className="rotate-180" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               </form>
@@ -938,6 +1230,35 @@ export default function RecurringInvoicesPage() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Voice Assistant Modal */}
+      <AnimatePresence>
+        {showVoiceAssistant && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white/20"
+            >
+              <VoiceAssistant
+                onResult={(data) => {
+                  handleVoiceResult(data);
+                  setShowVoiceAssistant(false);
+                }}
+                onClose={() => setShowVoiceAssistant(false)}
+                isPro={canUseVoice}
+                mode="recurring"
+              />
             </motion.div>
           </motion.div>
         )}

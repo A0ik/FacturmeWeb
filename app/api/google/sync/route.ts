@@ -120,8 +120,8 @@ export async function POST(req: NextRequest) {
     // Check if event already exists in Google Calendar
     if (appointment.google_event_id) {
       // Update existing event
-      const startDate = `${appointment.appointment_date}T${appointment.start_time}:00`;
-      const endDate = `${appointment.appointment_date}T${appointment.end_time}:00`;
+      const startDate = `${appointment.appointment_date}T${appointment.start_time}:00+02:00`;
+      const endDate = `${appointment.appointment_date}T${appointment.end_time}:00+02:00`;
 
       const eventBody = {
         summary: appointment.title,
@@ -152,9 +152,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, action: 'updated' });
     }
 
-    // Create new event
-    const startDate = `${appointment.appointment_date}T${appointment.start_time}:00`;
-    const endDate = `${appointment.appointment_date}T${appointment.end_time}:00`;
+    // Create new event with timezone
+    const startDate = `${appointment.appointment_date}T${appointment.start_time}:00+02:00`;
+    const endDate = `${appointment.appointment_date}T${appointment.end_time}:00+02:00`;
 
     const eventBody: any = {
       summary: appointment.title,
@@ -226,12 +226,13 @@ export async function GET(req: NextRequest) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('google_access_token, google_email, google_name, google_picture, google_connected_at')
+      .select('google_access_token, google_refresh_token, google_email, google_name, google_picture, google_connected_at')
       .eq('id', user.id)
       .single();
 
     return NextResponse.json({
       connected: !!profile?.google_access_token,
+      hasRefreshToken: !!profile?.google_refresh_token,
       email: profile?.google_email || null,
       name: profile?.google_name || null,
       picture: profile?.google_picture || null,

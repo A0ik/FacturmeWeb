@@ -111,6 +111,12 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenResponse.json();
 
+    console.log('[google-callback] Tokens received:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiresIn: tokens.expires_in
+    });
+
     // Get user info from Google
     const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -118,8 +124,13 @@ export async function GET(req: NextRequest) {
 
     const userInfo = await userInfoResponse.json();
 
+    console.log('[google-callback] User info:', {
+      email: userInfo.email,
+      name: userInfo.name
+    });
+
     // Save tokens and user info to profile
-    await supabase
+    const { error: updateError } = await supabase
       .from('profiles')
       .update({
         google_access_token: tokens.access_token,
@@ -133,6 +144,12 @@ export async function GET(req: NextRequest) {
         google_connected_at: new Date().toISOString(),
       })
       .eq('id', user.id);
+
+    if (updateError) {
+      console.error('[google-callback] Failed to save profile:', updateError);
+    } else {
+      console.log('[google-callback] Profile saved successfully');
+    }
 
     // Clear the state cookie
     const redirectUrl = new URL('/calendar?success=google_connected', req.url);

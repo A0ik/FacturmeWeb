@@ -719,7 +719,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         onClose={() => setShowPaymentModal(false)}
         onSelectProvider={handleSelectPaymentProvider}
         hasStripe={!!(profile?.stripe_connect_id || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)}
-        hasSumUp={!!(profile?.sumup_api_key && profile?.sumup_merchant_code)}
+        hasSumUp={!!(profile?.sumup_merchant_id && profile?.sumup_merchant_code)}
         amount={invoice.total}
       />
 
