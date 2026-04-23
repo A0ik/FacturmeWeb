@@ -96,7 +96,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className={cn(
             "flex-1 w-full mx-auto px-4 lg:px-8 py-5 lg:py-6",
-            pathname === '/paywall' ? "max-w-[1800px]" : "max-w-5xl"
+            pathname === '/paywall' || pathname === '/calendar' ? "max-w-[1800px]" : "max-w-5xl"
           )}>
             {children}
           </div>

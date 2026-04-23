@@ -88,7 +88,9 @@
       "Bash(python skills/ui-ux-pro-max/scripts/search.py \"SaaS calendar dashboard premium glassmorphism modern\" --design-system -p \"Facturme\" -f markdown)",
       "Bash(rtk mkdir *)",
       "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"invoicing SaaS dashboard recurring billing\" --design-system -p \"FacturmeWeb\" -f markdown)",
-      "Bash(rtk pnpm *)"
+      "Bash(rtk pnpm *)",
+      "Bash(git checkout *)",
+      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"calendar dashboard scheduling appointments\" --design-system -p \"Facturme Agenda\")"
     ]
   },
   "enableAllProjectMcpServers": true,

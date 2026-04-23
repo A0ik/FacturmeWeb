@@ -16,6 +16,7 @@ import {
 import { VoiceInput } from '@/components/ui/VoiceInput'; // Gardé pour compatibilité mais plus utilisé
 import { VoiceAssistant, VoiceAnalysisResult } from '@/components/ui/VoiceAssistant';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface RecurringInvoice {
   id: string;
@@ -817,11 +818,10 @@ export default function RecurringInvoicesPage() {
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
                     Date de première génération
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={form.start_date}
-                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white/50"
+                    onChange={(value) => setForm({ ...form, start_date: value })}
+                    placeholder="Sélectionner la date de première génération"
                   />
                 </div>
 
