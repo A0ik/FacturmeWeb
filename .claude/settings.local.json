@@ -90,7 +90,12 @@
       "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"invoicing SaaS dashboard recurring billing\" --design-system -p \"FacturmeWeb\" -f markdown)",
       "Bash(rtk pnpm *)",
       "Bash(git checkout *)",
-      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"calendar dashboard scheduling appointments\" --design-system -p \"Facturme Agenda\")"
+      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"calendar dashboard scheduling appointments\" --design-system -p \"Facturme Agenda\")",
+      "Bash(curl -s http://localhost:3001/calendar)",
+      "Bash(netstat -ano)",
+      "mcp__supabase__get_storage_config",
+      "Bash(rtn ps *)",
+      "Bash(rtn rm *)"
     ]
   },
   "enableAllProjectMcpServers": true,

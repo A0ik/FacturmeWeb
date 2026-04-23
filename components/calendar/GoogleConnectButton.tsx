@@ -59,13 +59,8 @@ export function GoogleConnectButton({ className }: GoogleConnectButtonProps) {
           <div className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
             {googleInfo.email || 'Compte Google'}
           </div>
-          <div className="w-2 h-2 rounded-full bg-green-500">
-            <motion.div
-              className="absolute inset-0 rounded-full bg-green-500"
-              animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </div>
+          {/* Simple green dot without animation */}
+          <div className="w-2 h-2 rounded-full bg-green-500" />
         </div>
 
         {/* Disconnect button - always visible */}

@@ -204,15 +204,40 @@ export default function NewInvoicePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       const { parsed, summary } = data;
-      if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
-      // Auto-fill client details from AI generation
-      if (parsed?.client_email) setClientEmail(parsed.client_email);
-      if (parsed?.client_phone) setClientPhone(parsed.client_phone);
-      if (parsed?.client_address) setClientAddress(parsed.client_address);
-      if (parsed?.client_city) setClientCity(parsed.client_city);
-      if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
-      if (parsed?.client_siret) setClientSiret(parsed.client_siret);
-      if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
+
+      // Fuzzy client matching - auto-select existing client
+      if (parsed?.client_name) {
+        const searchTerm = parsed.client_name.toLowerCase();
+        let matchingClient = clients.find(c => c.name.toLowerCase() === searchTerm);
+
+        if (!matchingClient) {
+          matchingClient = clients.find(c =>
+            c.name.toLowerCase().includes(searchTerm) ||
+            searchTerm.includes(c.name.toLowerCase())
+          );
+        }
+
+        if (matchingClient) {
+          setClientId(matchingClient.id);
+          setClientName(matchingClient.name);
+          toast.success(`Client "${matchingClient.name}" sélectionné automatiquement`);
+        } else {
+          setClientName(parsed.client_name);
+          setClientId(null);
+        }
+      }
+
+      // Auto-fill client details from AI generation (only if no client selected)
+      if (!clientId) {
+        if (parsed?.client_email) setClientEmail(parsed.client_email);
+        if (parsed?.client_phone) setClientPhone(parsed.client_phone);
+        if (parsed?.client_address) setClientAddress(parsed.client_address);
+        if (parsed?.client_city) setClientCity(parsed.client_city);
+        if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
+        if (parsed?.client_siret) setClientSiret(parsed.client_siret);
+        if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
+      }
+
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),
@@ -282,15 +307,40 @@ export default function NewInvoicePage() {
       const result = await res.json();
       setTranscript(result.transcript || '');
       const parsed = result.parsed;
-      if (parsed?.client_name) { setClientName(parsed.client_name); setClientId(null); }
-      // Auto-fill client details from voice input
-      if (parsed?.client_email) setClientEmail(parsed.client_email);
-      if (parsed?.client_phone) setClientPhone(parsed.client_phone);
-      if (parsed?.client_address) setClientAddress(parsed.client_address);
-      if (parsed?.client_city) setClientCity(parsed.client_city);
-      if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
-      if (parsed?.client_siret) setClientSiret(parsed.client_siret);
-      if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
+
+      // Fuzzy client matching - auto-select existing client
+      if (parsed?.client_name) {
+        const searchTerm = parsed.client_name.toLowerCase();
+        let matchingClient = clients.find(c => c.name.toLowerCase() === searchTerm);
+
+        if (!matchingClient) {
+          matchingClient = clients.find(c =>
+            c.name.toLowerCase().includes(searchTerm) ||
+            searchTerm.includes(c.name.toLowerCase())
+          );
+        }
+
+        if (matchingClient) {
+          setClientId(matchingClient.id);
+          setClientName(matchingClient.name);
+          toast.success(`Client "${matchingClient.name}" sélectionné automatiquement`);
+        } else {
+          setClientName(parsed.client_name);
+          setClientId(null);
+        }
+      }
+
+      // Auto-fill client details from voice input (only if no client selected)
+      if (!clientId) {
+        if (parsed?.client_email) setClientEmail(parsed.client_email);
+        if (parsed?.client_phone) setClientPhone(parsed.client_phone);
+        if (parsed?.client_address) setClientAddress(parsed.client_address);
+        if (parsed?.client_city) setClientCity(parsed.client_city);
+        if (parsed?.client_postal_code) setClientPostalCode(parsed.client_postal_code);
+        if (parsed?.client_siret) setClientSiret(parsed.client_siret);
+        if (parsed?.client_vat_number) setClientVatNumber(parsed.client_vat_number);
+      }
+
       if (parsed?.items?.length) {
         setItems(parsed.items.map((item: any) => ({
           id: generateId(),

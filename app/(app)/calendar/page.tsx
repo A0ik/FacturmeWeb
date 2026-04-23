@@ -9,9 +9,9 @@ import { Appointment, Invoice } from '@/types';
 
 // Calendar sub-components
 import {
-  CalendarHeader,
-  CalendarGrid,
-  DayDetailPanel,
+  MagnificentCalendarHeader,
+  MagnificentCalendarGrid,
+  MagnificentDayDetailPanel,
   AppointmentModal,
   AppointmentDetailModal,
   AppointmentFormData,
@@ -272,7 +272,7 @@ export default function CalendarPage() {
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:p-6">
         {/* Left column: Header + Calendar Grid */}
         <div className="flex-1 flex flex-col gap-4">
-          <CalendarHeader
+          <MagnificentCalendarHeader
             currentMonth={currentMonth}
             currentYear={currentYear}
             onPrevMonth={prevMonth}
@@ -281,7 +281,7 @@ export default function CalendarPage() {
             onNewAppointment={openCreateModal}
           />
 
-          <CalendarGrid
+          <MagnificentCalendarGrid
             cells={cells}
             currentYear={currentYear}
             currentMonth={currentMonth}
@@ -293,13 +293,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Right column: Day Detail Panel */}
-        <DayDetailPanel
+        <MagnificentDayDetailPanel
           selectedDay={selectedDay}
           currentMonth={currentMonth}
           currentYear={currentYear}
           appointments={dayAppointments}
           invoices={dayInvoices}
-          onAppointmentClick={(apt) => {
+          onAppointmentClick={(apt: Appointment) => {
             setSelectedAppointment(apt);
             setShowDetailModal(true);
           }}

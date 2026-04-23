@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -12,6 +12,7 @@ import {
   X, Sparkles, Zap, Bell, Settings, Play, Pause,
   FileText, CreditCard, AlertCircle, ChevronDown,
   Filter, Search, Eye, Copy, MoreHorizontal, Mic, Send, AtSign,
+  Loader2, MicOff, Wand2, ChevronLeft, ArrowLeft, User, Hash,
 } from 'lucide-react';
 import { VoiceInput } from '@/components/ui/VoiceInput'; // Gardé pour compatibilité mais plus utilisé
 import { VoiceAssistant, VoiceAnalysisResult } from '@/components/ui/VoiceAssistant';
@@ -121,6 +122,17 @@ export default function RecurringInvoicesPage() {
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringInvoice | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<'voice' | 'ai' | 'manual'>('manual');
+
+  // Voice recording state
+  const [recording, setRecording] = useState(false);
+  const [processingVoice, setProcessingVoice] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState('');
+  const [recordTime, setRecordTime] = useState(0);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   // Form state
   const [form, setForm] = useState({
@@ -283,6 +295,125 @@ export default function RecurringInvoicesPage() {
       ...form,
       ...updates,
     });
+  };
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const startRecording = async () => {
+    if (!canUseVoice) { toast.error('La reconnaissance vocale est disponible avec les abonnements Pro et Business'); return; }
+    setVoiceError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => { stream.getTracks().forEach((t) => t.stop()); processVoiceBlob(); };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      recordTimerRef.current = setInterval(() => setRecordTime((t) => t + 1), 1000);
+      setRecording(true);
+    } catch {
+      setVoiceError('Accès au micro refusé. Vérifiez les permissions dans votre navigateur.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    setRecording(false);
+    setRecordTime(0);
+  };
+
+  const processVoiceBlob = async () => {
+    setProcessingVoice(true);
+    try {
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      const fd = new FormData();
+      fd.append('audio', blob, 'recording.webm');
+      if (user?.id) fd.append('user_id', user.id);
+
+      const res = await fetch('/api/process-voice-recurring', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Erreur de traitement');
+      const result = await res.json();
+      setTranscript(result.transcript || '');
+      const parsed = result.parsed;
+
+      // Update form with parsed data
+      const updates: any = {};
+
+      // Client handling with fuzzy matching
+      if (parsed?.client_name) {
+        const searchTerm = parsed.client_name.toLowerCase();
+        // Try exact match first
+        let matchingClient = clients.find(c => c.name.toLowerCase() === searchTerm);
+        // Then try partial match
+        if (!matchingClient) {
+          matchingClient = clients.find(c =>
+            c.name.toLowerCase().includes(searchTerm) ||
+            searchTerm.includes(c.name.toLowerCase())
+          );
+        }
+        if (matchingClient) {
+          updates.client_id = matchingClient.id;
+          updates.client_name_override = matchingClient.name;
+          toast.success(`Client "${matchingClient.name}" sélectionné automatiquement`);
+        } else {
+          updates.client_id = '';
+          updates.client_name_override = parsed.client_name;
+          toast.info(`Client "${parsed.client_name}" non trouvé. Vous pouvez le créer ou modifier.`);
+        }
+      }
+
+      // Frequency handling
+      if (parsed?.frequency) {
+        const frequencyMap: Record<string, RecurringInvoice['frequency']> = {
+          'hebdomadaire': 'weekly',
+          'mensuel': 'monthly',
+          'trimestrielle': 'quarterly',
+          'annuelle': 'yearly',
+        };
+        if (frequencyMap[parsed.frequency]) {
+          updates.frequency = frequencyMap[parsed.frequency];
+        }
+      }
+
+      // Start date handling (use first day of next month if not provided)
+      if (parsed?.start_date) {
+        updates.start_date = parsed.start_date;
+      }
+
+      // Email subject and message handling
+      if (parsed?.email_subject) {
+        updates.email_subject = parsed.email_subject;
+      }
+      if (parsed?.email_message) {
+        updates.email_message = parsed.email_message;
+      }
+
+      // Items handling
+      if (parsed?.items?.length) {
+        updates.items = parsed.items.map((item: any) => ({
+          name: item.name || '',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unit_price: String(item.unit_price || ''),
+          vat_rate: item.vat_rate || 20,
+        }));
+      }
+
+      // Apply all updates at once
+      if (Object.keys(updates).length > 0) {
+        setForm({ ...form, ...updates });
+      }
+
+      if (result.summary) toast.success(result.summary);
+      setMode('manual');
+    } catch (e: any) {
+      setVoiceError(e.message || 'Erreur lors du traitement vocal');
+    } finally {
+      setProcessingVoice(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -733,13 +864,32 @@ export default function RecurringInvoicesPage() {
                   </p>
                 </div>
                 {canUseVoice && !editingId && (
-                  <button
-                    onClick={() => setShowVoiceAssistant(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:shadow-lg transition-all"
-                  >
-                    <Mic size={16} />
-                    Créer à la voix
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMode('voice')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
+                        mode === 'voice'
+                          ? 'bg-gradient-to-r from-primary to-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      )}
+                    >
+                      <Mic size={14} />
+                      Voix
+                    </button>
+                    <button
+                      onClick={() => setMode('manual')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
+                        mode === 'manual'
+                          ? 'bg-gradient-to-r from-primary to-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      )}
+                    >
+                      <FileText size={14} />
+                      Manuel
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -776,6 +926,103 @@ export default function RecurringInvoicesPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Voice mode */}
+                {canUseVoice && !editingId && mode === 'voice' && (
+                  <div className="bg-gradient-to-br from-primary/10 to-purple-600/10 rounded-2xl p-6 border border-primary/20">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative">
+                        {recording && (
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1.2, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            className="absolute inset-0 rounded-full bg-red-500/20"
+                          />
+                        )}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={recording ? stopRecording : startRecording}
+                          className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 shadow-xl ${
+                            recording
+                              ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                              : 'bg-gradient-to-br from-primary to-purple-600 hover:from-purple-600 hover:to-purple-700'
+                          }`}
+                        >
+                          {recording ? (
+                            <MicOff size={28} className="text-white" />
+                          ) : (
+                            <Mic size={28} className="text-white" />
+                          )}
+                        </motion.button>
+                      </div>
+
+                      <div className="space-y-1 text-center">
+                        {recording && (
+                          <motion.p
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            className="text-lg font-black text-red-500 tabular-nums"
+                          >
+                            {formatTime(recordTime)}
+                          </motion.p>
+                        )}
+                        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                          {recording
+                            ? 'Parlez clairement — cliquez pour arrêter'
+                            : 'Cliquez pour commencer la dictée'}
+                        </p>
+                        {!recording && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Ex: "Facture mensuelle pour Entreprise ABC, site web 2000€ HT"
+                          </p>
+                        )}
+                      </div>
+
+                      {transcript && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="w-full text-left bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-primary/20"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <Sparkles size={14} className="text-primary" />
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Transcription</p>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{transcript}</p>
+                        </motion.div>
+                      )}
+
+                      {processingVoice && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="w-full text-left bg-gradient-to-r from-primary/10 to-purple-600/10 dark:from-primary/20 dark:to-purple-600/20 rounded-xl p-4 border border-primary/20"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Loader2 size={18} className="text-primary animate-spin" />
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-primary uppercase tracking-wide">Traitement en cours</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Analyse de votre dictée vocale...</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {voiceError && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 rounded-xl p-3"
+                        >
+                          <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+                          <p className="text-sm text-red-600 dark:text-red-400">{voiceError}</p>
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Frequency */}
                 <div>
@@ -1037,7 +1284,7 @@ export default function RecurringInvoicesPage() {
                         />
                       </div>
 
-                      {/* Message with template variables */}
+                      {/* Message with template variables - Simplified */}
                       <div>
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2 flex items-center gap-2">
                           <span className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -1049,30 +1296,38 @@ export default function RecurringInvoicesPage() {
                           placeholder="Bonjour {{client_name}},&#10;&#10;Veuillez trouver ci-joint votre facture..."
                           value={form.email_message}
                           onChange={(e) => setForm({ ...form, email_message: e.target.value })}
-                          rows={4}
+                          rows={3}
                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all"
                         />
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        {/* Quick insert buttons - Beautiful design */}
+                        <div className="mt-3 grid grid-cols-2 gap-2">
                           {[
-                            { var: '{{client_name}}', label: 'Nom du client', color: 'bg-pink-100 text-pink-700' },
-                            { var: '{{amount}}', label: 'Montant', color: 'bg-green-100 text-green-700' },
-                            { var: '{{due_date}}', label: 'Date d\'échéance', color: 'bg-blue-100 text-blue-700' },
-                            { var: '{{invoice_id}}', label: 'ID facture', color: 'bg-purple-100 text-purple-700' },
-                          ].map((v) => (
-                            <button
-                              key={v.var}
-                              type="button"
-                              onClick={() => {
-                                setForm({ ...form, email_message: (form.email_message || '') + ' ' + v.var });
-                              }}
-                              className={cn(
-                                'px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105',
-                                v.color
-                              )}
-                            >
-                              +{v.var}
-                            </button>
-                          ))}
+                            { var: '{{client_name}}', label: 'Client', icon: User, color: 'from-pink-500 to-rose-500', bgLight: 'bg-pink-50' },
+                            { var: '{{amount}}', label: 'Montant', icon: DollarSign, color: 'from-green-500 to-emerald-500', bgLight: 'bg-green-50' },
+                            { var: '{{due_date}}', label: 'Échéance', icon: Calendar, color: 'from-blue-500 to-cyan-500', bgLight: 'bg-blue-50' },
+                            { var: '{{invoice_id}}', label: 'N° Facture', icon: FileText, color: 'from-purple-500 to-violet-500', bgLight: 'bg-purple-50' },
+                          ].map((v) => {
+                            const Icon = v.icon;
+                            return (
+                              <button
+                                key={v.var}
+                                type="button"
+                                onClick={() => {
+                                  setForm({ ...form, email_message: (form.email_message || '') + ' ' + v.var });
+                                }}
+                                className={cn(
+                                  'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl',
+                                  'bg-gradient-to-r ' + v.color,
+                                  'text-white text-xs font-semibold',
+                                  'hover:scale-105 active:scale-95',
+                                  'transition-all duration-200 shadow-md hover:shadow-lg'
+                                )}
+                              >
+                                <Icon size={14} />
+                                {v.label}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 

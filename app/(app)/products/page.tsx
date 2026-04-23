@@ -1,6 +1,6 @@
 'use client';
 import { toast } from 'sonner';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -12,6 +12,7 @@ import {
   Grid3X3, List, ArrowUpDown, SlidersHorizontal,
   TrendingUp, TrendingDown, Star, Zap, Eye,
   Filter, ChevronDown, Info, Copy, MoreHorizontal, Mic,
+  Loader2, MicOff, Sparkles, AlertCircle, Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VoiceInput } from '@/components/ui/VoiceInput';
@@ -107,6 +108,17 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
+  const [mode, setMode] = useState<'voice' | 'ai' | 'manual'>('manual');
+
+  // Voice recording state
+  const [recording, setRecording] = useState(false);
+  const [processingVoice, setProcessingVoice] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState('');
+  const [recordTime, setRecordTime] = useState(0);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -136,6 +148,101 @@ export default function ProductsPage() {
         .substring(0, 8)
         .toUpperCase();
       set('reference', ref + '-' + Date.now().toString().slice(-4));
+    }
+  };
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const startRecording = async () => {
+    if (!canUseVoice) { toast.error('La reconnaissance vocale est disponible avec les abonnements Pro et Business'); return; }
+    setVoiceError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => { stream.getTracks().forEach((t) => t.stop()); processVoiceBlob(); };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      recordTimerRef.current = setInterval(() => setRecordTime((t) => t + 1), 1000);
+      setRecording(true);
+    } catch {
+      setVoiceError('Accès au micro refusé. Vérifiez les permissions dans votre navigateur.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    setRecording(false);
+    setRecordTime(0);
+  };
+
+  const processVoiceBlob = async () => {
+    setProcessingVoice(true);
+    try {
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      const fd = new FormData();
+      fd.append('audio', blob, 'recording.webm');
+      if (user?.id) fd.append('user_id', user.id);
+
+      const res = await fetch('/api/process-voice-product', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Erreur de traitement');
+      const result = await res.json();
+      setTranscript(result.transcript || '');
+      const parsed = result.parsed;
+
+      // Update form with parsed data
+      const updates: any = {};
+
+      if (parsed?.name) updates.name = parsed.name;
+      if (parsed?.description) updates.description = parsed.description;
+      if (parsed?.unit_price) updates.unit_price = String(parsed.unit_price);
+      if (parsed?.quantity) updates.quantity = parsed.quantity;
+      if (parsed?.vatRate) updates.vat_rate = String(parsed.vatRate);
+      if (parsed?.reference) updates.reference = parsed.reference;
+      if (parsed?.unit) {
+        const unitOption = UNITS.find(u => u.value === parsed.unit);
+        if (unitOption) updates.unit = parsed.unit;
+      }
+
+      // Auto-detect category from voice
+      if (parsed?.category) {
+        // Map category to CATEGORIES values
+        const categoryMap: Record<string, string> = {
+          'service': 'service',
+          'product': 'product',
+          'software': 'software',
+          'consulting': 'consulting',
+          'other': 'other',
+        };
+        if (categoryMap[parsed.category]) {
+          updates.category = categoryMap[parsed.category];
+        }
+      }
+
+      // Auto-generate reference if not provided
+      if (!parsed?.reference && parsed?.name) {
+        const ref = parsed.name
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-zA-Z0-9]/g, '')
+          .substring(0, 8)
+          .toUpperCase();
+        updates.reference = ref + '-' + Date.now().toString().slice(-4);
+      }
+
+      // Apply all updates at once
+      if (Object.keys(updates).length > 0) {
+        setForm({ ...form, ...updates });
+      }
+
+      if (result.summary) toast.success(result.summary);
+      setMode('manual');
+    } catch (e: any) {
+      setVoiceError(e.message || 'Erreur lors du traitement vocal');
+    } finally {
+      setProcessingVoice(false);
     }
   };
 
@@ -859,19 +966,135 @@ export default function ProductsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {canUseVoice && !editingId && (
-                    <button
-                      onClick={() => setShowVoiceAssistant(true)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold hover:shadow-lg transition-all"
-                    >
-                      <Mic size={14} />
-                      Ajouter à la voix
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setMode('voice')}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all',
+                          mode === 'voice'
+                            ? 'bg-gradient-to-r from-primary to-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        )}
+                      >
+                        <Mic size={14} />
+                        Voix
+                      </button>
+                      <button
+                        onClick={() => setMode('manual')}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all',
+                          mode === 'manual'
+                            ? 'bg-gradient-to-r from-primary to-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        )}
+                      >
+                        <FileText size={14} />
+                        Manuel
+                      </button>
+                    </>
                   )}
                   <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
               </div>
+
+              {/* Voice mode */}
+              {canUseVoice && !editingId && mode === 'voice' && (
+                <div className="px-6 py-4 bg-gradient-to-br from-primary/10 to-purple-600/10 border-b border-primary/20">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative">
+                      {recording && (
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1.2, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          className="absolute inset-0 rounded-full bg-red-500/20"
+                        />
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={recording ? stopRecording : startRecording}
+                        className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 shadow-xl ${
+                          recording
+                            ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                            : 'bg-gradient-to-br from-primary to-purple-600 hover:from-purple-600 hover:to-purple-700'
+                        }`}
+                      >
+                        {recording ? (
+                          <MicOff size={24} className="text-white" />
+                        ) : (
+                          <Mic size={24} className="text-white" />
+                        )}
+                      </motion.button>
+                    </div>
+
+                    <div className="space-y-1 text-center">
+                      {recording && (
+                        <motion.p
+                          initial={{ scale: 0.8 }}
+                          animate={{ scale: 1 }}
+                          className="text-lg font-black text-red-500 tabular-nums"
+                        >
+                          {formatTime(recordTime)}
+                        </motion.p>
+                      )}
+                      <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                        {recording
+                          ? 'Parlez clairement — cliquez pour arrêter'
+                          : 'Cliquez pour commencer la dictée'}
+                      </p>
+                      {!recording && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          Ex: "Site web vitrine 850 euros HT"
+                        </p>
+                      )}
+                    </div>
+
+                    {transcript && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full text-left bg-white/50 dark:bg-slate-800/50 rounded-xl p-3 border border-primary/20"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sparkles size={12} className="text-primary" />
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Transcription</p>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{transcript}</p>
+                      </motion.div>
+                    )}
+
+                    {processingVoice && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full text-left bg-gradient-to-r from-primary/10 to-purple-600/10 dark:from-primary/20 dark:to-purple-600/20 rounded-xl p-3 border border-primary/20"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Loader2 size={16} className="text-primary animate-spin" />
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-primary uppercase tracking-wide">Traitement en cours</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Analyse de votre dictée vocale...</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {voiceError && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 rounded-xl p-3"
+                      >
+                        <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+                        <p className="text-sm text-red-600 dark:text-red-400">{voiceError}</p>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                 {/* Category selection */}

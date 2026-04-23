@@ -14,6 +14,17 @@ export function formatDateShort(dateStr: string, locale = 'fr-FR'): string {
   return new Date(dateStr).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+export function formatFrenchDate(year: number, month: number, day: number): string {
+  const date = new Date(year, month, day);
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export function formatTime(timeStr: string): string {
+  // Format time string "HH:MM" to French format
+  const [hours, minutes] = timeStr.split(':');
+  return `${hours}h${minutes}`;
+}
+
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }

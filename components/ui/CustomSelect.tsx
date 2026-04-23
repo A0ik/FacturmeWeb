@@ -64,7 +64,7 @@ export function CustomSelect({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={cn(
-          'relative w-full px-4 py-3.5 rounded-2xl border-2 appearance-none cursor-pointer',
+          'relative w-full px-4 py-3 rounded-2xl border-2 appearance-none cursor-pointer',
           'transition-all duration-200',
           'flex items-center justify-between gap-3',
           'text-sm font-medium',

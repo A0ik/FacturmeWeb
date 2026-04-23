@@ -8,7 +8,7 @@ import {
   RefreshCw, Settings, Zap, ChevronRight, ChevronDown,
   Building2, Bell, HelpCircle, Package, Receipt, Calendar, Camera,
   Calculator, Activity, Landmark, Search, Link2, TrendingUp,
-  Rocket, Crown, Sparkles, ArrowUpRight,
+  Rocket, Crown, Sparkles, ArrowUpRight, Truck,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDataStore } from '@/stores/dataStore';
@@ -71,12 +71,24 @@ const TIER_CONFIG = {
 // Items visibles au premier regard — le Core Flow MVP
 const NAV_CORE = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
-  { href: '/invoices', icon: FileText, label: 'Factures', badge: 'overdue' as null | 'overdue' | 'notif' },
+  { href: '/documents', icon: FileText, label: 'Documents', badge: 'overdue' as null | 'overdue' | 'notif', hasSubmenu: true },
   { href: '/clients', icon: Users, label: 'Clients', badge: null },
   { href: '/products', icon: Package, label: 'Articles', badge: null },
   { href: '/recurring', icon: RefreshCw, label: 'Récurrentes', badge: null },
   { href: '/calendar', icon: Calendar, label: 'Agenda', badge: null },
   { href: '/settings', icon: Settings, label: 'Paramètres', badge: null },
+];
+
+// Documents submenu items
+const DOCUMENTS_SUBMENU = [
+  { href: '/invoices', icon: Receipt, label: 'Factures' },
+  { href: '/quotes', icon: FileText, label: 'Devis' },
+  { href: '/orders', icon: Package, label: 'Commandes' },
+  { href: '/deliveries', icon: Truck, label: 'Livraisons' },
+  { href: '/deposits', icon: Calculator, label: 'Acomptes' },
+  { href: '/contracts/cdd', icon: FileText, label: 'Contrat CDD' },
+  { href: '/contracts/cdi', icon: FileText, label: 'Contrat CDI' },
+  { href: '/contracts/other', icon: FileText, label: 'Autres contrats' },
 ];
 
 // Features avancées — code intact, UI cachée (Progressive Disclosure)
@@ -123,9 +135,98 @@ export default function Sidebar() {
     return 0;
   };
 
-  const NavItem = ({ href, icon: Icon, label, badge }: { href: string; icon: any; label: string; badge: null | 'overdue' | 'notif' }) => {
+  const NavItem = ({ href, icon: Icon, label, badge, hasSubmenu, submenu }: { href: string; icon: any; label: string; badge: null | 'overdue' | 'notif'; hasSubmenu?: boolean; submenu?: any[] }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const active = pathname.startsWith(href);
     const count = getBadgeCount(badge);
+    const hasActiveSubmenu = submenu?.some(item => pathname === item.href);
+
+    if (hasSubmenu && submenu) {
+      return (
+        <div className="relative">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              'relative group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300',
+              'hover:bg-gradient-to-r',
+              active || hasActiveSubmenu
+                ? 'bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary border border-primary/20'
+                : 'text-gray-500 hover:text-gray-900 hover:from-primary/5 hover:via-transparent hover:to-transparent',
+            )}
+          >
+            {/* Glow effect on hover */}
+            <div className={cn(
+              'absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm -z-10',
+              (active || hasActiveSubmenu) && 'opacity-0'
+            )} />
+
+            {active && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-gradient-to-b from-primary to-primary-dark shadow-[0_0_8px_rgba(29,158,117,0.6)]" />
+            )}
+            <span className={cn(
+              'flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 flex-shrink-0',
+              active || hasActiveSubmenu
+                ? 'bg-gradient-to-br from-primary to-primary-dark text-white shadow-lg shadow-primary/30'
+                : 'bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary group-hover:scale-110',
+            )}>
+              <Icon size={16} strokeWidth={(active || hasActiveSubmenu) ? 2.5 : 1.8} />
+            </span>
+            <span className="flex-1 font-medium text-left group-hover:translate-x-1 transition-transform duration-300">{label}</span>
+            {count > 0 && (
+              <span className={cn(
+                'flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold flex-shrink-0',
+                badge === 'overdue'
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                  : 'bg-gradient-to-br from-primary to-primary-dark text-white shadow-[0_0_8px_rgba(29,158,117,0.4)]',
+              )}>
+                {count > 9 ? '9+' : count}
+              </span>
+            )}
+            <ChevronDown
+              size={13}
+              className={cn(
+                'transition-all duration-300 flex-shrink-0',
+                isOpen ? 'rotate-180' : 'opacity-30 -translate-x-2 group-hover:opacity-50 group-hover:translate-x-0'
+              )}
+            />
+          </button>
+
+          {/* Submenu */}
+          {isOpen && (
+            <div className="ml-6 mt-1 space-y-0.5">
+              {submenu.map((item) => {
+                const subActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'relative group flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                      subActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                    )}
+                  >
+                    <span className={cn(
+                      'flex items-center justify-center w-6 h-6 rounded-lg text-xs flex-shrink-0',
+                      subActive
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary',
+                    )}>
+                      <item.icon size={12} strokeWidth={subActive ? 2 : 1.5} />
+                    </span>
+                    <span className="flex-1 font-medium">{item.label}</span>
+                    {subActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-gradient-to-b from-primary to-primary-dark" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link
@@ -166,7 +267,7 @@ export default function Sidebar() {
             {count > 9 ? '9+' : count}
           </span>
         )}
-        {!active && (
+        {!active && !hasSubmenu && (
           <ChevronRight
             size={13}
             className="opacity-0 -translate-x-2 group-hover:opacity-30 group-hover:translate-x-0 transition-all duration-300 flex-shrink-0"
