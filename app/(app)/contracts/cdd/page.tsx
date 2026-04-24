@@ -72,6 +72,10 @@ interface CDDFormData {
   hasHealth: boolean;
   hasOther: boolean;
   otherBenefits: string;
+
+  // Signatures (base64)
+  employerSignature?: string;
+  employeeSignature?: string;
 }
 
 const initialFormData: CDDFormData = {
@@ -107,6 +111,8 @@ const initialFormData: CDDFormData = {
   hasHealth: false,
   hasOther: false,
   otherBenefits: '',
+  employerSignature: undefined,
+  employeeSignature: undefined,
 };
 
 export default function CDDContractPage() {
@@ -457,16 +463,42 @@ export default function CDDContractPage() {
     }
   };
 
-  const downloadPDF = () => {
-    const blob = new Blob([contractHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contrat_cdd_${formData.employeeLastName}_${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadPDF = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/contracts/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract: {
+            ...formData,
+            contractType: 'cdd' as const,
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la génération du PDF');
+      }
+
+      const pdfBlob = await response.blob();
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CDD_${formData.employeeLastName}_${formData.employeeFirstName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1128,6 +1160,18 @@ export default function CDDContractPage() {
                 contractType="CDD"
                 contractHtml={contractHtml}
                 onSave={(signedContract) => {
+                  // Extract signatures from signed contract
+                  if (signedContract.signatures && signedContract.signatures.length > 0) {
+                    const employerSig = signedContract.signatures.find(s => s.name.includes('Employeur'));
+                    const employeeSig = signedContract.signatures.find(s => s.name.includes('Salarie'));
+
+                    if (employerSig) {
+                      setFormData(prev => ({ ...prev, employerSignature: employerSig.data }));
+                    }
+                    if (employeeSig) {
+                      setFormData(prev => ({ ...prev, employeeSignature: employeeSig.data }));
+                    }
+                  }
                   console.log('Contract signed:', signedContract);
                 }}
               />

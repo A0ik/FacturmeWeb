@@ -427,16 +427,54 @@ export default function OtherContractPage() {
     }
   };
 
-  const downloadPDF = () => {
-    const blob = new Blob([contractHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contrat_${formData.contractCategory}_${formData.employeeLastName}_${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadPDF = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Map contract category to contract type
+      const contractTypeMap: Record<string, 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
+        'stage': 'stage',
+        'apprenticeship': 'apprentissage',
+        'professionalization': 'professionnalisation',
+        'temp_work': 'interim',
+        'portage': 'portage',
+        'freelance': 'freelance'
+      };
+
+      const contractType = contractTypeMap[formData.contractCategory] || 'stage';
+
+      const response = await fetch('/api/contracts/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract: {
+            ...formData,
+            contractType,
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la génération du PDF');
+      }
+
+      const pdfBlob = await response.blob();
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${formData.contractCategory}_${formData.employeeLastName}_${formData.employeeFirstName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

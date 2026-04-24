@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PenTool, Download, Share2, Check, X, Trash2, Plus, Loader2, AlertCircle, FileText } from 'lucide-react';
+import { PenTool, Download, Share2, Check, X, Trash2, Plus, Loader2, AlertCircle, FileText, Upload as UploadIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Signature {
@@ -17,10 +17,20 @@ interface SignaturePadProps {
   onClear?: () => void;
   height?: number;
   label?: string;
+  allowUpload?: boolean; // New prop to allow file upload
+  accept?: string; // Accepted file types (default: PNG, JPG, JPEG)
 }
 
-export function SignaturePad({ onSave, onClear, height = 200, label = 'Signature' }: SignaturePadProps) {
+export function SignaturePad({
+  onSave,
+  onClear,
+  height = 200,
+  label = 'Signature',
+  allowUpload = true,
+  accept = 'image/png,image/jpeg,image/jpg'
+}: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -174,6 +184,79 @@ export function SignaturePad({ onSave, onClear, height = 200, label = 'Signature
     if (onClear) onClear();
   };
 
+  // Handle file upload for signature
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match('image/(png|jpeg|jpg)')) {
+      toast.error('Format de fichier non supporté. Veuillez utiliser PNG, JPG ou JPEG.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Fichier trop volumineux. Maximum 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate dimensions to fit image while maintaining aspect ratio
+        const maxWidth = canvas.width;
+        const maxHeight = canvas.height;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = (maxHeight / height) * width;
+          height = maxHeight;
+        }
+
+        // Center the image
+        const x = (canvas.width - width) / 2;
+        const y = (canvas.height - height) / 2;
+
+        ctx.drawImage(img, x, y, width, height);
+        setHasSignature(true);
+
+        // Auto-save
+        if (onSave) {
+          const signatureData: Signature = {
+            id: crypto.randomUUID(),
+            data: canvas.toDataURL('image/png'),
+            date: new Date(),
+            name: `Signature_${file.name.split('.')[0]}_${new Date().toISOString().split('T')[0]}`
+          };
+          onSave(signatureData);
+          toast.success('Signature importée avec succès');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div ref={containerRef} className="w-full">
       {label && (
@@ -201,7 +284,7 @@ export function SignaturePad({ onSave, onClear, height = 200, label = 'Signature
         {!hasSignature && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <p className="text-sm text-gray-400 dark:text-gray-500">
-              Signez ici à la souris ou au doigt
+              Signez ici à la souris, au doigt ou importez une image
             </p>
           </div>
         )}
@@ -220,16 +303,48 @@ export function SignaturePad({ onSave, onClear, height = 200, label = 'Signature
         )}
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
+      {/* Action buttons */}
+      <div className="mt-3 flex items-center gap-2">
+        {/* Upload button */}
+        {allowUpload && (
+          <button
+            onClick={triggerFileInput}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-slate-700 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+            title="Importer une signature (PNG, JPG, JPEG)"
+          >
+            <UploadIcon size={16} className="text-gray-500" />
+            Importer
+          </button>
+        )}
+
         {hasSignature && (
           <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
             <Check size={12} />
             Signé
           </span>
         )}
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          Appuyez et déplacez pour signer
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={handleFileUpload}
+        className="hidden"
+        aria-label="Importer une signature"
+      />
+
+      {/* Help text */}
+      <div className="mt-2 space-y-1">
+        <span className="text-xs text-gray-400 dark:text-gray-500 block">
+          Appuyez et déplacez pour signer ou importez une image de signature existante
         </span>
+        {allowUpload && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 block">
+            Formats acceptés: PNG, JPG, JPEG (max 5MB)
+          </span>
+        )}
       </div>
     </div>
   );
