@@ -17,10 +17,20 @@ import {
   User,
   Building2,
   FileCheck,
-  X
+  X,
+  Shield,
+  Calculator,
+  Info,
+  Sparkles
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { MagicSelect, CONTRACT_CDD_REASONS, BENEFIT_OPTIONS, CONTRACT_CDI_TYPES } from '@/components/ui/MagicSelect';
+import { SireneAutocomplete } from '@/components/ui/SireneAutocomplete';
+import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
+import { ContractValidator } from '@/components/labor-law/ContractValidator';
+import { ContractSigning } from '@/components/labor-law/SignaturePad';
+import { creerBulletinDepuisContrat, ouvrirBulletinPaie } from '@/lib/labor-law/bulletin-paie';
 
 interface CDDFormData {
   // Employee info
@@ -693,11 +703,12 @@ export default function CDDContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <input
-                    type="date"
+                  <MagnificentDatePicker
                     value={formData.employeeBirthDate}
-                    onChange={(e) => setFormData({ ...formData, employeeBirthDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, employeeBirthDate: value })}
+                    placeholder="Date de naissance"
+                    label="Date de naissance"
+                    maxDate={new Date().toISOString().split('T')[0]}
                   />
 
                   <input
@@ -707,11 +718,17 @@ export default function CDDContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <input
-                    placeholder="Nationalité"
+                  <MagicSelect
+                    options={[
+                      { value: 'Française', label: 'Française', description: 'Ressortissant français' },
+                      { value: 'Européenne', label: 'Européenne (UE)', description: 'Citoyen de l\'Union Européenne' },
+                      { value: 'Hors UE', label: 'Hors Union Européenne', description: 'Ressortissant non-UE' }
+                    ]}
                     value={formData.employeeNationality}
-                    onChange={(e) => setFormData({ ...formData, employeeNationality: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, employeeNationality: value })}
+                    placeholder="Sélectionner la nationalité"
+                    label="Nationalité"
+                    variant="default"
                   />
                 </div>
               </div>
@@ -724,19 +741,19 @@ export default function CDDContractPage() {
                 </h3>
 
                 <div className="space-y-4">
-                  <input
-                    type="date"
+                  <MagnificentDatePicker
                     value={formData.contractStartDate}
-                    onChange={(e) => setFormData({ ...formData, contractStartDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, contractStartDate: value })}
+                    placeholder="Date de début du contrat"
+                    label="Date de début"
                   />
 
-                  <input
-                    type="date"
-                    placeholder="Date de fin"
+                  <MagnificentDatePicker
                     value={formData.contractEndDate}
-                    onChange={(e) => setFormData({ ...formData, contractEndDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, contractEndDate: value })}
+                    placeholder="Date de fin du contrat"
+                    label="Date de fin"
+                    minDate={formData.contractStartDate}
                   />
 
                   <input
@@ -747,17 +764,16 @@ export default function CDDContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <select
+                  <MagicSelect
+                    options={CONTRACT_CDD_REASONS}
                     value={formData.contractReason}
-                    onChange={(e) => setFormData({ ...formData, contractReason: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                  >
-                    <option value="">Motif du CDD</option>
-                    <option value="remplacement">Remplacement</option>
-                    <option value="accroisse">Accroissement d'activité</option>
-                    <option value="saisonnier">Saisonnier</option>
-                    <option value="usage">D'usage</option>
-                  </select>
+                    onChange={(value) => setFormData({ ...formData, contractReason: value })}
+                    placeholder="Sélectionner le motif du CDD..."
+                    label="Motif du CDD"
+                    icon={FileText}
+                    variant="contract"
+                    searchable
+                  />
 
                   {formData.contractReason === 'remplacement' && (
                     <input
@@ -782,11 +798,19 @@ export default function CDDContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <input
-                    placeholder="Horaires de travail"
+                  <MagicSelect
+                    options={[
+                      { value: '35h hebdomadaires', label: '35h hebdomadaires', description: 'Durée légale du travail' },
+                      { value: '39h hebdomadaires', label: '39h hebdomadaires', description: 'Avec heures supplémentaires' },
+                      { value: 'Temps partiel', label: 'Temps partiel', description: 'Moins de 24h par semaine' },
+                      { value: 'Horaires variables', label: 'Horaires variables', description: 'Horaires aménagés' },
+                      { value: 'Horaires de nuit', label: 'Horaires de nuit', description: 'Travail de nuit (21h-6h)' }
+                    ]}
                     value={formData.workSchedule}
-                    onChange={(e) => setFormData({ ...formData, workSchedule: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, workSchedule: value })}
+                    placeholder="Sélectionner les horaires"
+                    label="Horaires de travail"
+                    variant="default"
                   />
 
                   <div className="grid grid-cols-2 gap-3">
@@ -797,14 +821,16 @@ export default function CDDContractPage() {
                       onChange={(e) => setFormData({ ...formData, salaryAmount: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                     />
-                    <select
+                    <MagicSelect
+                      options={[
+                        { value: 'monthly', label: 'Mensuel', description: 'Salaire mensuel' },
+                        { value: 'hourly', label: 'Horaire', description: 'Tarif horaire' }
+                      ]}
                       value={formData.salaryFrequency}
-                      onChange={(e) => setFormData({ ...formData, salaryFrequency: e.target.value as any })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                    >
-                      <option value="monthly">Mensuel</option>
-                      <option value="hourly">Horaire</option>
-                    </select>
+                      onChange={(value) => setFormData({ ...formData, salaryFrequency: value as any })}
+                      placeholder="Fréquence"
+                      variant="default"
+                    />
                   </div>
                 </div>
               </div>
@@ -817,15 +843,24 @@ export default function CDDContractPage() {
                 </h3>
 
                 <div className="space-y-4">
-                  <input
-                    placeholder="Nom de l'entreprise"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  <SireneAutocomplete
+                    onCompanySelect={(company) => {
+                      setFormData({
+                        ...formData,
+                        companyName: company.name,
+                        companyAddress: company.address,
+                        companyPostalCode: company.postalCode,
+                        companyCity: company.city,
+                        companySiret: company.siret
+                      });
+                    }}
+                    initialCompanyName={formData.companyName}
+                    placeholder="Rechercher ou saisir le nom de l'entreprise..."
+                    label="Nom de l'entreprise"
                   />
 
                   <input
-                    placeholder="Adresse"
+                    placeholder="Adresse (pré-rempli automatiquement)"
                     value={formData.companyAddress}
                     onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
@@ -847,10 +882,10 @@ export default function CDDContractPage() {
                   </div>
 
                   <input
-                    placeholder="SIRET"
+                    placeholder="SIRET (pré-rempli automatiquement)"
                     value={formData.companySiret}
                     onChange={(e) => setFormData({ ...formData, companySiret: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-mono"
                   />
 
                   <input
@@ -877,25 +912,87 @@ export default function CDDContractPage() {
                 </h3>
 
                 <div className="space-y-3">
-                  {[
-                    { key: 'hasTransport', label: 'Titres de transport' },
-                    { key: 'hasMeal', label: 'Titres restaurant' },
-                    { key: 'hasHealth', label: 'Complémentaire santé' },
-                    { key: 'hasOther', label: 'Autres avantages' },
-                  ].map((benefit) => (
-                    <label key={benefit.key} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl cursor-pointer hover:bg-white/70 dark:hover:bg-slate-800/70 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={(formData as any)[benefit.key]}
-                        onChange={(e) => setFormData({ ...formData, [benefit.key]: e.target.checked })}
-                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span>{benefit.label}</span>
-                    </label>
-                  ))}
+                  {BENEFIT_OPTIONS.map((benefit) => {
+                    const benefitKey = benefit.value === 'transport' ? 'hasTransport' :
+                                     benefit.value === 'meal' ? 'hasMeal' :
+                                     benefit.value === 'health' ? 'hasHealth' : null;
+                    if (!benefitKey) return null;
+
+                    return (
+                      <motion.label
+                        key={benefit.value}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className={`
+                          relative flex items-center gap-3 p-3 rounded-xl cursor-pointer
+                          transition-all duration-200 border-2
+                          ${(formData as any)[benefitKey]
+                            ? 'bg-gradient-to-r from-primary/20 to-purple-600/20 border-primary/30'
+                            : 'bg-white/50 dark:bg-slate-800/50 border-transparent hover:border-gray-200 dark:hover:border-white/10'
+                          }
+                        `}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(formData as any)[benefitKey]}
+                          onChange={(e) => setFormData({ ...formData, [benefitKey]: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${benefit.color}`}>
+                          <benefit.icon size={18} className="text-white" />
+                        </div>
+                        <span className="flex-1 font-medium text-sm text-gray-900 dark:text-white">{benefit.label}</span>
+                        {(formData as any)[benefitKey] && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0"
+                          >
+                            <Check size={14} className="text-white" />
+                          </motion.div>
+                        )}
+                      </motion.label>
+                    );
+                  })}
+
+                  <motion.label
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className={`
+                      relative flex items-center gap-3 p-3 rounded-xl cursor-pointer
+                      transition-all duration-200 border-2
+                      ${formData.hasOther
+                        ? 'bg-gradient-to-r from-violet-500/20 to-purple-600/20 border-violet-500/30'
+                        : 'bg-white/50 dark:bg-slate-800/50 border-transparent hover:border-gray-200 dark:hover:border-white/10'
+                      }
+                    `}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.hasOther}
+                      onChange={(e) => setFormData({ ...formData, hasOther: e.target.checked })}
+                      className="sr-only"
+                    />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-violet-500 to-purple-600">
+                      <Sparkles size={18} className="text-white" />
+                    </div>
+                    <span className="flex-1 font-medium text-sm text-gray-900 dark:text-white">Autres avantages</span>
+                    {formData.hasOther && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center flex-shrink-0"
+                      >
+                        <Check size={14} className="text-white" />
+                      </motion.div>
+                    )}
+                  </motion.label>
 
                   {formData.hasOther && (
-                    <input
+                    <motion.input
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
                       placeholder="Précisez les autres avantages"
                       value={formData.otherBenefits}
                       onChange={(e) => setFormData({ ...formData, otherBenefits: e.target.value })}
@@ -906,22 +1003,34 @@ export default function CDDContractPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => setStep('upload')}
-                className="px-6 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-              >
-                ← Retour
-              </button>
-              <button
-                onClick={generateContract}
-                className="px-8 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
-              >
-                <FileText className="w-5 h-5" />
-                Générer le contrat
-              </button>
+            {/* Validation légale */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <ContractValidator
+                contractType="cdd"
+                contractData={formData}
+                onValidationChange={(isValid, errors) => {
+                  // Vous pouvez stocker l'état de validation pour bloquer la génération si invalide
+                  console.log('Validation:', isValid, errors);
+                }}
+              />
             </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <button
+              onClick={() => setStep('upload')}
+              className="px-6 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+            >
+              ← Retour
+            </button>
+            <button
+              onClick={generateContract}
+              className="px-8 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+            >
+              <FileText className="w-5 h-5" />
+              Générer le contrat
+            </button>
+          </div>
           </motion.div>
         )}
 
@@ -930,17 +1039,101 @@ export default function CDDContractPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-8"
+            className="space-y-6"
           >
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <Eye className="w-7 h-7 text-primary" />
-              Aperçu du contrat
-            </h2>
-
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 mb-6 overflow-auto max-h-[600px]">
-              <div dangerouslySetInnerHTML={{ __html: contractHtml }} />
+            {/* Validation légale compacte */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-6 h-6 text-primary" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Validation légale</h3>
+              </div>
+              <ContractValidator
+                contractType="cdd"
+                contractData={formData}
+                compact={false}
+              />
             </div>
 
+            {/* Aperçu du contrat */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-8">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Eye className="w-7 h-7 text-primary" />
+                Aperçu du contrat
+              </h2>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 mb-6 overflow-auto max-h-[600px]">
+                <div dangerouslySetInnerHTML={{ __html: contractHtml }} />
+              </div>
+            </div>
+
+            {/* Bulletin de paie estimé */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Calculator className="w-6 h-6 text-primary" />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Estimation salaire net</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    const periodeDebut = formData.contractStartDate || new Date().toISOString().split('T')[0];
+                    const periodeFin = formData.contractEndDate || new Date().toISOString().split('T')[0];
+                    const bulletinData = creerBulletinDepuisContrat(formData, periodeDebut, periodeFin);
+                    ouvrirBulletinPaie(bulletinData);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Générer bulletin de paie
+                </button>
+              </div>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Salaire brut</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                      {parseFloat(formData.salaryAmount || '0').toFixed(2)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Estimation net</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {(parseFloat(formData.salaryAmount || '0') * 0.77).toFixed(2)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Coût employeur</p>
+                    <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                      {(parseFloat(formData.salaryAmount || '0') * 1.45).toFixed(2)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Statut</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {formData.salaryFrequency === 'monthly' ? 'Mensuel' : 'Horaire'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <Info className="w-3 h-3" />
+                    Estimation basée sur les taux de cotisation 2024. Valeurs données à titre indicatif.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Signature numérique */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <ContractSigning
+                contractType="CDD"
+                contractHtml={contractHtml}
+                onSave={(signedContract) => {
+                  console.log('Contract signed:', signedContract);
+                }}
+              />
+            </div>
+
+            {/* Action Buttons */}
             <div className="flex flex-wrap justify-center gap-4">
               <button
                 onClick={() => setStep('edit')}

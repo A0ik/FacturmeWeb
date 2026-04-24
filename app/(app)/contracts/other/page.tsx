@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
   FileText,
@@ -17,13 +17,23 @@ import {
   FileCheck,
   X,
   Euro,
-  Calendar
+  Calendar,
+  Shield,
+  Calculator,
+  Info,
+  Sparkles
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { MagicSelect, CONTRACT_OTHER_TYPES, BENEFIT_OPTIONS } from '@/components/ui/MagicSelect';
+import { SireneAutocomplete } from '@/components/ui/SireneAutocomplete';
+import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
+import { ContractValidator } from '@/components/labor-law/ContractValidator';
+import { ContractSigning } from '@/components/labor-law/SignaturePad';
+import { creerBulletinDepuisContrat, ouvrirBulletinPaie } from '@/lib/labor-law/bulletin-paie';
 
 interface OtherContractFormData {
-  contractCategory: 'stage' | 'freelance' | 'temp_work' | 'apprenticeship' | 'professionalization' | 'other';
+  contractCategory: 'apprentissage' | 'professionnalisation' | 'cui_cie' | 'cui_cae' | 'portage' | 'interim' | 'domicile' | 'stage' | 'freelance' | 'other';
   contractTitle: string;
   durationWeeks: string;
   startDate: string;
@@ -33,17 +43,32 @@ interface OtherContractFormData {
   employeeFirstName: string;
   employeeLastName: string;
   employeeAddress: string;
+  employeePostalCode: string;
+  employeeCity: string;
   employeeEmail: string;
   employeePhone: string;
+  employeeBirthDate: string;
+  employeeSocialSecurity: string;
+  employeeNationality: string;
 
   companyName: string;
   companyAddress: string;
+  companyPostalCode: string;
+  companyCity: string;
   companySiret: string;
   employerName: string;
+  employerTitle: string;
 
   // Financial
   salaryAmount: string;
   salaryFrequency: 'monthly' | 'hourly' | 'weekly' | 'flat_rate';
+
+  // Benefits
+  hasTransport: boolean;
+  hasMeal: boolean;
+  hasHealth: boolean;
+  hasOther: boolean;
+  otherBenefits: string;
 
   // Specific fields
   tutorName: string;
@@ -51,19 +76,18 @@ interface OtherContractFormData {
   speciality: string;
   objectives: string;
   tasks: string;
+
+  // Additional for pay slip
+  jobTitle: string;
+  workLocation: string;
+  workSchedule: string;
+  workingHours: string;
+  collectiveAgreement: string;
+  statut: 'cadre' | 'non_cadre' | 'alternance';
 }
 
-const contractCategories = [
-  { value: 'stage', label: 'Convention de Stage' },
-  { value: 'freelance', label: 'Contrat Freelance' },
-  { value: 'temp_work', label: 'Travail Temporaire / Intérim' },
-  { value: 'apprenticeship', label: "Contrat d'Apprentissage" },
-  { value: 'professionalization', label: 'Contrat de Professionnalisation' },
-  { value: 'other', label: 'Autre Type de Contrat' },
-];
-
 const initialFormData: OtherContractFormData = {
-  contractCategory: 'stage',
+  contractCategory: 'apprentissage',
   contractTitle: '',
   durationWeeks: '',
   startDate: '',
@@ -71,19 +95,38 @@ const initialFormData: OtherContractFormData = {
   employeeFirstName: '',
   employeeLastName: '',
   employeeAddress: '',
+  employeePostalCode: '',
+  employeeCity: '',
   employeeEmail: '',
   employeePhone: '',
+  employeeBirthDate: '',
+  employeeSocialSecurity: '',
+  employeeNationality: 'Française',
   companyName: '',
   companyAddress: '',
+  companyPostalCode: '',
+  companyCity: '',
   companySiret: '',
   employerName: '',
+  employerTitle: '',
   salaryAmount: '',
   salaryFrequency: 'monthly',
+  hasTransport: false,
+  hasMeal: false,
+  hasHealth: false,
+  hasOther: false,
+  otherBenefits: '',
   tutorName: '',
   schoolName: '',
   speciality: '',
   objectives: '',
   tasks: '',
+  jobTitle: '',
+  workLocation: '',
+  workSchedule: '35h hebdomadaires',
+  workingHours: '35',
+  collectiveAgreement: '',
+  statut: 'non_cadre',
 };
 
 export default function OtherContractPage() {
@@ -318,12 +361,20 @@ export default function OtherContractPage() {
           employee_first_name: formData.employeeFirstName,
           employee_last_name: formData.employeeLastName,
           employee_address: formData.employeeAddress,
+          employee_postal_code: formData.employeePostalCode,
+          employee_city: formData.employeeCity,
           employee_email: formData.employeeEmail,
           employee_phone: formData.employeePhone,
+          employee_birth_date: formData.employeeBirthDate,
+          employee_social_security: formData.employeeSocialSecurity,
+          employee_nationality: formData.employeeNationality,
           company_name: formData.companyName,
           company_address: formData.companyAddress,
+          company_postal_code: formData.companyPostalCode,
+          company_city: formData.companyCity,
           company_siret: formData.companySiret,
           employer_name: formData.employerName,
+          employer_title: formData.employerTitle,
           salary_amount: parseFloat(formData.salaryAmount) || null,
           salary_frequency: formData.salaryFrequency,
           tutor_name: formData.tutorName || null,
@@ -331,6 +382,12 @@ export default function OtherContractPage() {
           speciality: formData.speciality || null,
           objectives: formData.objectives || null,
           tasks: formData.tasks || null,
+          job_title: formData.jobTitle,
+          work_location: formData.workLocation,
+          work_schedule: formData.workSchedule,
+          working_hours: formData.workingHours,
+          collective_agreement: formData.collectiveAgreement,
+          statut: formData.statut,
           document_status: 'draft',
         });
 
@@ -416,39 +473,41 @@ export default function OtherContractPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-              {contractCategories.map((category) => (
-                <motion.button
-                  key={category.value}
-                  onClick={() => {
-                    setFormData({ ...formData, contractCategory: category.value as any });
+            <div className="max-w-2xl mx-auto mb-8">
+              <MagicSelect
+                options={CONTRACT_OTHER_TYPES}
+                value={formData.contractCategory}
+                onChange={(value) => {
+                  setFormData({ ...formData, contractCategory: value as any });
+                }}
+                placeholder="Sélectionner le type de contrat..."
+                label="Type de contrat"
+                icon={FileText}
+                variant="contract"
+                searchable
+              />
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  if (formData.contractCategory) {
                     setStep('edit');
-                  }}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`p-6 rounded-2xl text-left transition-all ${
-                    formData.contractCategory === category.value
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                      : 'bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80'
-                  }`}
-                >
-                  <h3 className={`font-semibold text-lg mb-1 ${formData.contractCategory === category.value ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                    {category.label}
-                  </h3>
-                  <p className={`text-sm ${formData.contractCategory === category.value ? 'text-white/80' : 'text-gray-500'}`}>
-                    {category.value === 'stage' && 'Pour les étudiants en cursus universitaire'}
-                    {category.value === 'freelance' && 'Prestation de service entre entreprises'}
-                    {category.value === 'temp_work' && 'Mission temporaire via agence d\'intérim'}
-                    {category.value === 'apprentissage' && 'Formation en alternance avec objectif diplôme'}
-                    {category.value === 'professionalization' && 'Formation continue pour adultes'}
-                    {category.value === 'other' && 'Tout autre type de contrat personnalisé'}
-                  </p>
-                </motion.button>
-              ))}
+                  }
+                }}
+                disabled={!formData.contractCategory}
+                className={`px-8 py-4 rounded-xl font-semibold transition-all ${
+                  formData.contractCategory
+                    ? 'bg-gradient-to-r from-primary to-purple-600 text-white hover:shadow-lg hover:scale-105'
+                    : 'bg-gray-200 dark:bg-slate-700 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Continuer vers la création du contrat →
+              </button>
             </div>
 
             {/* Voice Input for Category Selection */}
-            <div className="border-t border-gray-200 dark:border-white/10 pt-8">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-8 mt-8">
               <div className="text-center mb-4">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Ou dites le type de contrat à voix haute
@@ -545,7 +604,7 @@ export default function OtherContractPage() {
             {/* Selected Category Display */}
             <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Type de contrat : <span className="font-semibold text-primary">{contractCategories.find(c => c.value === formData.contractCategory)?.label}</span>
+                Type de contrat : <span className="font-semibold text-primary">{CONTRACT_OTHER_TYPES.find(c => c.value === formData.contractCategory)?.label}</span>
               </p>
             </div>
 
@@ -566,20 +625,19 @@ export default function OtherContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <input
-                    type="date"
-                    placeholder="Date de début"
+                  <MagnificentDatePicker
                     value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, startDate: value })}
+                    placeholder="Date de début du contrat"
+                    label="Date de début"
                   />
 
-                  <input
-                    type="date"
-                    placeholder="Date de fin"
+                  <MagnificentDatePicker
                     value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, endDate: value })}
+                    placeholder="Date de fin du contrat"
+                    label="Date de fin"
+                    minDate={formData.startDate}
                   />
 
                   <input
@@ -606,7 +664,7 @@ export default function OtherContractPage() {
                     />
                   )}
 
-                  {(formData.contractCategory === 'stage' || formData.contractCategory === 'apprenticeship' || formData.contractCategory === 'professionalization') && (
+                  {(formData.contractCategory === 'stage' || formData.contractCategory === 'apprentissage' || formData.contractCategory === 'professionnalisation') && (
                     <input
                       placeholder="Nom de l'école / établissement"
                       value={formData.schoolName}
@@ -678,6 +736,43 @@ export default function OtherContractPage() {
                     onChange={(e) => setFormData({ ...formData, employeePhone: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      placeholder="Code postal"
+                      value={formData.employeePostalCode}
+                      onChange={(e) => setFormData({ ...formData, employeePostalCode: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+                    <input
+                      placeholder="Ville"
+                      value={formData.employeeCity}
+                      onChange={(e) => setFormData({ ...formData, employeeCity: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  <MagnificentDatePicker
+                    value={formData.employeeBirthDate}
+                    onChange={(value) => setFormData({ ...formData, employeeBirthDate: value })}
+                    placeholder="Date de naissance"
+                    label="Date de naissance"
+                    maxDate={new Date().toISOString().split('T')[0]}
+                  />
+
+                  <input
+                    placeholder="Numéro Sécurité Sociale"
+                    value={formData.employeeSocialSecurity}
+                    onChange={(e) => setFormData({ ...formData, employeeSocialSecurity: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
+
+                  <input
+                    placeholder="Nationalité"
+                    value={formData.employeeNationality}
+                    onChange={(e) => setFormData({ ...formData, employeeNationality: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
                 </div>
               </div>
 
@@ -688,34 +783,66 @@ export default function OtherContractPage() {
                   Entreprise
                 </h3>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <input
-                    placeholder="Nom de l'entreprise"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                <div className="space-y-4">
+                  <SireneAutocomplete
+                    onCompanySelect={(company) => {
+                      setFormData({
+                        ...formData,
+                        companyName: company.name,
+                        companyAddress: company.address,
+                        companyPostalCode: company.postalCode,
+                        companyCity: company.city,
+                        companySiret: company.siret
+                      });
+                    }}
+                    initialCompanyName={formData.companyName}
+                    placeholder="Rechercher ou saisir le nom de l'entreprise..."
+                    label="Nom de l'entreprise"
                   />
 
-                  <input
-                    placeholder="Adresse complète"
-                    value={formData.companyAddress}
-                    onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                  />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <input
+                      placeholder="Adresse (pré-rempli automatiquement)"
+                      value={formData.companyAddress}
+                      onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
 
-                  <input
-                    placeholder="SIRET"
-                    value={formData.companySiret}
-                    onChange={(e) => setFormData({ ...formData, companySiret: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                  />
+                    <input
+                      placeholder="SIRET (pré-rempli automatiquement)"
+                      value={formData.companySiret}
+                      onChange={(e) => setFormData({ ...formData, companySiret: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-mono"
+                    />
 
-                  <input
-                    placeholder="Nom de l'employeur / signataire"
-                    value={formData.employerName}
-                    onChange={(e) => setFormData({ ...formData, employerName: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                  />
+                    <input
+                      placeholder="Code postal"
+                      value={formData.companyPostalCode}
+                      onChange={(e) => setFormData({ ...formData, companyPostalCode: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+
+                    <input
+                      placeholder="Ville"
+                      value={formData.companyCity}
+                      onChange={(e) => setFormData({ ...formData, companyCity: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+
+                    <input
+                      placeholder="Nom de l'employeur / signataire"
+                      value={formData.employerName}
+                      onChange={(e) => setFormData({ ...formData, employerName: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+
+                    <input
+                      placeholder="Titre de l'employeur"
+                      value={formData.employerTitle}
+                      onChange={(e) => setFormData({ ...formData, employerTitle: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -735,18 +862,80 @@ export default function OtherContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <select
+                  <MagicSelect
+                    options={[
+                      { value: 'monthly', label: 'Mensuel', description: 'Salaire mensuel' },
+                      { value: 'weekly', label: 'Hebdomadaire', description: 'Par semaine' },
+                      { value: 'hourly', label: 'Horaire', description: 'Tarif horaire' },
+                      { value: 'flat_rate', label: 'Forfait', description: 'Prix forfaitaire' }
+                    ]}
                     value={formData.salaryFrequency}
-                    onChange={(e) => setFormData({ ...formData, salaryFrequency: e.target.value as any })}
+                    onChange={(value) => setFormData({ ...formData, salaryFrequency: value as any })}
+                    placeholder="Fréquence de paiement"
+                    label="Fréquence"
+                    variant="default"
+                  />
+
+                  <input
+                    placeholder="Intitulé du poste"
+                    value={formData.jobTitle}
+                    onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                  >
-                    <option value="monthly">Mensuel</option>
-                    <option value="weekly">Hebdomadaire</option>
-                    <option value="hourly">Horaire</option>
-                    <option value="flat_rate">Forfait</option>
-                  </select>
+                  />
+
+                  <input
+                    placeholder="Lieu de travail"
+                    value={formData.workLocation}
+                    onChange={(e) => setFormData({ ...formData, workLocation: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
+
+                  <input
+                    placeholder="Horaires de travail"
+                    value={formData.workSchedule}
+                    onChange={(e) => setFormData({ ...formData, workSchedule: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
+
+                  <input
+                    placeholder="Heures hebdomadaires"
+                    value={formData.workingHours}
+                    onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
+
+                  <input
+                    placeholder="Convention collective"
+                    value={formData.collectiveAgreement}
+                    onChange={(e) => setFormData({ ...formData, collectiveAgreement: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  />
+
+                  <MagicSelect
+                    options={[
+                      { value: 'non_cadre', label: 'Non-cadre', description: 'Statut employé' },
+                      { value: 'cadre', label: 'Cadre', description: 'Statut cadre' },
+                      { value: 'alternance', label: 'Alternance', description: 'Contrat alternance' }
+                    ]}
+                    value={formData.statut}
+                    onChange={(value) => setFormData({ ...formData, statut: value as any })}
+                    placeholder="Statut du salarié"
+                    label="Statut"
+                    variant="default"
+                  />
                 </div>
               </div>
+            </div>
+
+            {/* Validation légale */}
+            <div className="md:col-span-2">
+              <ContractValidator
+                contractType={formData.contractCategory as any}
+                contractData={formData}
+                onValidationChange={(isValid, errors) => {
+                  console.log('Validation:', isValid, errors);
+                }}
+              />
             </div>
 
             {/* Action Buttons */}
@@ -773,17 +962,103 @@ export default function OtherContractPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-8"
+            className="space-y-6"
           >
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <Eye className="w-7 h-7 text-primary" />
-              Aperçu du contrat
-            </h2>
-
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 mb-6 overflow-auto max-h-[600px]">
-              <div dangerouslySetInnerHTML={{ __html: contractHtml }} />
+            {/* Validation légale compacte */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-6 h-6 text-primary" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Validation légale</h3>
+              </div>
+              <ContractValidator
+                contractType={formData.contractCategory as any}
+                contractData={formData}
+                compact={false}
+              />
             </div>
 
+            {/* Aperçu du contrat */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-8">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Eye className="w-7 h-7 text-primary" />
+                Aperçu du contrat
+              </h2>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 mb-6 overflow-auto max-h-[600px]">
+                <div dangerouslySetInnerHTML={{ __html: contractHtml }} />
+              </div>
+            </div>
+
+            {/* Bulletin de paie estimé (pour les contrats rémunérés) */}
+            {formData.salaryAmount && formData.contractCategory !== 'stage' && (
+              <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Calculator className="w-6 h-6 text-primary" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Estimation rémunération</h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const periodeDebut = formData.startDate || new Date().toISOString().split('T')[0];
+                      const periodeFin = formData.endDate || new Date(new Date(periodeDebut).setMonth(new Date(periodeDebut).getMonth() + 1)).toISOString().split('T')[0];
+                      const bulletinData = creerBulletinDepuisContrat(formData, periodeDebut, periodeFin);
+                      ouvrirBulletinPaie(bulletinData);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Générer bulletin de paie
+                  </button>
+                </div>
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Montant brut</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        {parseFloat(formData.salaryAmount || '0').toFixed(2)} €
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Estimation net</p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {(parseFloat(formData.salaryAmount || '0') * 0.77).toFixed(2)} €
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Coût employeur</p>
+                      <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                        {(parseFloat(formData.salaryAmount || '0') * 1.45).toFixed(2)} €
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Fréquence</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {formData.salaryFrequency === 'monthly' ? 'Mensuel' : formData.salaryFrequency === 'weekly' ? 'Hebdomadaire' : formData.salaryFrequency === 'hourly' ? 'Horaire' : 'Forfait'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                      <Info className="w-3 h-3" />
+                      Estimation basée sur les taux de cotisation 2024. Valeurs données à titre indicatif.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Signature numérique */}
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg rounded-3xl p-6">
+              <ContractSigning
+                contractType={formData.contractCategory}
+                contractHtml={contractHtml}
+                onSave={(signedContract) => {
+                  console.log('Contract signed:', signedContract);
+                }}
+              />
+            </div>
+
+            {/* Action Buttons */}
             <div className="flex flex-wrap justify-center gap-4">
               <button
                 onClick={() => setStep('edit')}
