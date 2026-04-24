@@ -96,7 +96,16 @@
       "mcp__supabase__get_storage_config",
       "Bash(rtn ps *)",
       "Bash(rtn rm *)",
-      "Bash(rsk tsc *)"
+      "Bash(rsk tsc *)",
+      "Bash(powershell -Command \"\\(Get-Content 'c:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-ESPOIR\\\\lib\\\\bulletin-paie-pdf-server.ts'\\) -replace 'cotisations\\\\.sariales', 'cotisations.sariales' | Set-Content 'c:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-ESPOIR\\\\lib\\\\bulletin-paie-pdf-server.ts'\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sariales/g,'cotisations.sariales'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const lines=content.split\\('\\\\n'\\);lines.slice\\(416,418\\).forEach\\(\\(line,i\\)=>console.log\\(417+i,':',line.charCodeAt\\(40\\),line.charCodeAt\\(41\\),line.charCodeAt\\(42\\),line.charCodeAt\\(43\\),line.charCodeAt\\(44\\),line.charCodeAt\\(45\\),line.charCodeAt\\(46\\),line.charCodeAt\\(47\\),line.charCodeAt\\(48\\),line.charCodeAt\\(49\\)\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const idx=content.indexOf\\('cotisations.'\\);const substring=content.substring\\(idx, idx+15\\);console.log\\('Found:', substring, 'chars:', substring.split\\(''\\).map\\(c=>c.charCodeAt\\(0\\)\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const idx=content.indexOf\\('cotisations.'\\);const substring=content.substring\\(idx, idx+20\\);console.log\\('Found:', substring, 'chars:', substring.split\\(''\\).map\\(c=>c.charCodeAt\\(0\\)\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sariales/g,'cotisations.sariales'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);console.log\\('Fixed'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sariales/g,'cotisations.sarial'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);console.log\\('Fixed'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sarial/g,'cotisations.sarial'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);console.log\\('Fixed'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sarial/g,'cotisations.sariales'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);console.log\\('Fixed to salariales'\\);\")"
     ]
   },
   "enableAllProjectMcpServers": true,
