@@ -41,7 +41,7 @@ export default function CommandesPage() {
     const matchesSearch =
       searchQuery === '' ||
       commande.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      commande.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (commande.client?.name || commande.client_name_override || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       commande.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || commande.status === statusFilter;
@@ -269,7 +269,7 @@ export default function CommandesPage() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {commande.number || `CMD-${commande.id?.slice(0, 8)}`}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{commande.client_name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{commande.client?.name || commande.client_name_override || ''}</p>
                         </div>
                       </div>
                       {getStatusBadge(commande.status)}
@@ -364,10 +364,10 @@ export default function CommandesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {commande.client_name}
+                          {commande.client?.name || commande.client_name_override || ''}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {commande.date ? new Date(commande.date).toLocaleDateString('fr-FR') : '-'}
+                          {commande.issue_date ? new Date(commande.issue_date).toLocaleDateString('fr-FR') : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {commande.due_date ? new Date(commande.due_date).toLocaleDateString('fr-FR') : '-'}

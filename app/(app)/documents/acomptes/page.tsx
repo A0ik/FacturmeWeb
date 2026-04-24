@@ -41,7 +41,7 @@ export default function AcomptesPage() {
     const matchesSearch =
       searchQuery === '' ||
       acompte.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      acompte.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (acompte.client?.name || acompte.client_name_override || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       acompte.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || acompte.status === statusFilter;
@@ -269,7 +269,7 @@ export default function AcomptesPage() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {acompte.number || `ACPT-${acompte.id?.slice(0, 8)}`}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{acompte.client_name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{acompte.client?.name || acompte.client_name_override || ''}</p>
                         </div>
                       </div>
                       {getStatusBadge(acompte.status)}
@@ -364,10 +364,10 @@ export default function AcomptesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {acompte.client_name}
+                          {acompte.client?.name || acompte.client_name_override || ''}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {acompte.date ? new Date(acompte.date).toLocaleDateString('fr-FR') : '-'}
+                          {acompte.issue_date ? new Date(acompte.issue_date).toLocaleDateString('fr-FR') : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {acompte.due_date ? new Date(acompte.due_date).toLocaleDateString('fr-FR') : '-'}

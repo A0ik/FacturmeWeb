@@ -27,7 +27,7 @@ type StatusFilter = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
 
 export default function FacturesPage() {
   const router = useRouter();
-  const { invoices, fetchInvoices, clients, products } = useDataStore();
+  const { invoices, fetchInvoices, clients } = useDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedFactures, setSelectedFactures] = useState<Set<string>>(new Set());

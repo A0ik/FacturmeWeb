@@ -41,7 +41,7 @@ export default function LivraisonsPage() {
     const matchesSearch =
       searchQuery === '' ||
       livraison.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      livraison.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (livraison.client?.name || livraison.client_name_override || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       livraison.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || livraison.status === statusFilter;
@@ -269,7 +269,7 @@ export default function LivraisonsPage() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {livraison.number || `LIV-${livraison.id?.slice(0, 8)}`}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{livraison.client_name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{livraison.client?.name || livraison.client_name_override || ''}</p>
                         </div>
                       </div>
                       {getStatusBadge(livraison.status)}
@@ -364,10 +364,10 @@ export default function LivraisonsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {livraison.client_name}
+                          {livraison.client?.name || livraison.client_name_override || ''}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {livraison.date ? new Date(livraison.date).toLocaleDateString('fr-FR') : '-'}
+                          {livraison.issue_date ? new Date(livraison.issue_date).toLocaleDateString('fr-FR') : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {livraison.due_date ? new Date(livraison.due_date).toLocaleDateString('fr-FR') : '-'}

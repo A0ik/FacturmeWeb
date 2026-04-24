@@ -31,6 +31,13 @@ const STATUS_CONFIG: Record<InvoiceStatus, { label: string; variant: BadgeProps[
   overdue: { label: 'En retard', variant: 'danger' },
   accepted: { label: 'Acceptée', variant: 'success' },
   refused: { label: 'Refusée', variant: 'danger' },
+  cancelled: { label: 'Annulé', variant: 'danger' },
+  refunded: { label: 'Remboursé', variant: 'warning' },
+  rejected: { label: 'Rejeté', variant: 'danger' },
+  expired: { label: 'Expiré', variant: 'default' },
+  pending: { label: 'En attente', variant: 'warning' },
+  partial: { label: 'Partiel', variant: 'info' },
+  delivered: { label: 'Livré', variant: 'success' },
 };
 
 export function StatusBadge({ status }: { status: InvoiceStatus }) {

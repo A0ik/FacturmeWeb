@@ -41,7 +41,7 @@ export default function AvoirsPage() {
     const matchesSearch =
       searchQuery === '' ||
       avoir.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      avoir.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (avoir.client?.name || avoir.client_name_override || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       avoir.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || avoir.status === statusFilter;
@@ -269,7 +269,7 @@ export default function AvoirsPage() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {avoir.number || `AVR-${avoir.id?.slice(0, 8)}`}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{avoir.client_name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{avoir.client?.name || avoir.client_name_override || ''}</p>
                         </div>
                       </div>
                       {getStatusBadge(avoir.status)}
@@ -364,10 +364,10 @@ export default function AvoirsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {avoir.client_name}
+                          {avoir.client?.name || avoir.client_name_override || ''}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {avoir.date ? new Date(avoir.date).toLocaleDateString('fr-FR') : '-'}
+                          {avoir.issue_date ? new Date(avoir.issue_date).toLocaleDateString('fr-FR') : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {avoir.due_date ? new Date(avoir.due_date).toLocaleDateString('fr-FR') : '-'}

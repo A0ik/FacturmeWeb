@@ -26,7 +26,7 @@ type StatusFilter = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'expire
 
 export default function DevisPage() {
   const router = useRouter();
-  const { invoices, fetchInvoices, clients, products } = useDataStore();
+  const { invoices, fetchInvoices, clients } = useDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedDevis, setSelectedDevis] = useState<Set<string>>(new Set());
@@ -43,7 +43,7 @@ export default function DevisPage() {
     const matchesSearch =
       searchQuery === '' ||
       devi.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      devi.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (devi.client?.name || devi.client_name_override || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       devi.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || devi.status === statusFilter;
@@ -271,7 +271,7 @@ export default function DevisPage() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {devi.number || `DEV-${devi.id?.slice(0, 8)}`}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{devi.client_name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{devi.client?.name || devi.client_name_override || ''}</p>
                         </div>
                       </div>
                       {getStatusBadge(devi.status)}
@@ -366,10 +366,10 @@ export default function DevisPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {devi.client_name}
+                          {devi.client?.name || devi.client_name_override || ''}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                          {devi.date ? new Date(devi.date).toLocaleDateString('fr-FR') : '-'}
+                          {devi.issue_date ? new Date(devi.issue_date).toLocaleDateString('fr-FR') : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                           {devi.due_date ? new Date(devi.due_date).toLocaleDateString('fr-FR') : '-'}

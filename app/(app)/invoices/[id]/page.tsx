@@ -25,12 +25,19 @@ import { isFacturXEligible } from '@/lib/facturx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bg: string; icon: any }> = {
-  draft:    { label: 'Brouillon',  color: 'text-gray-500',   bg: 'bg-gray-100',   icon: FileText },
-  sent:     { label: 'Envoyée',    color: 'text-blue-600',   bg: 'bg-blue-50',    icon: Send },
-  paid:     { label: 'Payée',      color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle },
-  overdue:  { label: 'En retard', color: 'text-red-600',    bg: 'bg-red-50',     icon: AlertTriangle },
-  accepted: { label: 'Accepté',   color: 'text-teal-600',   bg: 'bg-teal-50',    icon: Check },
-  refused:  { label: 'Refusé',    color: 'text-orange-600', bg: 'bg-orange-50',  icon: X },
+  draft:     { label: 'Brouillon',   color: 'text-gray-500',    bg: 'bg-gray-100',    icon: FileText },
+  sent:      { label: 'Envoyée',     color: 'text-blue-600',    bg: 'bg-blue-50',     icon: Send },
+  paid:      { label: 'Payée',       color: 'text-emerald-600', bg: 'bg-emerald-50',  icon: CheckCircle },
+  overdue:   { label: 'En retard',   color: 'text-red-600',     bg: 'bg-red-50',      icon: AlertTriangle },
+  accepted:  { label: 'Accepté',     color: 'text-teal-600',    bg: 'bg-teal-50',     icon: Check },
+  refused:   { label: 'Refusé',      color: 'text-orange-600',  bg: 'bg-orange-50',   icon: X },
+  cancelled: { label: 'Annulé',      color: 'text-red-600',     bg: 'bg-red-50',      icon: X },
+  refunded:  { label: 'Remboursé',   color: 'text-orange-600',  bg: 'bg-orange-50',   icon: X },
+  rejected:  { label: 'Rejeté',      color: 'text-red-600',     bg: 'bg-red-50',      icon: X },
+  expired:   { label: 'Expiré',      color: 'text-gray-500',    bg: 'bg-gray-100',    icon: AlertTriangle },
+  pending:   { label: 'En attente',  color: 'text-yellow-600',  bg: 'bg-yellow-50',   icon: AlertTriangle },
+  partial:   { label: 'Partiel',     color: 'text-blue-600',    bg: 'bg-blue-50',     icon: CheckCircle },
+  delivered: { label: 'Livré',       color: 'text-emerald-600', bg: 'bg-emerald-50',  icon: CheckCircle },
 };
 
 const DOC_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
