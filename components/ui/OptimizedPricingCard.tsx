@@ -95,10 +95,8 @@ export function OptimizedPricingCard({
 }: OptimizedPricingCardProps) {
   const Icon = plan.icon;
 
-  // Calculer le prix affiché avec prorata
-  const displayPrice = prorataAmount > 0
-    ? `${prorataAmount.toFixed(2)}€`
-    : plan.price;
+  // Calculer le prix affiché - TOUJOURS afficher le prix normal, pas le prorata
+  const displayPrice = plan.price;
 
   const hasProrata = prorataAmount > 0 && !isCurrent && !isDowngrade;
 

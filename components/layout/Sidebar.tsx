@@ -72,9 +72,9 @@ const TIER_CONFIG = {
 const NAV_CORE = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', badge: null as null | 'overdue' | 'notif' },
   { href: '/documents', icon: FileText, label: 'Documents', badge: 'overdue' as null | 'overdue' | 'notif', hasSubmenu: true },
+  { href: '/contracts', icon: FileText, label: 'Contrats', badge: null },
   { href: '/clients', icon: Users, label: 'Clients', badge: null },
   { href: '/products', icon: Package, label: 'Articles', badge: null },
-  { href: '/recurring', icon: RefreshCw, label: 'Récurrentes', badge: null },
   { href: '/calendar', icon: Calendar, label: 'Agenda', badge: null },
   { href: '/settings', icon: Settings, label: 'Paramètres', badge: null },
 ];
@@ -86,9 +86,7 @@ const DOCUMENTS_SUBMENU = [
   { href: '/orders', icon: Package, label: 'Commandes' },
   { href: '/deliveries', icon: Truck, label: 'Livraisons' },
   { href: '/deposits', icon: Calculator, label: 'Acomptes' },
-  { href: '/contracts/cdd', icon: FileText, label: 'Contrat CDD' },
-  { href: '/contracts/cdi', icon: FileText, label: 'Contrat CDI' },
-  { href: '/contracts/other', icon: FileText, label: 'Autres contrats' },
+  { href: '/avoirs', icon: Receipt, label: 'Avoirs' },
 ];
 
 // Features avancées — code intact, UI cachée (Progressive Disclosure)
@@ -285,7 +283,9 @@ export default function Sidebar() {
 
       {/* Logo */}
       <div className="relative z-10 px-5 py-5 border-b border-gray-100 dark:border-white/5 flex-shrink-0">
-        <Logo size="md" variant="full" dark={false} />
+        <Link href="/dashboard" className="block hover:opacity-80 transition-opacity">
+          <Logo size="md" variant="full" dark={false} />
+        </Link>
         <div className="mt-2.5 flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />

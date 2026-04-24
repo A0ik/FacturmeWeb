@@ -214,12 +214,35 @@ export default function PaywallPage() {
     setLoading(planId);
     setSelectedPlan(selectedPlan);
     try {
-      const res = await fetch('/api/stripe/subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planId, userId: profile?.id }),
-      });
-      const data = await res.json();
+      // Pour les utilisateurs payants qui changent de plan, utiliser l'endpoint change-subscription
+      if (!sub.isFree && sub.tier !== 'free') {
+        const res = await fetch('/api/stripe/change-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: planId, userId: profile?.id }),
+        });
+        const data = await res.json();
+
+        if (data.url) {
+          // Redirection vers Stripe Checkout pour l'upgrade avec prorata
+          window.location.href = data.url;
+        } else if (data.success) {
+          // Downgrade ou upgrade sans frais immédiats - succès direct
+          toast.success('Abonnement mis à jour avec succès !');
+          // Refresh de la page pour mettre à jour l'UI
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          toast.error(data.error || "Impossible de changer l'abonnement");
+          setSelectedPlan(null);
+        }
+      } else {
+        // Nouvel abonnement pour les utilisateurs gratuits
+        const res = await fetch('/api/stripe/subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: planId, userId: profile?.id }),
+        });
+        const data = await res.json();
 
       if (data.clientSecret) {
         const planInfo: PlanInfo = {
@@ -241,6 +264,7 @@ export default function PaywallPage() {
       } else {
         toast.error(data.error || "Impossible de créer l'abonnement");
         setSelectedPlan(null);
+      }
       }
     } catch (e: any) {
       toast.error(e.message || 'Erreur');

@@ -95,7 +95,8 @@
       "Bash(netstat -ano)",
       "mcp__supabase__get_storage_config",
       "Bash(rtn ps *)",
-      "Bash(rtn rm *)"
+      "Bash(rtn rm *)",
+      "Bash(rsk tsc *)"
     ]
   },
   "enableAllProjectMcpServers": true,

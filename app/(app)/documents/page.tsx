@@ -18,23 +18,15 @@ const documentCategories = [
     title: 'Factures',
     description: 'Créez et gérez vos factures clients',
     icon: Receipt,
-    href: '/invoices',
+    href: '/documents/factures',
     color: 'from-blue-500/20 to-blue-600/20',
     iconColor: 'text-blue-600',
-  },
-  {
-    title: 'Factures Récurrentes',
-    description: 'Automatisez vos factures périodiques',
-    icon: FileText,
-    href: '/recurring',
-    color: 'from-green-500/20 to-green-600/20',
-    iconColor: 'text-green-600',
   },
   {
     title: 'Devis',
     description: 'Créez des devis professionnels',
     icon: FileCheck,
-    href: '/documents/quotes',
+    href: '/documents/devis',
     color: 'from-purple-500/20 to-purple-600/20',
     iconColor: 'text-purple-600',
   },
@@ -42,7 +34,7 @@ const documentCategories = [
     title: 'Commandes',
     description: 'Gérez vos bons de commande',
     icon: ShoppingBag,
-    href: '/documents/orders',
+    href: '/documents/commandes',
     color: 'from-orange-500/20 to-orange-600/20',
     iconColor: 'text-orange-600',
   },
@@ -50,7 +42,7 @@ const documentCategories = [
     title: 'Livraisons',
     description: 'Suivez vos livraisons',
     icon: Truck,
-    href: '/documents/deliveries',
+    href: '/documents/livraisons',
     color: 'from-indigo-500/20 to-indigo-600/20',
     iconColor: 'text-indigo-600',
   },
@@ -58,9 +50,17 @@ const documentCategories = [
     title: 'Acomptes',
     description: 'Gérez les paiements partiels',
     icon: Percent,
-    href: '/documents/deposits',
+    href: '/documents/acomptes',
     color: 'from-teal-500/20 to-teal-600/20',
     iconColor: 'text-teal-600',
+  },
+  {
+    title: 'Avoirs',
+    description: 'Gérez vos notes d\'avoir',
+    icon: FileText,
+    href: '/documents/avoirs',
+    color: 'from-rose-500/20 to-pink-600/20',
+    iconColor: 'text-rose-600',
   },
 ];
 
@@ -107,6 +107,22 @@ export default function DocumentsPage() {
           <p className="text-xl text-gray-600 dark:text-gray-400">
             Gérez tous vos documents commerciaux et juridiques
           </p>
+        </motion.div>
+
+        {/* Bouton Voir tous les documents */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <Link
+            href="/invoices"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary-dark text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            <FileText size={20} />
+            Voir tous les documents
+          </Link>
         </motion.div>
 
         {/* Commercial Documents */}

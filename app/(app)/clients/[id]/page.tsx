@@ -14,7 +14,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDateShort, getInitials, cn } from '@/lib/utils';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check, Star, TrendingUp, Clock, Upload, Camera, ArrowLeft, Mail, Phone, MapPin, Building2, FileCheck, AlertCircle } from 'lucide-react';
+import { Pencil, Trash2, FileText, Plus, Tag, MessageSquare, X, Globe, Copy, Check, Star, TrendingUp, Clock, Upload, Camera, ArrowLeft, Mail, Phone, MapPin, Building2, FileCheck, AlertCircle, Receipt, ShoppingBag, Truck, Percent } from 'lucide-react';
 
 const TAG_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -42,6 +42,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const { user } = useAuthStore();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showNewDocument, setShowNewDocument] = useState(false);
   const [loading, setLoading] = useState(false);
   const [portalUrl, setPortalUrl] = useState('');
   const [portalCopied, setPortalCopied] = useState(false);
@@ -245,6 +246,19 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   };
 
   const clientTags: string[] = (client as any).tags || [];
+
+  // Document types for modal
+  const documentTypes = [
+    { id: 'invoice', name: 'Facture', description: 'Facture client standard', icon: Receipt, color: 'from-blue-500 to-blue-600', href: `/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}&type=invoice` },
+    { id: 'quote', name: 'Devis', description: 'Devis professionnel', icon: FileCheck, color: 'from-purple-500 to-purple-600', href: `/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}&type=quote` },
+    { id: 'purchase_order', name: 'Bon de commande', description: 'Bon de commande client', icon: ShoppingBag, color: 'from-orange-500 to-orange-600', href: `/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}&type=purchase_order` },
+    { id: 'delivery_note', name: 'Bon de livraison', description: 'Bon de livraison', icon: Truck, color: 'from-indigo-500 to-indigo-600', href: `/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}&type=delivery_note` },
+    { id: 'deposit', name: 'Facture d\'acompte', description: 'Facture d\'acompte', icon: Percent, color: 'from-teal-500 to-teal-600', href: `/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}&type=deposit` },
+  ];
+
+  const handleSelectDocumentType = (docType: typeof documentTypes[0]) => {
+    router.push(docType.href);
+  };
 
   // Scoring client
   const paidInvoices = clientInvoices.filter((i) => i.status === 'paid' && i.paid_at && i.due_date);
@@ -626,13 +640,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       <GlassCard delay={0.7} className="overflow-hidden p-0">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/10">
           <h3 className="font-bold text-gray-900 dark:text-white text-lg">Documents</h3>
-          <Link
-            href={`/invoices/new?clientId=${id}&clientName=${encodeURIComponent(client.name)}`}
+          <button
+            onClick={() => setShowNewDocument(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl text-sm font-semibold hover:shadow-lg transition-all hover:scale-105"
           >
             <Plus size={16} />
-            Nouvelle facture
-          </Link>
+            Nouveau document
+          </button>
         </div>
         {clientInvoices.length === 0 ? (
           <div className="text-center py-12">
@@ -794,6 +808,36 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <div className="flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={() => setShowDelete(false)}>Annuler</Button>
           <Button variant="danger" className="flex-1" onClick={handleDelete}>Supprimer</Button>
+        </div>
+      </Modal>
+
+      {/* New document modal */}
+      <Modal open={showNewDocument} onClose={() => setShowNewDocument(false)} title="Créer un nouveau document" size="lg">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {documentTypes.map((docType) => {
+            const Icon = docType.icon;
+            return (
+              <motion.button
+                key={docType.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleSelectDocumentType(docType)}
+                className="relative overflow-hidden rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary/50 hover:shadow-lg transition-all text-left group"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${docType.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                <div className="relative">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${docType.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                    <Icon size={24} className="text-white" />
+                  </div>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{docType.name}</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{docType.description}</p>
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 mt-6">
+          <Button variant="secondary" className="flex-1" onClick={() => setShowNewDocument(false)}>Annuler</Button>
         </div>
       </Modal>
     </div>
