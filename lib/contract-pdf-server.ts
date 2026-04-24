@@ -394,7 +394,7 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
         ? `Le présent contrat ne peut comporter de période d'essai que si sa durée est supérieure à deux semaines, conformément à l'article L. 1242-10 du Code du travail. ${trialDays} jours sont prévus à cet effet.`
         : `Une période d'essai de ${trialDays} jours est prévue.`
     ];
-    y = drawArticle(page, 'ARTICLE 6 - PÉRIODE D'ESSAI', trialContent, margin, y, contentW, timesBold, timesReg, accent, ink, minY);
+    y = drawArticle(page, "ARTICLE 6 - PÉRIODE D'ESSAI", trialContent, margin, y, contentW, timesBold, timesReg, accent, ink, minY);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -435,7 +435,7 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
 
   if (data.contractType === 'apprentissage' || data.contractType === 'professionnalisation') {
     needPage();
-    y = drawArticle(page, 'ARTICLE 8 - MAÎTRE D'APPRENTISSAGE / TUTEUR', [
+    y = drawArticle(page, "ARTICLE 8 - MAÎTRE D'APPRENTISSAGE / TUTEUR", [
       `Le salarié sera accompagné(e) par ${data.tutorName || 'un maître d\'apprentissage/tuteur désigné par l\'entreprise'}, qui assurera la formation pratique et le suivi de l'alternant.`,
       'Le maître d\'apprentissage/tuteur justifie d\'une expérience professionnelle minimale de deux ans dans le domaine.'
     ], margin, y, contentW, timesBold, timesReg, accent, ink, minY);
@@ -558,7 +558,7 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   needPage();
   y = drawArticle(page, `ARTICLE ${parseInt(ruptureArticle) + 3} - LITIGES`, [
     `Tout litige relatif à l'exécution, à l'interprétation ou à la rupture du présent contrat sera soumis aux juridictions compétentes du siège social de l'employeur, à savoir ${data.companyCity}.`,
-    'Les parties s'engagent à tenter de résoudre tout différend à l'amiable avant toute action en justice.'
+    "Les parties s'engagent à tenter de résoudre tout différend à l'amiable avant toute action en justice."
   ], margin, y, contentW, timesBold, timesReg, accent, ink, minY);
 
   // ═══════════════════════════════════════════════════════════════════════════

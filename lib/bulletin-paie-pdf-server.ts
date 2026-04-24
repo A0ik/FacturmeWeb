@@ -145,6 +145,15 @@ function rightText(
   page.drawText(t, { x: rightEdge - w, y, size, font, color });
 }
 
+function centreText(
+  page: PDFPage, text: string, x: number, w: number, y: number,
+  size: number, font: PDFFont, color: RGB,
+): void {
+  const t = safe(text);
+  const tw = font.widthOfTextAtSize(t, size);
+  page.drawText(t, { x: x + (w - tw) / 2, y, size, font, color });
+}
+
 function formatMonnaie(montant: number): string {
   return montant.toFixed(2) + ' EUR';
 }
@@ -405,7 +414,7 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
   rightText(page, 'Montant', W - margin, y, 7, helvBold, ink);
   y -= 12;
 
-  for (const cotis of cotisations.salaales.lines) {
+  for (const cotis of cotisations.salariales.lines) {
     drawText(page, cotis.label, colX.label, y, 7, helvReg, ink);
     rightText(page, formatMonnaie(cotis.base), colX.base, y, 7, helvReg, ink);
     const tauxStr = typeof cotis.taux === 'number' ? `${cotis.taux.toFixed(2)}%` : cotis.taux;
@@ -417,7 +426,7 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
   // Total salariales
   page.drawLine({ start: { x: margin, y: y + 4 }, end: { x: W - margin, y: y + 4 }, thickness: 1, color: accent });
   drawText(page, 'TOTAL COTISATIONS SALARIALES', colX.label, y, 9, helvBold, ink);
-  rightText(page, formatMonnaie(cotisations.salaales.total), W - margin, y, 9, helvBold, rgb(220, 53, 69));
+  rightText(page, formatMonnaie(cotisations.salariales.total), W - margin, y, 9, helvBold, rgb(220, 53, 69));
   y -= 22;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -452,7 +461,7 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
   needPage();
   const signatureY = y - 40;
   const leftX = margin;
-  const rightX = W - margin - 150;
+  const signatureRightX = W - margin - 150;
   const signatureW = 150;
 
   drawText(page, 'SIGNATURES', leftX, y, 9, helvBold, accent);
@@ -481,25 +490,25 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
   }
 
   // Employee signature
-  drawText(page, 'Salarie', rightX, y, 9, helvBold, ink);
-  drawText(page, `${data.prenom} ${data.nom}`, rightX, y - 12, 8, helvReg, ink);
+  drawText(page, 'Salarie', signatureRightX, y, 9, helvBold, ink);
+  drawText(page, `${data.prenom} ${data.nom}`, signatureRightX, y - 12, 8, helvReg, ink);
 
   if (data.employeeSignature) {
     const sigData = await embedBase64Image(pdfDoc, data.employeeSignature);
     if (sigData) {
       page.drawImage(sigData.image, {
-        x: rightX,
+        x: signatureRightX,
         y: signatureY - sigData.dims.height,
         width: sigData.dims.width,
         height: sigData.dims.height,
       });
     } else {
-      page.drawLine({ start: { x: rightX, y: signatureY }, end: { x: rightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-      drawText(page, 'Signature', rightX, signatureY - 8, 7, timesItalic, muted);
+      page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
+      drawText(page, 'Signature', signatureRightX, signatureY - 8, 7, timesItalic, muted);
     }
   } else {
-    page.drawLine({ start: { x: rightX, y: signatureY }, end: { x: rightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-    drawText(page, 'Signature', rightX, signatureY - 8, 7, timesItalic, muted);
+    page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
+    drawText(page, 'Signature', signatureRightX, signatureY - 8, 7, timesItalic, muted);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

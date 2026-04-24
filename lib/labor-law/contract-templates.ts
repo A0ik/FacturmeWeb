@@ -369,7 +369,7 @@ export function generateCDDContract(data: ContractTemplateData): string {
         ${data.hasHealth ? '<li>Complémentaire santé collective</li>' : ''}
         ${data.hasOther && data.otherBenefits ? `<li>${data.otherBenefits}</li>` : ''}
       </ul>
-      ${!data.hasTransport && !data.hasMeal && !data.hasHealth && !data.hasOther ? '<p>Aucun avantage particulier n'est prévu au présent contrat.</p>' : ''}
+      ${!data.hasTransport && !data.hasMeal && !data.hasHealth && !data.hasOther ? "<p>Aucun avantage particulier n'est prévu au présent contrat.</p>" : ''}
     </div>
   </div>
 
@@ -1212,7 +1212,7 @@ export function generateStageContract(data: ContractTemplateData): string {
     <div class="article">
       <div class="field">
         <span class="label">Intitulé du stage :</span>
-        <span class="value"><strong>${data.jobTitle || data.contractTitle}</strong></span>
+        <span class="value"><strong>${data.jobTitle || 'Poste non spécifié'}</strong></span>
       </div>
       ${data.speciality ? `
       <div class="field">
@@ -2149,7 +2149,7 @@ function generateFreelanceContract(data: ContractTemplateData): string {
     <div class="article">
       <div class="field">
         <span class="label">Intitulé de la mission :</span>
-        <span class="value"><strong>${data.jobTitle || data.contractTitle}</strong></span>
+        <span class="value"><strong>${data.jobTitle || 'Poste non spécifié'}</strong></span>
       </div>
       ${data.speciality ? `
       <div class="field">
@@ -2159,7 +2159,7 @@ function generateFreelanceContract(data: ContractTemplateData): string {
       ` : ''}
       <div class="field" style="margin-top: 15px;">
         <span class="label">Description des services :</span>
-        <span class="value">${data.tasks || 'Le prestataire fournira au client des services de conseil, expertise ou assistance dans le domaine de ' + (data.jobTitle || data.contractTitle) + '.'}</span>
+        <span class="value">${data.tasks || 'Le prestataire fournira au client des services de conseil, expertise ou assistance dans le domaine de ' + (data.jobTitle || 'Poste non spécifié') + '.'}</span>
       </div>
     </div>
   </div>
