@@ -11,8 +11,9 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err: any) {
-    return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
+  } catch (err: unknown) {
+    const e = err as Error;
+    return NextResponse.json({ error: `Webhook error: ${e.message}` }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -54,10 +55,63 @@ export async function POST(req: NextRequest) {
           .eq('stripe_subscription_id', sub.id);
         break;
       }
+
+      case 'invoice.payment_failed': {
+        const inv = event.data.object as Stripe.Invoice;
+        const customerId = typeof inv.customer === 'string' ? inv.customer : inv.customer?.id;
+        if (customerId) {
+          // Récupérer le profil par stripe_customer_id pour logguer l'échec
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('stripe_customer_id', customerId)
+            .single();
+
+          if (profile) {
+            // Insérer une notification d'échec de paiement
+            await supabase.from('notifications').insert({
+              user_id: profile.id,
+              type: 'system',
+              title: 'Échec de paiement',
+              body: `Le renouvellement de votre abonnement a échoué. Mettez à jour votre moyen de paiement.`,
+              link: '/settings',
+              read: false,
+            }).select();
+          }
+        }
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id;
+
+        if (paymentIntentId) {
+          await supabase.from('invoices')
+            .update({ status: 'refunded' })
+            .eq('stripe_payment_intent_id', paymentIntentId);
+        }
+        break;
+      }
+
+      case 'customer.deleted': {
+        const customer = event.data.object as Stripe.Customer;
+        await supabase.from('profiles')
+          .update({
+            subscription_tier: 'free',
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+          })
+          .eq('stripe_customer_id', customer.id);
+        break;
+      }
     }
-  } catch (err: any) {
-    console.error('[webhook]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const e = err as Error;
+    console.error('[webhook]', e.message);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

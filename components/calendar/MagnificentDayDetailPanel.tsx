@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { Calendar as CalendarIcon, FileText, Plus, Sparkles, Clock, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, FileText, Plus, Sparkles, MousePointerClick } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Appointment, Invoice } from '@/types';
 import { MagnificentAppointmentCard } from './MagnificentAppointmentCard';
@@ -44,6 +44,42 @@ export function MagnificentDayDetailPanel({
 
   return (
     <AnimatePresence mode="wait">
+      {selectedDay === null && (
+        <motion.div
+          key="no-day"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className={cn(
+            'lg:w-[400px] xl:w-[440px]',
+            'backdrop-blur-2xl bg-white/30 dark:bg-slate-900/30',
+            'border border-white/20 dark:border-white/10 shadow-xl',
+            'rounded-[2rem]',
+            'p-6 flex flex-col items-center justify-center gap-4 min-h-[320px]',
+            className
+          )}
+        >
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/10 to-emerald-500/10 dark:from-primary/20 dark:to-emerald-500/20 flex items-center justify-center mb-2 border border-primary/20">
+            <MousePointerClick className="w-8 h-8 text-primary/60" />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-bold text-gray-700 dark:text-gray-300">Sélectionnez un jour</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 max-w-[220px] leading-relaxed">
+              Cliquez sur une date pour voir vos rendez-vous et factures dues
+            </p>
+          </div>
+          <motion.button
+            onClick={onNewAppointment}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-emerald-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Nouveau rendez-vous
+          </motion.button>
+        </motion.div>
+      )}
       {selectedDay !== null && (
         <motion.div
           key={selectedDay}

@@ -107,7 +107,7 @@ function validateValue(value: unknown, rules: ValidationRule, fieldName: string)
 /**
  * Validate request body against schema
  */
-export function validateBody(body: any, schema: Record<string, ValidationRule>): ValidationResult {
+export function validateBody(body: Record<string, unknown>, schema: Record<string, ValidationRule>): ValidationResult {
   const errors: Record<string, string> = {};
 
   for (const [field, rules] of Object.entries(schema)) {

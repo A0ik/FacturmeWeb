@@ -49,13 +49,14 @@ export async function POST(req: NextRequest) {
     });
 
     // 3. Extraire le secret pour l'afficher dans le formulaire de carte
-    // @ts-ignore
-    const clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+    const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | null;
+    const clientSecret = paymentIntent?.client_secret ?? null;
 
-    // ON RENVOIE LE CLIENT SECRET AU LIEU DE L'URL
     return NextResponse.json({ clientSecret, subscriptionId: subscription.id });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

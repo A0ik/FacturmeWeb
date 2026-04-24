@@ -1,27 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_PATHS = ['/login', '/register', '/auth/callback', '/onboarding'];
+// Routes publiques explicites (pas besoin d'auth)
+const PUBLIC_PATHS = [
+  '/login',
+  '/register',
+  '/auth/callback',
+  '/onboarding',
+];
+
+// Routes API/pages publiques par préfixe
+const PUBLIC_PREFIXES = [
+  '/api/stripe/webhook',
+  '/api/share/',
+  '/api/client-portal/',
+  '/share/',
+  '/client/',
+  '/workspace/join',
+];
+
+// Préfixes protégés : tout ce qui commence par ces segments nécessite une session
+// Mis à jour automatiquement : ajouter ici tout nouveau segment de route protégée
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/invoices',
+  '/clients',
+  '/crm',
+  '/settings',
+  '/recurring',
+  '/paywall',
+  '/workspace',
+  '/notifications',
+  '/help',
+  '/expenses',
+  '/products',
+  '/calendar',
+  '/accounting',
+  '/activity',
+  '/banking',
+  '/capture',
+  '/contracts',
+  '/documents',
+  '/trial',
+];
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const pathname = req.nextUrl.pathname;
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return res;
-  if (pathname.startsWith('/api/stripe/webhook')) return res;
-  if (pathname.startsWith('/api/share/')) return res;
-  if (pathname.startsWith('/share/')) return res;
-  if (pathname.startsWith('/client/')) return res;
-  if (pathname.startsWith('/api/client-portal/')) return res;
-  if (pathname.startsWith('/workspace/join')) return res;
+  // Racine toujours publique
   if (pathname === '/') return res;
 
-  // Check if Supabase environment variables are set
+  // Chemins publics exacts
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return res;
+
+  // Préfixes publics
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return res;
+
+  // Vérifier si Supabase est configuré
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     console.error('Missing Supabase environment variables in middleware');
     return res;
   }
+
+  // N'effectuer la vérification auth que pour les routes protégées
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  if (!isProtected) return res;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,10 +73,10 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll() { return req.cookies.getAll(); },
-        setAll(cookies: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookies.forEach(({ name, value, options }) => {
+        setAll(cookieList: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          cookieList.forEach(({ name, value, options }) => {
             req.cookies.set(name, value);
-            res.cookies.set(name, value, options as any);
+            res.cookies.set(name, value, options as Parameters<typeof res.cookies.set>[2]);
           });
         },
       },
@@ -41,8 +85,7 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  const PROTECTED = ['/dashboard', '/invoices', '/clients', '/crm', '/settings', '/recurring', '/paywall', '/workspace', '/notifications', '/help', '/expenses', '/products', '/calendar', '/accounting', '/activity', '/banking', '/capture'];
-  if (!session && PROTECTED.some((p) => pathname.startsWith(p))) {
+  if (!session) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 

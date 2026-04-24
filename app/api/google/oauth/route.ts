@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
         cookies: {
           getAll() { return cookieStore.getAll(); },
           setAll(cs: { name: string; value: string; options?: Record<string, unknown> }[]) {
-            cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options as any));
+            cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options as Record<string, unknown>));
           },
         },
       }
@@ -28,20 +28,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Google Calendar non configuré' }, { status: 500 });
     }
 
-    // Use dynamic redirect URL based on request origin
     const redirectUri = `${req.nextUrl.origin}/api/google/callback`;
     const scopes = [
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/calendar.events',
     ].join(' ');
 
-    // Generate state parameter for CSRF protection with timestamp
-    const timestamp = Date.now();
-    const state = `${timestamp}_${Math.random().toString(36).substring(2, 15)}_${user.id}`;
+    const state = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${user.id}`;
 
-    console.log('[google-oauth] Generated state:', { state, userId: user.id, timestamp });
-
-    // Create OAuth URL
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -51,23 +45,20 @@ export async function GET(req: NextRequest) {
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
 
-    // Create response with state cookie
-    const response = NextResponse.json({
-      url: authUrl.toString()
-    });
+    const response = NextResponse.json({ url: authUrl.toString() });
 
-    // Set the state cookie for verification in callback
     response.cookies.set('google_oauth_state', encodeURIComponent(state), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 600, // 10 minutes
+      maxAge: 600,
     });
 
     return response;
-  } catch (error: any) {
-    console.error('[google-oauth] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[google-oauth]', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

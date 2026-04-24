@@ -184,8 +184,9 @@ export async function POST(req: NextRequest) {
             message: 'Abonnement mis à jour avec succès',
           });
         }
-      } catch (stripeError: any) {
-        console.error('[change-subscription] Erreur Stripe:', stripeError);
+      } catch (stripeError: unknown) {
+        const se = stripeError as Error;
+        console.error('[change-subscription] Erreur Stripe:', se.message);
         // Si la souscription n'existe plus ou est invalide, on continue avec une nouvelle souscription
       }
     }
@@ -199,8 +200,9 @@ export async function POST(req: NextRequest) {
       expand: ['latest_invoice.payment_intent'],
     });
 
-    // @ts-ignore
-    const clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+    const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | null;
+    const clientSecret = paymentIntent?.client_secret ?? null;
 
     return NextResponse.json({
       clientSecret,
@@ -208,9 +210,10 @@ export async function POST(req: NextRequest) {
       prorata: prorataInfo,
     });
 
-  } catch (error: any) {
-    console.error('[change-subscription] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[change-subscription] Error:', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -259,8 +262,9 @@ export async function GET(req: NextRequest) {
       ...prorataInfo,
     });
 
-  } catch (error: any) {
-    console.error('[change-subscription] GET Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[change-subscription] GET Error:', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
