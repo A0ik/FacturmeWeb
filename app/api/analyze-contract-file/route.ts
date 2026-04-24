@@ -14,34 +14,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
     }
 
-    // Read file content
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // For image files, we'd use vision. For documents, extract text
-    let fileContent = '';
-    const fileType = file.type;
-
-    if (fileType.includes('image')) {
-      // For images, we could use vision API
-      fileContent = '[Image file - would require vision API for OCR]';
-    } else if (fileType.includes('pdf') || fileType.includes('text') || fileType.includes('document')) {
-      // For documents, you'd use a PDF parser
-      // For now, we'll ask AI to analyze based on filename and context
-      fileContent = `[Document: ${file.name}]`;
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fichier trop volumineux (max 10 Mo).' }, { status: 413 });
     }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const mimeType = file.type || 'application/octet-stream';
+    const isPDF = mimeType === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
+    const isImage = mimeType.startsWith('image/');
 
     const openrouter = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: process.env.OPENROUTER_API_KEY
+      apiKey: process.env.OPENROUTER_API_KEY,
     });
 
     const systemPrompt = `Tu es un assistant expert en extraction de données depuis des documents administratifs français.
-Ton objectif est d'extraire les informations pertinentes pour un contrat de travail (CDD, CDI, ou autre).
-
-À partir du contenu du document (ou du nom du fichier si le contenu n'est pas disponible), extrais et retourne UNIQUEMENT du JSON valide.
-
-Format attendu (null si non trouvé):
+Extrais les informations pertinentes pour un contrat de travail (CDD, CDI, ou autre).
+Retourne UNIQUEMENT du JSON valide (pas de markdown) avec ce format (null si non trouvé):
 {
   "employeeFirstName": "string ou null",
   "employeeLastName": "string ou null",
@@ -70,27 +59,92 @@ Format attendu (null si non trouvé):
   "replacedEmployeeName": "string ou null",
   "contractClassification": "string ou null (pour CDI)",
   "workingHours": "string ou null"
-}
+}`;
 
-Règles :
-- Si une information n'est pas présente, mets null
-- Les dates doivent être au format YYYY-MM-DD
-- Les montants doivent être des nombres (sans le symbole €)
-- Sois précis dans l'extraction des noms et adresses`;
+    const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout IA (${ms / 1000}s)`)), ms)
+        ),
+      ]);
 
-    const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-small-24b-instruct-2501',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyse ce document et extrait les informations : ${fileContent}` },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.1,
-    });
+    let responseText: string | null = null;
+
+    // ── PDF: try text extraction first ──────────────────────────────────────
+    if (isPDF) {
+      try {
+        const pdfParse = require('pdf-parse');
+        const buffer = Buffer.from(arrayBuffer);
+        const pdfData = await withTimeout(pdfParse(buffer), 20000) as any;
+        const text = pdfData.text?.trim() || '';
+
+        if (text.length > 50) {
+          const completion = await withTimeout(
+            openrouter.chat.completions.create({
+              model: 'mistralai/mistral-small-24b-instruct-2501',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Analyse ce document et extrais les informations :\n\n${text.slice(0, 12000)}` },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.1,
+            }),
+            30000
+          );
+          responseText = completion.choices[0].message.content;
+        }
+      } catch (pdfErr) {
+        console.warn('[analyze-contract-file] PDF text extraction failed, falling back to vision:', pdfErr);
+      }
+    }
+
+    // ── Image or PDF fallback: vision model ──────────────────────────────────
+    if (!responseText && (isImage || isPDF)) {
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const imgMime = isImage ? mimeType : 'image/jpeg';
+
+      const VISION_MODELS = [
+        'google/gemini-2.0-flash-exp',
+        'meta-llama/llama-3.2-11b-vision',
+        'openai/gpt-4o-mini',
+      ];
+
+      for (const model of VISION_MODELS) {
+        try {
+          const completion = await withTimeout(
+            openrouter.chat.completions.create({
+              model,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: systemPrompt + '\n\nAnalyse ce document et extrais les informations.' },
+                    { type: 'image_url', image_url: { url: `data:${imgMime};base64,${base64}` } },
+                  ],
+                },
+              ],
+              response_format: { type: 'json_object' },
+              max_tokens: 2000,
+            }),
+            35000
+          );
+          responseText = completion.choices[0].message.content;
+          if (responseText) break;
+        } catch (err: any) {
+          console.warn(`[analyze-contract-file] Model ${model} failed:`, err.message);
+          continue;
+        }
+      }
+    }
+
+    if (!responseText) {
+      return NextResponse.json({ error: 'Impossible d\'analyser le document. Vérifiez que le fichier est lisible.' }, { status: 500 });
+    }
 
     let parsed: any = {};
     try {
-      parsed = JSON.parse(completion.choices[0].message.content || '{}');
+      parsed = JSON.parse(responseText);
     } catch (err) {
       console.error('[analyze-contract-file] Failed to parse AI response:', err);
       parsed = {};
@@ -99,7 +153,7 @@ Règles :
     return NextResponse.json({
       extractedData: parsed,
       fileName: file.name,
-      fileType: file.type
+      fileType: file.type,
     });
 
   } catch (error: any) {
@@ -111,6 +165,9 @@ Règles :
     }
     if (error.status === 429) {
       return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans quelques instants.' }, { status: 429 });
+    }
+    if (error.message?.includes('Timeout')) {
+      return NextResponse.json({ error: 'Délai dépassé. Essayez avec un fichier plus léger.' }, { status: 504 });
     }
 
     return NextResponse.json({ error: message }, { status: 500 });

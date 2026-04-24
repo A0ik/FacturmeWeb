@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Search, Check, Building2, Briefcase, FileText, Users, Calendar, Globe, Sparkles, Star } from 'lucide-react';
 
@@ -190,6 +191,13 @@ export const BENEFIT_OPTIONS = [
   { value: 'autres', label: 'Autres avantages', icon: Star, color: 'from-violet-500 to-purple-600' }
 ];
 
+interface DropdownPosition {
+  top: number;
+  left: number;
+  width: number;
+  openUpward: boolean;
+}
+
 export function MagicSelect({
   options,
   value,
@@ -203,17 +211,21 @@ export function MagicSelect({
 }: MagicSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const selectRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<DropdownPosition>({ top: 0, left: 0, width: 0, openUpward: false });
+  const [mounted, setMounted] = useState(false);
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedOption = options.find(opt => opt.value === value);
 
+  useEffect(() => { setMounted(true); }, []);
+
   // Group options by category
   const groupedOptions = options.reduce((acc, option) => {
     const category = option.category || 'Autre';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
+    if (!acc[category]) acc[category] = [];
     acc[category].push(option);
     return acc;
   }, {} as Record<string, SelectOption[]>);
@@ -229,26 +241,60 @@ export function MagicSelect({
   const filteredGroupedOptions = searchTerm
     ? filteredOptions.reduce((acc, option) => {
         const category = option.category || 'Autre';
-        if (!acc[category]) {
-          acc[category] = [];
-        }
+        if (!acc[category]) acc[category] = [];
         acc[category].push(option);
         return acc;
       }, {} as Record<string, SelectOption[]>)
     : groupedOptions;
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm('');
-      }
-    };
+  const computePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const dropdownHeight = Math.min(400, options.length * 72 + 16);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    setDropdownPos({
+      top: openUpward ? rect.top + window.scrollY - dropdownHeight - 8 : rect.bottom + window.scrollY + 8,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+      openUpward,
+    });
+  }, [options.length]);
+
+  const handleOpen = () => {
+    if (disabled) return;
+    computePosition();
+    setIsOpen(prev => !prev);
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        triggerRef.current?.contains(e.target as Node) ||
+        dropdownRef.current?.contains(e.target as Node)
+      ) return;
+      setIsOpen(false);
+      setSearchTerm('');
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
+
+  // Recompute on scroll/resize
+  useEffect(() => {
+    if (!isOpen) return;
+    const update = () => computePosition();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen, computePosition]);
 
   // Focus search input when dropdown opens
   useEffect(() => {
@@ -263,8 +309,111 @@ export function MagicSelect({
     setSearchTerm('');
   };
 
+  const dropdown = mounted && isOpen ? createPortal(
+    <AnimatePresence>
+      <motion.div
+        ref={dropdownRef}
+        initial={{ opacity: 0, y: dropdownPos.openUpward ? 10 : -10, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: dropdownPos.openUpward ? 10 : -10, scale: 0.95 }}
+        transition={{ duration: 0.18 }}
+        style={{
+          position: 'absolute',
+          top: dropdownPos.top,
+          left: dropdownPos.left,
+          width: dropdownPos.width,
+          zIndex: 99999,
+        }}
+        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden max-h-[400px] flex flex-col"
+      >
+        {/* Search Input */}
+        {searchable && (
+          <div className="p-3 border-b border-gray-100 dark:border-white/5">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Options List */}
+        <div className="overflow-y-auto flex-1 p-2 space-y-1">
+          {Object.entries(filteredGroupedOptions).map(([category, categoryOptions]) => (
+            <div key={category}>
+              {category !== 'Autre' && (
+                <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  {category}
+                </div>
+              )}
+              {categoryOptions.map((option) => {
+                const Icon = option.icon;
+                const isSelected = option.value === value;
+                return (
+                  <motion.button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleSelect(option.value)}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className={`
+                      w-full relative flex items-center gap-3
+                      px-3 py-3 rounded-2xl
+                      transition-all duration-150
+                      ${isSelected
+                        ? 'bg-gradient-to-r from-primary/20 to-purple-600/20 border-2 border-primary/30'
+                        : 'hover:bg-gray-50 dark:hover:bg-slate-800 border-2 border-transparent'
+                      }
+                    `}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${option.color || 'from-gray-400 to-gray-500'}`}>
+                      {Icon ? <Icon size={18} className="text-white" /> : <Briefcase size={18} className="text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className={`text-sm font-semibold truncate ${isSelected ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
+                        {option.label}
+                      </p>
+                      {option.description && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                          {option.description}
+                        </p>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                          <Check size={14} className="text-white" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          ))}
+
+          {filteredOptions.length === 0 && (
+            <div className="px-3 py-8 text-center">
+              <Search size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Aucun résultat pour "{searchTerm}"
+              </p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  ) : null;
+
   return (
-    <div ref={selectRef} className="relative">
+    <div className="relative">
       {label && (
         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-2">
           {LabelIcon && <LabelIcon size={14} className="text-primary" />}
@@ -274,8 +423,9 @@ export function MagicSelect({
 
       {/* Trigger Button */}
       <motion.button
+        ref={triggerRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleOpen}
         disabled={disabled}
         whileHover={{ scale: disabled ? 1 : 1.01 }}
         whileTap={{ scale: disabled ? 1 : 0.99 }}
@@ -324,122 +474,12 @@ export function MagicSelect({
           </div>
         </div>
 
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronDown size={20} className={isOpen ? 'text-primary' : 'text-gray-400'} />
         </motion.div>
       </motion.button>
 
-      {/* Dropdown Menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute z-[9999] w-full mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden max-h-[400px] flex flex-col"
-          >
-            {/* Search Input */}
-            {searchable && (
-              <div className="p-3 border-b border-gray-100 dark:border-white/5">
-                <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Rechercher..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Options List */}
-            <div className="overflow-y-auto flex-1 p-2 space-y-1">
-              {Object.entries(filteredGroupedOptions).map(([category, categoryOptions]) => (
-                <div key={category}>
-                  {/* Category Header */}
-                  {category !== 'Autre' && (
-                    <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      {category}
-                    </div>
-                  )}
-
-                  {/* Category Options */}
-                  {categoryOptions.map((option) => {
-                    const Icon = option.icon;
-                    const isSelected = option.value === value;
-
-                    return (
-                      <motion.button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleSelect(option.value)}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className={`
-                          w-full relative flex items-center gap-3
-                          px-3 py-3 rounded-2xl
-                          transition-all duration-150
-                          ${isSelected
-                            ? 'bg-gradient-to-r from-primary/20 to-purple-600/20 border-2 border-primary/30'
-                            : 'hover:bg-gray-50 dark:hover:bg-slate-800 border-2 border-transparent'
-                          }
-                        `}
-                      >
-                        {/* Icon */}
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${option.color || 'from-gray-400 to-gray-500'}`}>
-                          {Icon ? <Icon size={18} className="text-white" /> : <Briefcase size={18} className="text-white" />}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 text-left">
-                          <p className={`text-sm font-semibold truncate ${isSelected ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                            {option.label}
-                          </p>
-                          {option.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                              {option.description}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Checkmark for selected */}
-                        {isSelected && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="flex-shrink-0"
-                          >
-                            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                              <Check size={14} className="text-white" />
-                            </div>
-                          </motion.div>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              ))}
-
-              {/* No results */}
-              {filteredOptions.length === 0 && (
-                <div className="px-3 py-8 text-center">
-                  <Search size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Aucun résultat pour "{searchTerm}"
-                  </p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {dropdown}
     </div>
   );
 }

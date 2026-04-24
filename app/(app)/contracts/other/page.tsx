@@ -149,8 +149,9 @@ export default function OtherContractPage() {
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        await processVoiceInput(audioBlob);
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        await processVoiceInput(audioBlob, mimeType);
       };
 
       recorder.start();
@@ -168,13 +169,14 @@ export default function OtherContractPage() {
     }
   };
 
-  const processVoiceInput = async (audioBlob: Blob) => {
+  const processVoiceInput = async (audioBlob: Blob, mimeType?: string) => {
     setProcessingVoice(true);
     setError('');
 
     try {
+      const ext = (mimeType || audioBlob.type).includes('mp4') ? 'mp4' : (mimeType || audioBlob.type).includes('ogg') ? 'ogg' : 'webm';
       const formData_req = new FormData();
-      formData_req.append('audio', audioBlob);
+      formData_req.append('audio', audioBlob, `recording.${ext}`);
       formData_req.append('contract_type', 'other');
 
       const response = await fetch('/api/process-voice-contract', {
@@ -451,6 +453,11 @@ export default function OtherContractPage() {
           contract: {
             ...formData,
             contractType,
+            contractStartDate: formData.startDate,
+            contractEndDate: formData.endDate,
+            jobTitle: formData.jobTitle || formData.contractTitle || formData.contractCategory,
+            workLocation: formData.workLocation || formData.companyCity,
+            workSchedule: formData.workSchedule || '35h hebdomadaires',
           }
         }),
       });

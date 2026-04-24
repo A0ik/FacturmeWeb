@@ -188,8 +188,9 @@ export default function CDIContractPage() {
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        await processVoiceInput(audioBlob);
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        await processVoiceInput(audioBlob, mimeType);
       };
 
       recorder.start();
@@ -207,13 +208,14 @@ export default function CDIContractPage() {
     }
   };
 
-  const processVoiceInput = async (audioBlob: Blob) => {
+  const processVoiceInput = async (audioBlob: Blob, mimeType?: string) => {
     setProcessingVoice(true);
     setError('');
 
     try {
+      const ext = (mimeType || audioBlob.type).includes('mp4') ? 'mp4' : (mimeType || audioBlob.type).includes('ogg') ? 'ogg' : 'webm';
       const formData = new FormData();
-      formData.append('audio', audioBlob);
+      formData.append('audio', audioBlob, `recording.${ext}`);
       formData.append('contract_type', 'cdi');
 
       const response = await fetch('/api/process-voice-contract', {
