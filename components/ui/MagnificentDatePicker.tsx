@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,8 @@ interface MagnificentDatePickerProps {
   maxDate?: string;
   required?: boolean;
 }
+
+type ViewMode = 'days' | 'months' | 'years';
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -35,10 +37,18 @@ export function MagnificentDatePicker({
 }: MagnificentDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>('days');
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const selectedDate = value ? new Date(value + 'T00:00:00') : null;
+
+  // Réinitialiser la vue quand on ouvre
+  useEffect(() => {
+    if (isOpen) {
+      setViewMode('days');
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,22 +74,31 @@ export function MagnificentDatePicker({
     });
   };
 
+  // --- Plage d'années affichées (12 ans par page) ---
+  const yearRange = useMemo(() => {
+    const currentYear = currentDate.getFullYear();
+    const startYear = Math.floor(currentYear / 12) * 12;
+    const years = [];
+    for (let i = 0; i < 12; i++) {
+      years.push(startYear + i);
+    }
+    return years;
+  }, [currentDate]);
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = (firstDay.getDay() + 6) % 7; // Adjust for Monday start
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
 
     const days = [];
 
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day));
     }
@@ -93,6 +112,32 @@ export function MagnificentDatePicker({
     if (minDate && dateStr < minDate) return false;
     if (maxDate && dateStr > maxDate) return false;
 
+    return true;
+  };
+
+  const isYearEnabled = (year: number) => {
+    if (minDate) {
+      const minY = new Date(minDate + 'T00:00:00').getFullYear();
+      if (year < minY) return false;
+    }
+    if (maxDate) {
+      const maxY = new Date(maxDate + 'T00:00:00').getFullYear();
+      if (year > maxY) return false;
+    }
+    return true;
+  };
+
+  const isMonthEnabled = (year: number, month: number) => {
+    if (minDate) {
+      const minD = new Date(minDate + 'T00:00:00');
+      if (year < minD.getFullYear()) return false;
+      if (year === minD.getFullYear() && month < minD.getMonth()) return false;
+    }
+    if (maxDate) {
+      const maxD = new Date(maxDate + 'T00:00:00');
+      if (year > maxD.getFullYear()) return false;
+      if (year === maxD.getFullYear() && month > maxD.getMonth()) return false;
+    }
     return true;
   };
 
@@ -113,12 +158,38 @@ export function MagnificentDatePicker({
     return selectedDate ? isSameDay(date, selectedDate) : false;
   };
 
+  const isCurrentYear = () => {
+    return selectedDate
+      ? selectedDate.getFullYear() === currentDate.getFullYear()
+      : false;
+  };
+
+  const isCurrentMonth = (month: number) => {
+    if (!selectedDate) return false;
+    return (
+      selectedDate.getFullYear() === currentDate.getFullYear() &&
+      selectedDate.getMonth() === month
+    );
+  };
+
   const handleDateClick = (date: Date) => {
     if (!isDateEnabled(date)) return;
 
     const dateStr = date.toISOString().split('T')[0];
     onChange(dateStr);
     setIsOpen(false);
+  };
+
+  const handleMonthClick = (month: number) => {
+    if (!isMonthEnabled(currentDate.getFullYear(), month)) return;
+    setCurrentDate(new Date(currentDate.getFullYear(), month, 1));
+    setViewMode('days');
+  };
+
+  const handleYearClick = (year: number) => {
+    if (!isYearEnabled(year)) return;
+    setCurrentDate(new Date(year, currentDate.getMonth(), 1));
+    setViewMode('months');
   };
 
   const goToPreviousMonth = () => {
@@ -129,11 +200,61 @@ export function MagnificentDatePicker({
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
   };
 
+  const goToPreviousYearRange = () => {
+    const startYear = Math.floor(currentDate.getFullYear() / 12) * 12;
+    setCurrentDate(new Date(startYear - 12, 0, 1));
+  };
+
+  const goToNextYearRange = () => {
+    const startYear = Math.floor(currentDate.getFullYear() / 12) * 12;
+    setCurrentDate(new Date(startYear + 12, 0, 1));
+  };
+
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(today);
     handleDateClick(today);
   };
+
+  const headerTitle = () => {
+    if (viewMode === 'days') {
+      return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+    }
+    if (viewMode === 'months') {
+      return `${currentDate.getFullYear()}`;
+    }
+    // years
+    return `${yearRange[0]} – ${yearRange[11]}`;
+  };
+
+  const handleHeaderClick = () => {
+    if (viewMode === 'days') {
+      setViewMode('months');
+    } else if (viewMode === 'months') {
+      setViewMode('years');
+    }
+  };
+
+  const handlePrevious = () => {
+    if (viewMode === 'days') goToPreviousMonth();
+    else if (viewMode === 'months') {
+      setCurrentDate(new Date(currentDate.getFullYear() - 1, 0, 1));
+    } else {
+      goToPreviousYearRange();
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === 'days') goToNextMonth();
+    else if (viewMode === 'months') {
+      setCurrentDate(new Date(currentDate.getFullYear() + 1, 0, 1));
+    } else {
+      goToNextYearRange();
+    }
+  };
+
+  const todayYear = new Date().getFullYear();
+  const todayMonth = new Date().getMonth();
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
@@ -212,98 +333,254 @@ export function MagnificentDatePicker({
                 <div className="flex items-center justify-between mb-3">
                   <button
                     type="button"
-                    onClick={goToPreviousMonth}
+                    onClick={handlePrevious}
                     className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4 text-white" />
                   </button>
 
-                  <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleHeaderClick}
+                    className={cn(
+                      'text-center px-3 py-1 rounded-lg transition-colors',
+                      viewMode !== 'years' && 'hover:bg-white/20 cursor-pointer'
+                    )}
+                  >
                     <motion.div
-                      key={`${currentDate.getFullYear()}-${currentDate.getMonth()}`}
+                      key={`${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewMode}`}
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="text-white font-bold"
                     >
-                      {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+                      {headerTitle()}
                     </motion.div>
-                  </div>
+                    {viewMode !== 'years' && (
+                      <div className="text-white/60 text-[10px] mt-0.5">
+                        {viewMode === 'days' ? 'Cliquer pour les mois' : 'Cliquer pour les années'}
+                      </div>
+                    )}
+                  </button>
 
                   <button
                     type="button"
-                    onClick={goToNextMonth}
+                    onClick={handleNext}
                     className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                   >
                     <ChevronRight className="w-4 h-4 text-white" />
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={goToToday}
-                  className="w-full py-2 text-sm font-semibold text-white bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
-                >
-                  Aujourd'hui
-                </button>
+                {viewMode === 'days' && (
+                  <button
+                    type="button"
+                    onClick={goToToday}
+                    className="w-full py-2 text-sm font-semibold text-white bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                  >
+                    Aujourd&apos;hui
+                  </button>
+                )}
               </div>
 
-              {/* Calendar Grid */}
+              {/* Content */}
               <div className="p-4">
-                {/* Weekday Headers */}
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {WEEKDAYS.map((day) => (
-                    <div
-                      key={day}
-                      className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-2"
+                <AnimatePresence mode="wait">
+                  {/* ==================== DAYS VIEW ==================== */}
+                  {viewMode === 'days' && (
+                    <motion.div
+                      key="days-view"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.15 }}
                     >
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Days */}
-                <div className="grid grid-cols-7 gap-1">
-                  {getDaysInMonth(currentDate).map((date, index) => {
-                    if (!date) {
-                      return <div key={`empty-${index}`} className="h-10" />;
-                    }
-
-                    const enabled = isDateEnabled(date);
-                    const selected = isSelected(date);
-                    const today = isToday(date);
-
-                    return (
-                      <motion.button
-                        key={index}
-                        type="button"
-                        onClick={() => handleDateClick(date)}
-                        disabled={!enabled}
-                        whileHover={enabled ? { scale: 1.05 } : {}}
-                        whileTap={enabled ? { scale: 0.95 } : {}}
-                        className={cn(
-                          'relative h-10 rounded-xl font-semibold text-sm transition-all duration-200',
-                          'flex items-center justify-center',
-                          selected && 'bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg',
-                          !selected && enabled && 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300',
-                          !enabled && 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
-                          today && !selected && 'ring-2 ring-primary/50'
-                        )}
-                      >
-                        <span>{date.getDate()}</span>
-                        {selected && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute inset-0 flex items-center justify-center"
+                      {/* Weekday Headers */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {WEEKDAYS.map((day) => (
+                          <div
+                            key={day}
+                            className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-2"
                           >
-                            <Check className="w-4 h-4 text-white" />
-                          </motion.div>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Days */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {getDaysInMonth(currentDate).map((date, index) => {
+                          if (!date) {
+                            return <div key={`empty-${index}`} className="h-10" />;
+                          }
+
+                          const enabled = isDateEnabled(date);
+                          const selected = isSelected(date);
+                          const today = isToday(date);
+
+                          return (
+                            <motion.button
+                              key={index}
+                              type="button"
+                              onClick={() => handleDateClick(date)}
+                              disabled={!enabled}
+                              whileHover={enabled ? { scale: 1.05 } : {}}
+                              whileTap={enabled ? { scale: 0.95 } : {}}
+                              className={cn(
+                                'relative h-10 rounded-xl font-semibold text-sm transition-all duration-200',
+                                'flex items-center justify-center',
+                                selected && 'bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg',
+                                !selected && enabled && 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300',
+                                !enabled && 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                                today && !selected && 'ring-2 ring-primary/50'
+                              )}
+                            >
+                              <span>{date.getDate()}</span>
+                              {selected && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute inset-0 flex items-center justify-center"
+                                >
+                                  <Check className="w-4 h-4 text-white" />
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* ==================== MONTHS VIEW ==================== */}
+                  {viewMode === 'months' && (
+                    <motion.div
+                      key="months-view"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.15 }}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      {MONTHS.map((month, index) => {
+                        const enabled = isMonthEnabled(currentDate.getFullYear(), index);
+                        const current = isCurrentMonth(index);
+                        const isNow = currentDate.getFullYear() === todayYear && index === todayMonth;
+
+                        return (
+                          <motion.button
+                            key={month}
+                            type="button"
+                            onClick={() => handleMonthClick(index)}
+                            disabled={!enabled}
+                            whileHover={enabled ? { scale: 1.05 } : {}}
+                            whileTap={enabled ? { scale: 0.95 } : {}}
+                            className={cn(
+                              'relative h-16 rounded-xl font-semibold text-sm transition-all duration-200',
+                              'flex flex-col items-center justify-center gap-0.5',
+                              current && 'bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg',
+                              !current && enabled && 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300',
+                              !enabled && 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                              isNow && !current && 'ring-2 ring-primary/50'
+                            )}
+                          >
+                            <span className="text-xs leading-tight">{month}</span>
+                            {current && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                              >
+                                <Check className="w-3 h-3 text-white" />
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+
+                  {/* ==================== YEARS VIEW ==================== */}
+                  {viewMode === 'years' && (
+                    <motion.div
+                      key="years-view"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.15 }}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      {yearRange.map((year) => {
+                        const enabled = isYearEnabled(year);
+                        const current = selectedDate
+                          ? selectedDate.getFullYear() === year
+                          : false;
+                        const isNow = year === todayYear;
+
+                        return (
+                          <motion.button
+                            key={year}
+                            type="button"
+                            onClick={() => handleYearClick(year)}
+                            disabled={!enabled}
+                            whileHover={enabled ? { scale: 1.05 } : {}}
+                            whileTap={enabled ? { scale: 0.95 } : {}}
+                            className={cn(
+                              'relative h-16 rounded-xl font-bold text-base transition-all duration-200',
+                              'flex flex-col items-center justify-center gap-0.5',
+                              current && 'bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg',
+                              !current && enabled && 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300',
+                              !enabled && 'text-gray-300 dark:text-gray-600 cursor-not-allowed',
+                              isNow && !current && 'ring-2 ring-primary/50'
+                            )}
+                          >
+                            <span>{year}</span>
+                            {current && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                              >
+                                <Check className="w-3.5 h-3.5 text-white" />
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+
+              {/* Footer breadcrumb */}
+              {viewMode !== 'days' && (
+                <div className="px-4 pb-3 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('years')}
+                    className={cn(
+                      'hover:text-primary transition-colors',
+                      viewMode === 'years' && 'text-primary font-semibold'
+                    )}
+                  >
+                    Années
+                  </button>
+                  <span>/</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('months')}
+                    className={cn(
+                      'hover:text-primary transition-colors',
+                      viewMode === 'months' && 'text-primary font-semibold'
+                    )}
+                  >
+                    Mois
+                  </button>
+                  {viewMode !== 'months' && (
+                    <>
+                      <span>/</span>
+                      <span className="text-gray-300 dark:text-gray-600">Jours</span>
+                    </>
+                  )}
+                </div>
+              )}
             </motion.div>
           </>
         )}

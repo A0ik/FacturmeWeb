@@ -191,6 +191,78 @@ export const BENEFIT_OPTIONS = [
   { value: 'autres', label: 'Autres avantages', icon: Star, color: 'from-violet-500 to-purple-600' }
 ];
 
+export const FRENCH_CCN_OPTIONS: SelectOption[] = [
+  // Industrie & Production
+  { value: 'IDCC44', label: 'Industries chimiques (IDCC 44)', category: 'Industrie' },
+  { value: 'IDCC176', label: 'Industries textiles (IDCC 176)', category: 'Industrie' },
+  { value: 'IDCC267', label: 'Industrie pharmaceutique (IDCC 267)', category: 'Industrie' },
+  { value: 'IDCC292', label: 'Imprimeries de labeur (IDCC 292)', category: 'Industrie' },
+  { value: 'IDCC493', label: 'Industries de la chaussure (IDCC 493)', category: 'Industrie' },
+  { value: 'IDCC500', label: 'Industries graphiques (IDCC 500)', category: 'Industrie' },
+  { value: 'IDCC700', label: 'Industrie sucrière (IDCC 700)', category: 'Industrie' },
+  { value: 'IDCC898', label: 'Industries alimentaires diverses (IDCC 898)', category: 'Industrie' },
+  { value: 'IDCC1025', label: 'Industrie de l\'habillement (IDCC 1025)', category: 'Industrie' },
+  { value: 'IDCC1672', label: 'Métallurgie (IDCC 1672)', category: 'Industrie' },
+  { value: 'IDCC2326', label: 'Plasturgie (IDCC 2326)', category: 'Industrie' },
+  { value: 'IDCC2378', label: 'Industries de la chimie (IDCC 2378)', category: 'Industrie' },
+  // BTP & Construction
+  { value: 'IDCC675', label: 'Travaux publics – Ouvriers (IDCC 675)', category: 'BTP & Construction' },
+  { value: 'IDCC2230', label: 'Bâtiment – Ouvriers (IDCC 2230)', category: 'BTP & Construction' },
+  { value: 'IDCC2231', label: 'Bâtiment – ETAM (IDCC 2231)', category: 'BTP & Construction' },
+  { value: 'IDCC1850', label: 'Plomberie-chauffage artisanale (IDCC 1850)', category: 'BTP & Construction' },
+  { value: 'IDCC2564', label: 'Industries de la construction (IDCC 2564)', category: 'BTP & Construction' },
+  // Commerce & Distribution
+  { value: 'IDCC54', label: 'Commerces de gros (IDCC 54)', category: 'Commerce & Distribution' },
+  { value: 'IDCC1518', label: 'Grande distribution alimentaire (IDCC 1518)', category: 'Commerce & Distribution' },
+  { value: 'IDCC1852', label: 'Maisons à succursales – détail (IDCC 1852)', category: 'Commerce & Distribution' },
+  { value: 'IDCC2089', label: 'Commerce de détail habillement (IDCC 2089)', category: 'Commerce & Distribution' },
+  { value: 'IDCC2216', label: 'Vente directe (IDCC 2216)', category: 'Commerce & Distribution' },
+  // Alimentation & Restauration
+  { value: 'IDCC597', label: 'Boulangerie-pâtisserie industrielle (IDCC 597)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC731', label: 'Boulangerie-pâtisserie artisanale (IDCC 731)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC733', label: 'Pâtisserie artisanale (IDCC 733)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC908', label: 'Restauration rapide (IDCC 908)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC1044', label: 'Charcuterie de détail (IDCC 1044)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC1501', label: 'Hôtels, Cafés, Restaurants (IDCC 1501)', category: 'Alimentation & Restauration' },
+  { value: 'IDCC1790', label: 'Restauration collective (IDCC 1790)', category: 'Alimentation & Restauration' },
+  // Services & Tertiaire
+  { value: 'IDCC405', label: 'Mutualité (IDCC 405)', category: 'Services & Tertiaire' },
+  { value: 'IDCC413', label: 'Services de l\'automobile (IDCC 413)', category: 'Services & Tertiaire' },
+  { value: 'IDCC478', label: 'Organismes de Sécurité sociale (IDCC 478)', category: 'Services & Tertiaire' },
+  { value: 'IDCC787', label: 'Experts-comptables (IDCC 787)', category: 'Services & Tertiaire' },
+  { value: 'IDCC1561', label: 'Notaires (IDCC 1561)', category: 'Services & Tertiaire' },
+  { value: 'IDCC1605', label: 'Banque AFB (IDCC 1605)', category: 'Services & Tertiaire' },
+  { value: 'IDCC1702', label: 'Publicité (IDCC 1702)', category: 'Services & Tertiaire' },
+  { value: 'IDCC2098', label: 'Courtage d\'assurances (IDCC 2098)', category: 'Services & Tertiaire' },
+  { value: 'IDCC2148', label: 'Immobilier – agents (IDCC 2148)', category: 'Services & Tertiaire' },
+  { value: 'IDCC2395', label: 'Maintenance industrielle (IDCC 2395)', category: 'Services & Tertiaire' },
+  { value: 'IDCC2397', label: 'Sécurité privée (IDCC 2397)', category: 'Services & Tertiaire' },
+  { value: 'IDCC2511', label: 'Portage salarial (IDCC 2511)', category: 'Services & Tertiaire' },
+  // Santé & Social
+  { value: 'IDCC86', label: 'Acteurs du lien social et familial (IDCC 86)', category: 'Santé & Social' },
+  { value: 'IDCC531', label: 'Hospitalisation privée (IDCC 531)', category: 'Santé & Social' },
+  { value: 'IDCC919', label: 'Pharmacie d\'officine (IDCC 919)', category: 'Santé & Social' },
+  { value: 'IDCC1090', label: 'Services à la personne (IDCC 1090)', category: 'Santé & Social' },
+  { value: 'IDCC1147', label: 'Organismes d\'habitat social (IDCC 1147)', category: 'Santé & Social' },
+  { value: 'IDCC1796', label: 'Santé au travail (IDCC 1796)', category: 'Santé & Social' },
+  { value: 'IDCC2264', label: 'Aide à domicile – BAD (IDCC 2264)', category: 'Santé & Social' },
+  // Éducation & Formation
+  { value: 'IDCC247', label: 'Organismes de formation (IDCC 247)', category: 'Éducation & Formation' },
+  { value: 'IDCC1740', label: 'Enseignement privé hors contrat (IDCC 1740)', category: 'Éducation & Formation' },
+  { value: 'IDCC2420', label: 'Enseignement privé (IDCC 2420)', category: 'Éducation & Formation' },
+  // Transport & Logistique
+  { value: 'IDCC569', label: 'Transport aérien (IDCC 569)', category: 'Transport & Logistique' },
+  { value: 'IDCC621', label: 'Transports routiers (IDCC 621)', category: 'Transport & Logistique' },
+  { value: 'IDCC2272', label: 'Animation (IDCC 2272)', category: 'Loisirs & Sport' },
+  { value: 'IDCC2205', label: 'Sport (IDCC 2205)', category: 'Loisirs & Sport' },
+  { value: 'IDCC2120', label: 'Coiffure (IDCC 2120)', category: 'Beauté & Bien-être' },
+  { value: 'IDCC1794', label: 'Entreprises de propreté (IDCC 1794)', category: 'Propreté & Nettoyage' },
+  { value: 'IDCC843', label: 'Production agricole et CUMA (IDCC 843)', category: 'Agriculture' },
+  { value: 'IDCC1267', label: 'Gardiens et concierges d\'immeubles (IDCC 1267)', category: 'Immobilier' },
+  { value: 'IDCC2382', label: 'Eau (IDCC 2382)', category: 'Énergie & Environnement' },
+  { value: 'IDCC2149', label: 'Employés de maison (IDCC 2149)', category: 'Services à domicile' },
+];
+
 interface DropdownPosition {
   top: number;
   left: number;

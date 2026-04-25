@@ -23,9 +23,10 @@ import {
   Info,
   Sparkles
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { MagicSelect, CONTRACT_OTHER_TYPES, BENEFIT_OPTIONS } from '@/components/ui/MagicSelect';
+import { MagicSelect, CONTRACT_OTHER_TYPES, BENEFIT_OPTIONS, FRENCH_CCN_OPTIONS } from '@/components/ui/MagicSelect';
 import { SireneAutocomplete } from '@/components/ui/SireneAutocomplete';
 import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 import { ContractValidator } from '@/components/labor-law/ContractValidator';
@@ -86,6 +87,12 @@ interface OtherContractFormData {
   workingHours: string;
   collectiveAgreement: string;
   statut: 'cadre' | 'non_cadre' | 'alternance';
+
+  // Signatures (base64) + dates
+  employerSignature?: string;
+  employeeSignature?: string;
+  employerSignatureDate?: string;
+  employeeSignatureDate?: string;
 }
 
 const initialFormData: OtherContractFormData = {
@@ -320,13 +327,19 @@ export default function OtherContractPage() {
           working_hours: formData.workingHours,
           collective_agreement: formData.collectiveAgreement,
           statut: formData.statut,
+          employer_signature: formData.employerSignature || null,
+          employee_signature: formData.employeeSignature || null,
+          employer_signature_date: formData.employerSignatureDate || null,
+          employee_signature_date: formData.employeeSignatureDate || null,
           document_status: 'draft',
         });
 
       if (error) throw error;
       setStep('success');
     } catch (err) {
-      setError('Erreur lors de la sauvegarde');
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     } finally {
       setLoading(false);
@@ -349,10 +362,15 @@ export default function OtherContractPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Erreur lors de l\'envoi');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errData.error || 'Erreur lors de l\'envoi');
+      }
       setStep('success');
     } catch (err) {
-      setError('Erreur lors de l\'envoi du contrat');
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du contrat';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     } finally {
       setLoading(false);
@@ -907,11 +925,14 @@ export default function OtherContractPage() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   />
 
-                  <input
-                    placeholder="Convention collective"
+                  <MagicSelect
+                    options={FRENCH_CCN_OPTIONS}
                     value={formData.collectiveAgreement}
-                    onChange={(e) => setFormData({ ...formData, collectiveAgreement: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, collectiveAgreement: value })}
+                    placeholder="Sélectionner la convention collective..."
+                    label="Convention collective nationale"
+                    variant="default"
+                    searchable
                   />
 
                   <MagicSelect
@@ -1060,8 +1081,38 @@ export default function OtherContractPage() {
               <ContractSigning
                 contractType={formData.contractCategory}
                 contractHtml={contractHtml}
+                onDownloadPdf={downloadPDF}
                 onSave={(signedContract) => {
-                  console.log('Contract signed:', signedContract);
+                  if (signedContract.signatures && signedContract.signatures.length > 0) {
+                    const employerSig = signedContract.signatures.find(s => s.name.includes('Employeur'));
+                    const employeeSig = signedContract.signatures.find(s => s.name.includes('Salarie'));
+                    setFormData(prev => {
+                      const updated = {
+                        ...prev,
+                        ...(employerSig && {
+                          employerSignature: employerSig.data,
+                          employerSignatureDate: new Date(employerSig.date).toISOString().split('T')[0],
+                        }),
+                        ...(employeeSig && {
+                          employeeSignature: employeeSig.data,
+                          employeeSignatureDate: new Date(employeeSig.date).toISOString().split('T')[0],
+                        }),
+                      };
+                      const contractTypeMap: Record<string, 'cdd' | 'cdi' | 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
+                        apprentissage: 'apprentissage', professionnalisation: 'professionnalisation',
+                        stage: 'stage', freelance: 'freelance', interim: 'interim', portage: 'portage',
+                        cui_cie: 'cdi', cui_cae: 'cdi', domicile: 'cdi', other: 'cdi',
+                      };
+                      const contractType = contractTypeMap[prev.contractCategory] ?? 'cdi';
+                      setContractHtml(generateContractTemplate({
+                        ...updated,
+                        contractType,
+                        contractStartDate: updated.startDate,
+                        contractEndDate: updated.endDate,
+                      }));
+                      return updated;
+                    });
+                  }
                 }}
               />
             </div>

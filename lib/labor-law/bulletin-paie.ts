@@ -128,10 +128,42 @@ interface BulletinPaie {
   };
 }
 
-// Générer un bulletin de paie HTML
+// Générer un bulletin de paie HTML — design professionnel 1 page
 export function genererBulletinPaieHTML(data: BulletinPaieData): string {
+  const moisAnnee = new Date(data.periodeDebut).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const dateDebPeriode = new Date(data.periodeDebut).toLocaleDateString('fr-FR');
+  const dateFinPeriode = new Date(data.periodeFin).toLocaleDateString('fr-FR');
+  const datePaie = new Date().toLocaleDateString('fr-FR');
+
+  const cpAcquis = data.congesPayesAcquis ?? Math.floor(data.nombreJoursOuvres * 2.0833 / 10);
+  const cpPris = data.congesPayesPris ?? 0;
+  const cpSolde = data.congesPayesSolde ?? (cpAcquis - cpPris);
+
+  const tauxH = data.tauxHoraire ?? (data.salaireBrut / (data.heuresMensuelles || 151.67));
+  const joursOuvres = data.nombreJoursOuvres || 22;
+
+  // Montants calculés pour chaque ligne
+  const montantSupp25 = (data.heuresSupp25 ?? 0) * tauxH * 1.25;
+  const montantSupp50 = (data.heuresSupp50 ?? 0) * tauxH * 1.50;
+  const retenueMaladie = data.joursMaladie ? (data.salaireBrut / joursOuvres) * data.joursMaladie : 0;
+  const retenueAbsence = data.joursAbsenceNonJustifiee ? (data.salaireBrut / joursOuvres) * data.joursAbsenceNonJustifiee : 0;
+
+  // Totalbrut = base de calcul des cotisations
+  const totalBrut = data.salaireBrut
+    + montantSupp25
+    + montantSupp50
+    + (data.primeExceptionnelle ?? 0)
+    + (data.prime13Mois ?? 0)
+    + (data.primePerformance ?? 0)
+    + (data.primeAnciennete ?? 0)
+    + (data.autresPrimes ?? 0)
+    + (data.indemniteCongesPayes ?? 0)
+    - retenueMaladie
+    - retenueAbsence;
+
+  // Cotisations calculées sur le totalBrut réel (pas seulement le salaire de base)
   const cotisations = calculerCotisations({
-    salaireBrut: data.salaireBrut,
+    salaireBrut: totalBrut,
     salaireBrutAnnuel: data.salaireBrutAnnuel,
     statut: data.statut === 'alternance' ? 'non_cadre' : data.statut,
     tempsPartiel: data.tempsPartiel,
@@ -139,324 +171,230 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
 
   const display = getCotisationsDisplay(cotisations);
 
-  // Calculer les congés payés
-  const joursCongesAcquis = Math.floor(data.nombreJoursOuvres * 2.0833 / 10);
-  const joursCongesPris = 0; // À définir selon l'historique
+  const netAvantImpot = totalBrut - cotisations.salariales.total
+    + (data.indemnitesTransport ?? 0)
+    + (data.indemniteDeplacementVehicule ?? 0)
+    + (data.autresIndemnites ?? 0)
+    - (data.mutuellePartSalarie ?? 0)
+    - (data.prevoyancePartSalarie ?? 0)
+    + (data.maintienSalaireMaladie ?? 0)
+    + (data.indemnitesJournalieresSS ?? 0); // IJ SS complète le net quand maintien partiel
 
-  const periode = `${new Date(data.periodeDebut).toLocaleDateString('fr-FR')} au ${new Date(data.periodeFin).toLocaleDateString('fr-FR')}`;
+  const row = (label: string, base: string, taux: string, prelever: string, payer: string, bold = false, shade = false) =>
+    `<tr style="${shade ? 'background:#f5f5f5;' : ''}${bold ? 'font-weight:bold;' : ''}">
+      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">${label}</td>
+      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;">${base}</td>
+      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;">${taux}</td>
+      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#c0392b;">${prelever}</td>
+      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${payer}</td>
+    </tr>`;
 
-  return `
-<!DOCTYPE html>
+  const fmt = (n: number) => n.toFixed(2);
+  const fmtE = (n: number) => n ? n.toFixed(2) + ' €' : '';
+
+  return `<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bulletin de paie - ${data.nom} ${data.prenom}</title>
-  <style>
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .no-print { display: none !important; }
-    }
-    body {
-      font-family: 'Arial', sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      font-size: 12px;
-      line-height: 1.4;
-      color: #333;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #1D9E75;
-      padding-bottom: 20px;
-    }
-    .header h1 {
-      color: #1D9E75;
-      margin: 0 0 10px 0;
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .entete {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 5px;
-    }
-    .salarie-info {
-      flex: 1;
-    }
-    .periode {
-      text-align: right;
-    }
-    .section {
-      margin-bottom: 25px;
-    }
-    .section-title {
-      background: #1D9E75;
-      color: white;
-      padding: 8px 12px;
-      font-weight: bold;
-      font-size: 13px;
-      margin: 0 0 10px 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px 10px;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f0;
-      font-weight: bold;
-      font-size: 11px;
-    }
-    .ligne-grasse {
-      border-top: 2px solid #1D9E75;
-      font-weight: bold;
-    }
-    .total-ligne {
-      background: #f8f9fa;
-      font-weight: bold;
-    }
-    .positif { color: #28a745; }
-    .negatif { color: #dc3545; }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 2px solid #ddd;
-      text-align: center;
-      color: #666;
-      font-size: 10px;
-    }
-    .signature {
-      margin-top: 30px;
-      display: flex;
-      justify-content: space-between;
-      page-break-inside: avoid;
-    }
-    .signature-box {
-      width: 45%;
-      min-height: 80px;
-      border: 1px dashed #ccc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #999;
-      font-size: 11px;
-    }
-    @media print {
-      body { padding: 0; }
-      .section { page-break-inside: avoid; }
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Bulletin de paie ${moisAnnee} — ${data.prenom} ${data.nom}</title>
+<style>
+  @page { size: A4; margin: 10mm 12mm; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #1a1a1a; background: #fff; }
+  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 8mm; }
+  /* Header */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid #1D9E75; padding-bottom:6px; margin-bottom:6px; }
+  .header-left { flex:1; }
+  .header-right { text-align:right; }
+  .company-name { font-size:13pt; font-weight:bold; color:#1D9E75; }
+  .bulletin-title { font-size:11pt; font-weight:bold; color:#fff; background:#1D9E75; padding:3px 10px; border-radius:3px; display:inline-block; }
+  /* Blocs identité */
+  .id-bloc { display:flex; gap:8px; margin-bottom:6px; }
+  .id-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:5px 7px; font-size:7.5pt; }
+  .id-box-title { font-size:7pt; font-weight:bold; color:#1D9E75; text-transform:uppercase; border-bottom:1px solid #e0e0e0; margin-bottom:3px; padding-bottom:2px; }
+  .id-row { display:flex; justify-content:space-between; margin-bottom:1px; }
+  .id-key { color:#666; }
+  .id-val { font-weight:bold; }
+  /* Tableau cotisations */
+  .section-head { background:#1D9E75; color:#fff; font-size:7.5pt; font-weight:bold; padding:3px 6px; margin:5px 0 0 0; }
+  table.cot { width:100%; border-collapse:collapse; font-size:7.5pt; }
+  table.cot th { background:#f0f0f0; font-weight:bold; padding:3px 6px; border-bottom:2px solid #ccc; text-align:right; font-size:7pt; }
+  table.cot th:first-child { text-align:left; }
+  /* Bloc NET */
+  .net-box { display:flex; justify-content:space-between; align-items:center; background:#1D9E75; color:#fff; border-radius:4px; padding:8px 14px; margin-top:6px; }
+  .net-label { font-size:11pt; font-weight:bold; }
+  .net-amount { font-size:15pt; font-weight:bold; }
+  /* Pied */
+  .footer-bloc { display:flex; gap:8px; margin-top:6px; font-size:7pt; color:#555; }
+  .footer-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:4px 6px; }
+  .footer-box-title { font-weight:bold; color:#1D9E75; margin-bottom:2px; font-size:7pt; }
+  .cp-row { display:flex; justify-content:space-between; }
+  .mention { font-size:6.5pt; color:#888; margin-top:6px; border-top:1px solid #ddd; padding-top:4px; }
+</style>
 </head>
 <body>
+<div class="page">
+
+  <!-- HEADER -->
   <div class="header">
-    <h1>BULLETIN DE PAIE</h1>
-    <p style="margin: 5px 0;">${data.typeContrat.toUpperCase()} - ${data.statut.toUpperCase()}</p>
-  </div>
-
-  <div class="entete">
-    <div class="salarie-info">
-      <strong>${data.prenom} ${data.nom}</strong><br>
-      ${data.adresse}<br>
-      ${data.codePostal} ${data.ville}<br>
-      <small>NIR : ${data.nir}</small>
+    <div class="header-left">
+      <div class="company-name">${data.raisonSociale}</div>
+      <div style="font-size:7.5pt;color:#555;">${data.adresseEntreprise}, ${data.codePostalEntreprise} ${data.villeEntreprise}</div>
+      <div style="font-size:7.5pt;color:#555;">SIRET : ${data.siret} &nbsp;|&nbsp; URSSAF : ${data.urssaf || data.siret}</div>
     </div>
-    <div class="periode">
-      <strong>Période :</strong> ${periode}<br>
-      <strong>Date de paie :</strong> ${new Date().toLocaleDateString('fr-FR')}<br>
-      <small>Nbre jours ouvrés : ${data.nombreJoursOuvres}</small>
+    <div class="header-right">
+      <div class="bulletin-title">BULLETIN DE PAIE</div>
+      <div style="font-size:8.5pt;margin-top:4px;">Période : <strong>${dateDebPeriode} – ${dateFinPeriode}</strong></div>
+      <div style="font-size:8.5pt;">Date de paiement : <strong>${datePaie}</strong></div>
     </div>
   </div>
 
-  <div class="entete">
-    <div class="salarie-info">
-      <strong>${data.raisonSociale}</strong><br>
-      ${data.adresseEntreprise}<br>
-      ${data.codePostalEntreprise} ${data.villeEntreprise}<br>
-      <small>SIRET : ${data.siret}</small>
+  <!-- IDENTITÉ -->
+  <div class="id-bloc">
+    <div class="id-box" style="flex:1.5;">
+      <div class="id-box-title">Salarié</div>
+      <div class="id-row"><span class="id-key">Nom</span><span class="id-val">${data.prenom} ${data.nom}</span></div>
+      <div class="id-row"><span class="id-key">Adresse</span><span class="id-val">${data.adresse}, ${data.codePostal} ${data.ville}</span></div>
+      <div class="id-row"><span class="id-key">N° Sécu (NIR)</span><span class="id-val">${data.nir}</span></div>
+      <div class="id-row"><span class="id-key">Date de naissance</span><span class="id-val">${data.dateNaissance ? new Date(data.dateNaissance).toLocaleDateString('fr-FR') : ''}</span></div>
     </div>
-    <div class="periode">
-      <strong>Statut :</strong> ${data.statut.toUpperCase()}<br>
-      <strong>Classification :</strong> ${data.classification}<br>
-      <strong>Coef :</strong> ${data.coef}<br>
-      <small>CCN : ${data.conventionCollective}</small>
+    <div class="id-box">
+      <div class="id-box-title">Contrat & Emploi</div>
+      <div class="id-row"><span class="id-key">Type</span><span class="id-val">${data.typeContrat.toUpperCase()}</span></div>
+      <div class="id-row"><span class="id-key">Statut</span><span class="id-val">${data.statut === 'cadre' ? 'Cadre' : data.statut === 'non_cadre' ? 'Non-cadre' : 'Alternance'}</span></div>
+      <div class="id-row"><span class="id-key">Qualification</span><span class="id-val">${data.classification}</span></div>
+      <div class="id-row"><span class="id-key">Coeff.</span><span class="id-val">${data.coef}</span></div>
+      <div class="id-row"><span class="id-key">CCN</span><span class="id-val">${data.conventionCollective}</span></div>
+    </div>
+    <div class="id-box">
+      <div class="id-box-title">Temps de travail</div>
+      <div class="id-row"><span class="id-key">Heures/mois</span><span class="id-val">${data.heuresMensuelles} h</span></div>
+      <div class="id-row"><span class="id-key">Jours ouvrés</span><span class="id-val">${data.nombreJoursOuvres} j</span></div>
+      ${data.tempsPartiel ? `<div class="id-row"><span class="id-key">Temps partiel</span><span class="id-val">${data.pourcentageTempsPartiel}%</span></div>` : ''}
+      <div class="id-row"><span class="id-key">Taux horaire</span><span class="id-val">${data.tauxHoraire ? fmtE(data.tauxHoraire) : 'N/A'}</span></div>
     </div>
   </div>
 
-  <div class="section">
-    <h3 class="section-title">ÉLÉMENTS DE RÉMUNÉRATION</h3>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40%">Libellé</th>
-          <th style="width: 15%">Base</th>
-          <th style="width: 15%">Taux</th>
-          <th style="width: 15%">À prélever</th>
-          <th style="width: 15%">À payer</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Salaire de base</td>
-          <td>${formatMonnaie(data.salaireBrut)}</td>
-          <td></td>
-          <td></td>
-          <td class="positif">${formatMonnaie(data.salaireBrut)}</td>
-        </tr>
-        ${data.heuresSupplementaires ? `
-        <tr>
-          <td>Heures supplémentaires (${data.heuresSupplementaires}h à ${data.majorationHeuresSup}%)</td>
-          <td>${formatMonnaie(data.heuresSupplementaires * data.tauxHoraire! * (1 + (data.majorationHeuresSup || 0) / 100))}</td>
-          <td></td>
-          <td></td>
-          <td class="positif">${formatMonnaie(data.heuresSupplementaires * data.tauxHoraire! * (1 + (data.majorationHeuresSup || 0) / 100))}</td>
-        </tr>
-        ` : ''}
-        ${data.avantagesEnNature ? `
-        <tr>
-          <td>Avantages en nature</td>
-          <td>${formatMonnaie(data.avantagesEnNature)}</td>
-          <td></td>
-          <td class="negatif">${formatMonnaie(data.avantagesEnNature)}</td>
-          <td></td>
-        </tr>
-        ` : ''}
-        ${data.tempsPartiel ? `
-        <tr>
-          <td>Malus temps partiel (${data.pourcentageTempsPartiel}%)</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td class="negatif">${formatMonnaie(data.salaireBrut * (data.pourcentageTempsPartiel || 0) / 100)}</td>
-        </tr>
-        ` : ''}
-        <tr class="total-ligne">
-          <td><strong>TOTAL BRUT</strong></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td><strong class="positif">${formatMonnaie(data.salaireBrut)}</strong></td>
-        </tr>
-      </tbody>
-    </table>
+  <!-- ÉLÉMENTS DE RÉMUNÉRATION -->
+  <div class="section-head">ÉLÉMENTS DE RÉMUNÉRATION</div>
+  <table class="cot">
+    <thead><tr>
+      <th style="text-align:left;width:38%">Libellé</th>
+      <th style="width:14%">Base / Nb</th>
+      <th style="width:12%">Taux</th>
+      <th style="width:18%">Retenue (−)</th>
+      <th style="width:18%">Gain (+)</th>
+    </tr></thead>
+    <tbody>
+      ${row('Salaire de base', fmtE(data.salaireBrut), `${data.heuresMensuelles} h`, '', fmtE(data.salaireBrut))}
+      ${data.heuresSupp25 ? row(`Heures supp. 25% (${data.heuresSupp25} h)`, `${data.heuresSupp25} h × ${fmtE(tauxH)}`, '× 1,25', '', fmtE(montantSupp25)) : ''}
+      ${data.heuresSupp50 ? row(`Heures supp. 50% (${data.heuresSupp50} h)`, `${data.heuresSupp50} h × ${fmtE(tauxH)}`, '× 1,50', '', fmtE(montantSupp50)) : ''}
+      ${data.primeExceptionnelle ? row('Prime exceptionnelle', '', '', '', fmtE(data.primeExceptionnelle)) : ''}
+      ${data.prime13Mois ? row('Prime 13e mois', '', '', '', fmtE(data.prime13Mois)) : ''}
+      ${data.primePerformance ? row('Prime de performance', '', '', '', fmtE(data.primePerformance)) : ''}
+      ${data.primeAnciennete ? row("Prime d'ancienneté", '', '', '', fmtE(data.primeAnciennete)) : ''}
+      ${data.autresPrimes ? row('Autres primes', '', '', '', fmtE(data.autresPrimes)) : ''}
+      ${data.indemniteCongesPayes ? row('Indemnité de congés payés', '', '', '', fmtE(data.indemniteCongesPayes)) : ''}
+      ${data.avantagesEnNature ? row('Avantages en nature', fmtE(data.avantagesEnNature), '', fmtE(data.avantagesEnNature), '') : ''}
+      ${data.joursMaladie ? row(`Retenue absence maladie (${data.joursMaladie} j)`, `${fmtE(data.salaireBrut / joursOuvres)}/j`, `${joursOuvres} j`, fmtE(retenueMaladie), '') : ''}
+      ${data.joursAbsenceNonJustifiee ? row(`Retenue absence injustifiée (${data.joursAbsenceNonJustifiee} j)`, `${fmtE(data.salaireBrut / joursOuvres)}/j`, `${joursOuvres} j`, fmtE(retenueAbsence), '') : ''}
+      ${row('TOTAL BRUT', '', '', '', fmtE(totalBrut), true, true)}
+    </tbody>
+  </table>
+
+  <!-- COTISATIONS SALARIALES -->
+  <div class="section-head">COTISATIONS SALARIALES</div>
+  <table class="cot">
+    <thead><tr>
+      <th style="text-align:left;width:38%">Libellé</th>
+      <th style="width:14%">Base</th>
+      <th style="width:12%">Taux</th>
+      <th style="width:18%">Retenue salarié</th>
+      <th style="width:18%">Part patronale</th>
+    </tr></thead>
+    <tbody>
+      ${display.salariales.map(c => row(c.label, fmtE(totalBrut), typeof c.taux === 'number' ? c.taux.toFixed(2) + '%' : (c.taux ?? ''), fmtE(c.value), '')).join('')}
+      ${data.mutuellePartSalarie ? row('Mutuelle — part salarié', '', '', fmtE(data.mutuellePartSalarie), '') : ''}
+      ${data.prevoyancePartSalarie ? row('Prévoyance — part salarié', '', '', fmtE(data.prevoyancePartSalarie), '') : ''}
+      ${row('TOTAL COTISATIONS', '', '', fmtE(cotisations.salariales.total + (data.mutuellePartSalarie ?? 0) + (data.prevoyancePartSalarie ?? 0)), '', true, true)}
+    </tbody>
+  </table>
+
+  <!-- COTISATIONS PATRONALES -->
+  <div class="section-head">COTISATIONS PATRONALES (informatives)</div>
+  <table class="cot">
+    <thead><tr>
+      <th style="text-align:left;width:38%">Libellé</th>
+      <th style="width:14%">Base</th>
+      <th style="width:12%">Taux</th>
+      <th style="width:18%">—</th>
+      <th style="width:18%">Montant</th>
+    </tr></thead>
+    <tbody>
+      ${display.patronales.map(c => row(c.label, fmtE(totalBrut), typeof c.taux === 'number' ? c.taux.toFixed(2) + '%' : (c.taux ?? ''), '', fmtE(c.value))).join('')}
+      ${data.mutuellePartEmployeur ? row('Mutuelle — part employeur', '', '', '', fmtE(data.mutuellePartEmployeur)) : ''}
+      ${data.prevoyancePartEmployeur ? row('Prévoyance — part employeur', '', '', '', fmtE(data.prevoyancePartEmployeur)) : ''}
+      ${row('COÛT TOTAL EMPLOYEUR', '', '', '', fmtE(cotisations.patronales.total + (data.mutuellePartEmployeur ?? 0) + (data.prevoyancePartEmployeur ?? 0) + totalBrut), true, true)}
+    </tbody>
+  </table>
+
+  ${(data.indemnitesTransport || data.indemniteDeplacementVehicule || data.ticketRestaurantNombre || data.autresIndemnites || data.indemnitesJournalieresSS || data.maintienSalaireMaladie) ? `
+  <div class="section-head">INDEMNITÉS & REMBOURSEMENTS</div>
+  <table class="cot"><thead><tr>
+    <th style="text-align:left;width:50%">Libellé</th><th style="width:25%">—</th><th style="width:25%">Montant</th>
+  </tr></thead><tbody>
+    ${data.indemnitesTransport ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Remboursement transport</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemnitesTransport)}</td></tr>` : ''}
+    ${data.indemniteDeplacementVehicule ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Indemnité kilométrique</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemniteDeplacementVehicule)}</td></tr>` : ''}
+    ${data.ticketRestaurantNombre ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Tickets restaurant (${data.ticketRestaurantNombre} × ${fmtE(data.ticketRestaurantMontantEmployeur ?? 0)} part empl.)</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE((data.ticketRestaurantNombre) * (data.ticketRestaurantMontantEmployeur ?? 0))}</td></tr>` : ''}
+    ${data.indemnitesJournalieresSS ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">IJ Sécurité Sociale</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemnitesJournalieresSS)}</td></tr>` : ''}
+    ${data.maintienSalaireMaladie ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Maintien salaire maladie (employeur)</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.maintienSalaireMaladie)}</td></tr>` : ''}
+    ${data.autresIndemnites ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Autres indemnités</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.autresIndemnites)}</td></tr>` : ''}
+  </tbody></table>
+  ` : ''}
+
+  <!-- NET À PAYER -->
+  <div class="net-box">
+    <div>
+      <div class="net-label">NET À PAYER</div>
+      <div style="font-size:7.5pt;opacity:0.85;">Net imposable : ${fmtE(cotisations.salaireNetImposable)}</div>
+    </div>
+    <div class="net-amount">${fmtE(Math.max(0, netAvantImpot))}</div>
   </div>
 
-  <div class="section">
-    <h3 class="section-title">COTISATIONS SALARIALES</h3>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40%">Libellé</th>
-          <th style="width: 15%">Base</th>
-          <th style="width: 15%">Taux</th>
-          <th style="width: 15%">À prélever</th>
-          <th style="width: 15%">À payer</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${display.salariales.map(cotis => `
-        <tr>
-          <td>${cotis.label}</td>
-          <td>${formatMonnaie(cotis.value)}</td>
-          <td>${typeof cotis.taux === 'number' ? cotis.taux.toFixed(2) + '%' : cotis.taux}</td>
-          <td class="negatif">${formatMonnaie(cotis.value)}</td>
-          <td></td>
-        </tr>
-        `).join('')}
-        <tr class="total-ligne">
-          <td><strong>TOTAL COTISATIONS SALARIALES</strong></td>
-          <td></td>
-          <td></td>
-          <td><strong class="negatif">${formatMonnaie(cotisations.salariales.total)}</strong></td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
+  <!-- PIED : CP + mentions -->
+  <div class="footer-bloc">
+    <div class="footer-box">
+      <div class="footer-box-title">Congés payés</div>
+      <div class="cp-row"><span>Acquis ce mois</span><span><strong>${fmt(cpAcquis)} j</strong></span></div>
+      <div class="cp-row"><span>Pris ce mois</span><span><strong>${fmt(cpPris)} j</strong></span></div>
+      <div class="cp-row"><span>Solde</span><span><strong>${fmt(cpSolde)} j</strong></span></div>
+    </div>
+    <div class="footer-box">
+      <div class="footer-box-title">Récapitulatif financier</div>
+      <div class="cp-row"><span>Salaire brut</span><span>${fmtE(totalBrut)}</span></div>
+      <div class="cp-row"><span>Cotisations salariales</span><span>− ${fmtE(cotisations.salariales.total)}</span></div>
+      <div class="cp-row"><span>Net avant impôt</span><span><strong>${fmtE(Math.max(0, netAvantImpot))}</strong></span></div>
+      <div class="cp-row"><span>Coût employeur total</span><span>${fmtE(cotisations.coutEmployer)}</span></div>
+    </div>
+    <div class="footer-box">
+      <div class="footer-box-title">Prélèvement à la source</div>
+      <div class="cp-row"><span>Net imposable</span><span>${fmtE(cotisations.salaireNetImposable)}</span></div>
+      <div class="cp-row"><span>Taux PAS</span><span>Cf. DGFIP</span></div>
+      <div class="cp-row"><span>Montant prélevé</span><span>Cf. DGFIP</span></div>
+    </div>
   </div>
 
-  <div class="section">
-    <h3 class="section-title">COTISATIONS PATRONALES</h3>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40%">Libellé</th>
-          <th style="width: 15%">Base</th>
-          <th style="width: 15%">Taux</th>
-          <th style="width: 15%">Montant</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${display.patronales.map(cotis => `
-        <tr>
-          <td>${cotis.label}</td>
-          <td>${formatMonnaie(cotis.value)}</td>
-          <td>${typeof cotis.taux === 'number' ? cotis.taux.toFixed(2) + '%' : cotis.taux}</td>
-          <td>${formatMonnaie(cotis.value)}</td>
-        </tr>
-        `).join('')}
-        <tr class="total-ligne">
-          <td><strong>TOTAL COTISATIONS PATRONALES</strong></td>
-          <td></td>
-          <td></td>
-          <td><strong>${formatMonnaie(cotisations.patronales.total)}</strong></td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="mention">
+    Art. R3243-1 C. trav. — Conservez ce bulletin sans limitation de durée. | Généré le ${datePaie} | ${data.raisonSociale} — SIRET ${data.siret}
   </div>
 
-  <div class="section">
-    <h3 class="section-title">NET À PAYER</h3>
-    <table>
-      <tbody>
-        <tr class="total-ligne">
-          <td style="width: 40%"><strong>SALAIRE NET</strong></td>
-          <td style="width: 15%"></td>
-          <td style="width: 15%"></td>
-          <td style="width: 15%"></td>
-          <td style="width: 15%"><strong class="positif">${formatMonnaie(cotisations.salaireNet)}</strong></td>
-        </tr>
-        <tr>
-          <td>Congés payés acquis : ${joursCongesAcquis.toFixed(2)} jours</td>
-          <td>Congés payés pris : ${joursCongesPris.toFixed(2)} jours</td>
-          <td></td>
-          <td></td>
-          <td>Solde : ${(joursCongesAcquis - joursCongesPris).toFixed(2)} jours</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="section">
-    <h3 class="section-title">Mentions légales</h3>
-    <p style="font-size: 11px; margin: 5px 0;">
-      <strong>Salaire net imposable :</strong> ${formatMonnaie(cotisations.salaireNetImposable)}<br>
-      <strong>Coût employeur :</strong> ${formatMonnaie(cotisations.coutEmployer)}
-    </p>
-  </div>
-
-  <div class="signature">
-    <div class="signature-box">Signature de l'employeur</div>
-    <div class="signature-box">Signature du salarié</div>
-  </div>
-
-  <div class="footer">
-    <p>Ce bulletin de paie est généré automatiquement et n'a pas de valeur légale sans signature.</p>
-    <p>Conformément à l'article R3243-2 du Code du travail, ce bulletin de paie est remis en ligne sur un support électronique.</p>
-    <p>Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
-  </div>
+</div>
 </body>
-</html>
-  `;
+</html>`;
 }
 
 // Fonction utilitaire pour formater les montants
@@ -565,8 +503,12 @@ export function creerBulletinDepuisContrat(
 
     salaireBrut: parseFloat(contrat.salaryAmount) || SMIC_2024.mensuel_35h,
     salaireBrutAnnuel: (parseFloat(contrat.salaryAmount) || SMIC_2024.mensuel_35h) * 12,
-    tauxHoraire: parseFloat(contrat.salaryAmount) / (parseFloat(contrat.workingHours) || 35) / 4.33,
-    heuresMensuelles: parseFloat(contrat.workingHours) || 35,
+    heuresMensuelles: parseFloat(contrat.workingHours) || 151.67,
+    tauxHoraire: (() => {
+      const s = parseFloat(contrat.salaryAmount);
+      const h = parseFloat(contrat.workingHours) || 151.67;
+      return s && !isNaN(s) ? parseFloat((s / h).toFixed(4)) : undefined;
+    })(),
 
     raisonSociale: contrat.companyName || '',
     siret: contrat.companySiret || '',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Download, Sparkles, Loader2, AlertCircle,
@@ -10,6 +10,67 @@ import {
 import { toast } from 'sonner';
 import type { BulletinPaieData } from '@/lib/labor-law/bulletin-paie';
 import { genererBulletinPaieHTML } from '@/lib/labor-law/bulletin-paie';
+
+// ─── Module-level components (prevent remount on parent re-render = fixes focus bug) ───
+
+const PayslipField = React.memo(function PayslipField({
+  label, value, onChange, type = 'text', readOnly = false,
+}: {
+  label: string; value: string | number; onChange?: (v: string) => void; type?: string; readOnly?: boolean;
+}) {
+  const safeValue = typeof value === 'number' && isNaN(value) ? '' : value;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</label>
+      <input
+        type={type}
+        value={safeValue}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        readOnly={readOnly}
+        className={`w-full px-3 py-2 text-sm rounded-xl border-2 outline-none transition-all
+          ${readOnly
+            ? 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-white/5 text-gray-500 cursor-not-allowed'
+            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
+          }`}
+      />
+    </div>
+  );
+});
+
+const PayslipSection = React.memo(function PayslipSection({
+  id, title, icon: Icon, openSection, onToggle, children,
+}: {
+  id: string; title: string; icon: any; openSection: string; onToggle: (id: string) => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden">
+      <button
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className="w-5 h-5 text-primary" />
+          <span className="font-semibold text-gray-900 dark:text-white">{title}</span>
+        </div>
+        {openSection === id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+      </button>
+      <AnimatePresence>
+        {openSection === id && (
+          <motion.div
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 space-y-3">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 interface PayslipEditorProps {
   initialData: BulletinPaieData;
@@ -24,8 +85,13 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
   const [openSection, setOpenSection] = useState<string>('salaire');
 
-  const update = (field: keyof BulletinPaieData, value: any) =>
+  const update = useCallback(<K extends keyof BulletinPaieData>(field: K, value: BulletinPaieData[K]) => {
     setData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleToggle = useCallback((id: string) => {
+    setOpenSection(prev => prev === id ? '' : id);
+  }, []);
 
   const handleAiModify = async () => {
     if (!aiPrompt.trim()) return;
@@ -82,52 +148,6 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
     }
   };
 
-  const Section = ({ id, title, icon: Icon, children }: { id: string; title: string; icon: any; children: React.ReactNode }) => (
-    <div className="border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden">
-      <button
-        onClick={() => setOpenSection(openSection === id ? '' : id)}
-        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <Icon className="w-5 h-5 text-primary" />
-          <span className="font-semibold text-gray-900 dark:text-white">{title}</span>
-        </div>
-        {openSection === id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-      </button>
-      <AnimatePresence>
-        {openSection === id && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
-            exit={{ height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-4 space-y-3">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
-  const Field = ({ label, value, onChange, type = 'text', readOnly = false }: {
-    label: string; value: string | number; onChange?: (v: string) => void; type?: string; readOnly?: boolean;
-  }) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        readOnly={readOnly}
-        className={`w-full px-3 py-2 text-sm rounded-xl border-2 outline-none transition-all
-          ${readOnly
-            ? 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-white/5 text-gray-500 cursor-not-allowed'
-            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-white/10 focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
-          }`}
-      />
-    </div>
-  );
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -154,10 +174,7 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
               Modifiez manuellement ou avec l'IA, puis téléchargez en PDF
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          >
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -198,19 +215,19 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
             )}
           </div>
 
-          {/* Editable sections */}
-          <Section id="salarie" title="Salarié" icon={User}>
+          {/* Sections */}
+          <PayslipSection id="salarie" title="Salarié" icon={User} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Nom" value={data.nom} onChange={(v) => update('nom', v)} />
-              <Field label="Prénom" value={data.prenom} onChange={(v) => update('prenom', v)} />
+              <PayslipField label="Nom" value={data.nom} onChange={(v) => update('nom', v)} />
+              <PayslipField label="Prénom" value={data.prenom} onChange={(v) => update('prenom', v)} />
             </div>
-            <Field label="Adresse" value={data.adresse} onChange={(v) => update('adresse', v)} />
+            <PayslipField label="Adresse" value={data.adresse} onChange={(v) => update('adresse', v)} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Code postal" value={data.codePostal} onChange={(v) => update('codePostal', v)} />
-              <Field label="Ville" value={data.ville} onChange={(v) => update('ville', v)} />
+              <PayslipField label="Code postal" value={data.codePostal} onChange={(v) => update('codePostal', v)} />
+              <PayslipField label="Ville" value={data.ville} onChange={(v) => update('ville', v)} />
             </div>
-            <Field label="NIR (Séc. Sociale - 15 chiffres)" value={data.nir} onChange={(v) => update('nir', v)} />
-            <Field label="Date de naissance" value={data.dateNaissance} onChange={(v) => update('dateNaissance', v)} type="date" />
+            <PayslipField label="NIR (Séc. Sociale — 15 chiffres)" value={data.nir} onChange={(v) => update('nir', v)} />
+            <PayslipField label="Date de naissance" value={data.dateNaissance} onChange={(v) => update('dateNaissance', v)} type="date" />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Situation familiale</label>
@@ -221,18 +238,18 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
                   <option value="veuf">Veuf/Veuve</option>
                 </select>
               </div>
-              <Field label="Nombre d'enfants à charge" value={data.nombreEnfants} onChange={(v) => update('nombreEnfants', parseInt(v) || 0)} type="number" />
+              <PayslipField label="Enfants à charge" value={data.nombreEnfants} onChange={(v) => update('nombreEnfants', parseInt(v) || 0)} type="number" />
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="salaire" title="Rémunération de base" icon={Euro}>
+          <PayslipSection id="salaire" title="Rémunération de base" icon={Euro} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Salaire brut (€)" value={data.salaireBrut} onChange={(v) => update('salaireBrut', parseFloat(v) || 0)} type="number" />
-              <Field label="Salaire brut annuel (€)" value={data.salaireBrutAnnuel} onChange={(v) => update('salaireBrutAnnuel', parseFloat(v) || 0)} type="number" />
+              <PayslipField label="Salaire brut (€)" value={data.salaireBrut} onChange={(v) => update('salaireBrut', parseFloat(v) || 0)} type="number" />
+              <PayslipField label="Salaire brut annuel (€)" value={data.salaireBrutAnnuel} onChange={(v) => update('salaireBrutAnnuel', parseFloat(v) || 0)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Heures mensuelles" value={data.heuresMensuelles} onChange={(v) => update('heuresMensuelles', parseFloat(v) || 0)} type="number" />
-              <Field label="Taux horaire (€)" value={data.tauxHoraire ?? ''} onChange={(v) => update('tauxHoraire', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Heures mensuelles" value={data.heuresMensuelles} onChange={(v) => update('heuresMensuelles', parseFloat(v) || 0)} type="number" />
+              <PayslipField label="Taux horaire (€)" value={data.tauxHoraire ?? ''} onChange={(v) => update('tauxHoraire', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
@@ -243,95 +260,96 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
                   <option value="alternance">Alternance</option>
                 </select>
               </div>
-              <Field label="Classification / Poste" value={data.classification} onChange={(v) => update('classification', v)} />
+              <PayslipField label="Classification / Poste" value={data.classification} onChange={(v) => update('classification', v)} />
             </div>
-            <Field label="Convention collective" value={data.conventionCollective} onChange={(v) => update('conventionCollective', v)} />
+            <PayslipField label="Convention collective" value={data.conventionCollective} onChange={(v) => update('conventionCollective', v)} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Coefficient" value={data.coef} onChange={(v) => update('coef', parseFloat(v) || 0)} type="number" />
+              <PayslipField label="Coefficient" value={data.coef} onChange={(v) => update('coef', parseFloat(v) || 0)} type="number" />
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Temps partiel</label>
-                <div className="flex items-center gap-3 h-10">
+                <div className="flex items-center gap-3 pt-2">
                   <input type="checkbox" checked={!!data.tempsPartiel} onChange={(e) => update('tempsPartiel', e.target.checked)} className="w-4 h-4 accent-primary" />
-                  {data.tempsPartiel && <Field label="%" value={data.pourcentageTempsPartiel ?? ''} onChange={(v) => update('pourcentageTempsPartiel', parseFloat(v) || undefined)} type="number" />}
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Temps partiel</span>
+                  {data.tempsPartiel && <PayslipField label="%" value={data.pourcentageTempsPartiel ?? ''} onChange={(v) => update('pourcentageTempsPartiel', parseFloat(v) || undefined)} type="number" />}
                 </div>
               </div>
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="heures" title="Heures & Présence" icon={Clock}>
+          <PayslipSection id="heures" title="Heures & Présence" icon={Clock} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Heures supp. à 25% (h)" value={data.heuresSupp25 ?? ''} onChange={(v) => update('heuresSupp25', parseFloat(v) || undefined)} type="number" />
-              <Field label="Heures supp. à 50% (h)" value={data.heuresSupp50 ?? ''} onChange={(v) => update('heuresSupp50', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Heures supp. à 25% (h)" value={data.heuresSupp25 ?? ''} onChange={(v) => update('heuresSupp25', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Heures supp. à 50% (h)" value={data.heuresSupp50 ?? ''} onChange={(v) => update('heuresSupp50', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Heures absence non payées (h)" value={data.heuresAbsenceNonPayees ?? ''} onChange={(v) => update('heuresAbsenceNonPayees', parseFloat(v) || undefined)} type="number" />
-              <Field label="Jours ouvrés du mois" value={data.nombreJoursOuvres} onChange={(v) => update('nombreJoursOuvres', parseInt(v) || 0)} type="number" />
+              <PayslipField label="Heures absence non payées (h)" value={data.heuresAbsenceNonPayees ?? ''} onChange={(v) => update('heuresAbsenceNonPayees', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Jours ouvrés du mois" value={data.nombreJoursOuvres} onChange={(v) => update('nombreJoursOuvres', parseInt(v) || 0)} type="number" />
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="primes" title="Primes & Gratifications" icon={Gift}>
+          <PayslipSection id="primes" title="Primes & Gratifications" icon={Gift} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Prime exceptionnelle (€)" value={data.primeExceptionnelle ?? ''} onChange={(v) => update('primeExceptionnelle', parseFloat(v) || undefined)} type="number" />
-              <Field label="Prime 13e mois (€)" value={data.prime13Mois ?? ''} onChange={(v) => update('prime13Mois', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prime exceptionnelle (€)" value={data.primeExceptionnelle ?? ''} onChange={(v) => update('primeExceptionnelle', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prime 13e mois (€)" value={data.prime13Mois ?? ''} onChange={(v) => update('prime13Mois', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Prime de performance (€)" value={data.primePerformance ?? ''} onChange={(v) => update('primePerformance', parseFloat(v) || undefined)} type="number" />
-              <Field label="Prime d'ancienneté (€)" value={data.primeAnciennete ?? ''} onChange={(v) => update('primeAnciennete', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prime de performance (€)" value={data.primePerformance ?? ''} onChange={(v) => update('primePerformance', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prime d'ancienneté (€)" value={data.primeAnciennete ?? ''} onChange={(v) => update('primeAnciennete', parseFloat(v) || undefined)} type="number" />
             </div>
-            <Field label="Autres primes (€)" value={data.autresPrimes ?? ''} onChange={(v) => update('autresPrimes', parseFloat(v) || undefined)} type="number" />
-          </Section>
+            <PayslipField label="Autres primes (€)" value={data.autresPrimes ?? ''} onChange={(v) => update('autresPrimes', parseFloat(v) || undefined)} type="number" />
+          </PayslipSection>
 
-          <Section id="conges" title="Congés & Absences" icon={Plane}>
+          <PayslipSection id="conges" title="Congés & Absences" icon={Plane} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="CP acquis (j)" value={data.congesPayesAcquis ?? ''} onChange={(v) => update('congesPayesAcquis', parseFloat(v) || undefined)} type="number" />
-              <Field label="CP pris (j)" value={data.congesPayesPris ?? ''} onChange={(v) => update('congesPayesPris', parseFloat(v) || undefined)} type="number" />
-              <Field label="Solde CP (j)" value={data.congesPayesSolde ?? ''} onChange={(v) => update('congesPayesSolde', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="CP acquis (j)" value={data.congesPayesAcquis ?? ''} onChange={(v) => update('congesPayesAcquis', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="CP pris (j)" value={data.congesPayesPris ?? ''} onChange={(v) => update('congesPayesPris', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Solde CP (j)" value={data.congesPayesSolde ?? ''} onChange={(v) => update('congesPayesSolde', parseFloat(v) || undefined)} type="number" />
             </div>
-            <Field label="Indemnité congés payés (€)" value={data.indemniteCongesPayes ?? ''} onChange={(v) => update('indemniteCongesPayes', parseFloat(v) || undefined)} type="number" />
-          </Section>
+            <PayslipField label="Indemnité congés payés (€)" value={data.indemniteCongesPayes ?? ''} onChange={(v) => update('indemniteCongesPayes', parseFloat(v) || undefined)} type="number" />
+          </PayslipSection>
 
-          <Section id="maladie" title="Maladie & Arrêts de travail" icon={Activity}>
+          <PayslipSection id="maladie" title="Maladie & Arrêts de travail" icon={Activity} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Jours de maladie" value={data.joursMaladie ?? ''} onChange={(v) => update('joursMaladie', parseFloat(v) || undefined)} type="number" />
-              <Field label="Jours d'absence non justifiée" value={data.joursAbsenceNonJustifiee ?? ''} onChange={(v) => update('joursAbsenceNonJustifiee', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Jours de maladie" value={data.joursMaladie ?? ''} onChange={(v) => update('joursMaladie', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Jours absence non justifiée" value={data.joursAbsenceNonJustifiee ?? ''} onChange={(v) => update('joursAbsenceNonJustifiee', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="IJ Sécurité Sociale (€)" value={data.indemnitesJournalieresSS ?? ''} onChange={(v) => update('indemnitesJournalieresSS', parseFloat(v) || undefined)} type="number" />
-              <Field label="Maintien salaire maladie (€)" value={data.maintienSalaireMaladie ?? ''} onChange={(v) => update('maintienSalaireMaladie', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="IJ Sécurité Sociale (€)" value={data.indemnitesJournalieresSS ?? ''} onChange={(v) => update('indemnitesJournalieresSS', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Maintien salaire maladie (€)" value={data.maintienSalaireMaladie ?? ''} onChange={(v) => update('maintienSalaireMaladie', parseFloat(v) || undefined)} type="number" />
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="avantages" title="Avantages sociaux & Mutuelle" icon={Heart}>
+          <PayslipSection id="avantages" title="Avantages sociaux & Mutuelle" icon={Heart} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Mutuelle — Part employeur (€)" value={data.mutuellePartEmployeur ?? ''} onChange={(v) => update('mutuellePartEmployeur', parseFloat(v) || undefined)} type="number" />
-              <Field label="Mutuelle — Part salarié (€)" value={data.mutuellePartSalarie ?? ''} onChange={(v) => update('mutuellePartSalarie', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Mutuelle — Part employeur (€)" value={data.mutuellePartEmployeur ?? ''} onChange={(v) => update('mutuellePartEmployeur', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Mutuelle — Part salarié (€)" value={data.mutuellePartSalarie ?? ''} onChange={(v) => update('mutuellePartSalarie', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Prévoyance — Part employeur (€)" value={data.prevoyancePartEmployeur ?? ''} onChange={(v) => update('prevoyancePartEmployeur', parseFloat(v) || undefined)} type="number" />
-              <Field label="Prévoyance — Part salarié (€)" value={data.prevoyancePartSalarie ?? ''} onChange={(v) => update('prevoyancePartSalarie', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prévoyance — Part employeur (€)" value={data.prevoyancePartEmployeur ?? ''} onChange={(v) => update('prevoyancePartEmployeur', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Prévoyance — Part salarié (€)" value={data.prevoyancePartSalarie ?? ''} onChange={(v) => update('prevoyancePartSalarie', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Tickets restaurant (nb)" value={data.ticketRestaurantNombre ?? ''} onChange={(v) => update('ticketRestaurantNombre', parseFloat(v) || undefined)} type="number" />
-              <Field label="TR — Part employeur (€/ticket)" value={data.ticketRestaurantMontantEmployeur ?? ''} onChange={(v) => update('ticketRestaurantMontantEmployeur', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Tickets restaurant (nb)" value={data.ticketRestaurantNombre ?? ''} onChange={(v) => update('ticketRestaurantNombre', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="TR — Part employeur (€/ticket)" value={data.ticketRestaurantMontantEmployeur ?? ''} onChange={(v) => update('ticketRestaurantMontantEmployeur', parseFloat(v) || undefined)} type="number" />
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="indemnites" title="Frais & Indemnités" icon={Truck}>
+          <PayslipSection id="indemnites" title="Frais & Indemnités" icon={Truck} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Remboursement transport (€)" value={data.indemnitesTransport ?? ''} onChange={(v) => update('indemnitesTransport', parseFloat(v) || undefined)} type="number" />
-              <Field label="Indemnité déplacement véhicule (€)" value={data.indemniteDeplacementVehicule ?? ''} onChange={(v) => update('indemniteDeplacementVehicule', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Remboursement transport (€)" value={data.indemnitesTransport ?? ''} onChange={(v) => update('indemnitesTransport', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Indemnité déplacement véhicule (€)" value={data.indemniteDeplacementVehicule ?? ''} onChange={(v) => update('indemniteDeplacementVehicule', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Avantages en nature — repas (€)" value={data.avantagesEnNatureNourriture ?? ''} onChange={(v) => update('avantagesEnNatureNourriture', parseFloat(v) || undefined)} type="number" />
-              <Field label="Frais professionnels (€)" value={data.fraisProfessionnels ?? ''} onChange={(v) => update('fraisProfessionnels', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Avantages en nature — repas (€)" value={data.avantagesEnNatureNourriture ?? ''} onChange={(v) => update('avantagesEnNatureNourriture', parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Frais professionnels (€)" value={data.fraisProfessionnels ?? ''} onChange={(v) => update('fraisProfessionnels', parseFloat(v) || undefined)} type="number" />
             </div>
-            <Field label="Autres indemnités (€)" value={data.autresIndemnites ?? ''} onChange={(v) => update('autresIndemnites', parseFloat(v) || undefined)} type="number" />
-          </Section>
+            <PayslipField label="Autres indemnités (€)" value={data.autresIndemnites ?? ''} onChange={(v) => update('autresIndemnites', parseFloat(v) || undefined)} type="number" />
+          </PayslipSection>
 
-          <Section id="periode" title="Période & Contrat" icon={Calendar}>
+          <PayslipSection id="periode" title="Période & Contrat" icon={Calendar} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Début de période" value={data.periodeDebut} onChange={(v) => update('periodeDebut', v)} type="date" />
-              <Field label="Fin de période" value={data.periodeFin} onChange={(v) => update('periodeFin', v)} type="date" />
+              <PayslipField label="Début de période" value={data.periodeDebut} onChange={(v) => update('periodeDebut', v)} type="date" />
+              <PayslipField label="Fin de période" value={data.periodeFin} onChange={(v) => update('periodeFin', v)} type="date" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
@@ -343,28 +361,25 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
                   <option value="professionnalisation">Professionnalisation</option>
                 </select>
               </div>
-              <Field label="Date de début du contrat" value={data.dateDebut} onChange={(v) => update('dateDebut', v)} type="date" />
+              <PayslipField label="Date de début du contrat" value={data.dateDebut} onChange={(v) => update('dateDebut', v)} type="date" />
             </div>
-          </Section>
+          </PayslipSection>
 
-          <Section id="entreprise" title="Entreprise" icon={Building2}>
-            <Field label="Raison sociale" value={data.raisonSociale} onChange={(v) => update('raisonSociale', v)} />
-            <Field label="SIRET (14 chiffres)" value={data.siret} onChange={(v) => update('siret', v)} />
-            <Field label="Adresse entreprise" value={data.adresseEntreprise} onChange={(v) => update('adresseEntreprise', v)} />
+          <PayslipSection id="entreprise" title="Entreprise" icon={Building2} openSection={openSection} onToggle={handleToggle}>
+            <PayslipField label="Raison sociale" value={data.raisonSociale} onChange={(v) => update('raisonSociale', v)} />
+            <PayslipField label="SIRET (14 chiffres)" value={data.siret} onChange={(v) => update('siret', v)} />
+            <PayslipField label="Adresse entreprise" value={data.adresseEntreprise} onChange={(v) => update('adresseEntreprise', v)} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Code postal" value={data.codePostalEntreprise} onChange={(v) => update('codePostalEntreprise', v)} />
-              <Field label="Ville" value={data.villeEntreprise} onChange={(v) => update('villeEntreprise', v)} />
+              <PayslipField label="Code postal" value={data.codePostalEntreprise} onChange={(v) => update('codePostalEntreprise', v)} />
+              <PayslipField label="Ville" value={data.villeEntreprise} onChange={(v) => update('villeEntreprise', v)} />
             </div>
-            <Field label="URSSAF (SIRET)" value={data.urssaf} onChange={(v) => update('urssaf', v)} />
-          </Section>
+            <PayslipField label="URSSAF (SIRET)" value={data.urssaf} onChange={(v) => update('urssaf', v)} />
+          </PayslipSection>
         </div>
 
-        {/* Footer actions */}
+        {/* Footer */}
         <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-slate-800/50">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-white/10 rounded-xl font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-          >
+          <button onClick={onClose} className="px-5 py-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-white/10 rounded-xl font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
             Fermer
           </button>
           <div className="flex gap-3">

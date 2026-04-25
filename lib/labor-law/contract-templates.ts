@@ -65,9 +65,11 @@ export interface ContractTemplateData {
   tasks?: string;
   durationWeeks?: string;
 
-  // Signatures (base64)
+  // Signatures (base64) + dates
   employerSignature?: string;
   employeeSignature?: string;
+  employerSignatureDate?: string; // ISO date string
+  employeeSignatureDate?: string;
 }
 
 /**
@@ -500,7 +502,7 @@ export function generateCDDContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.companyName}<br>
         ${data.employerName}, ${data.employerTitle}<br>
-        Date : ______/_____/______
+        Date : ${data.employerSignatureDate ? new Date(data.employerSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
     <div class="signature-box">
@@ -513,7 +515,7 @@ export function generateCDDContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.employeeFirstName} ${data.employeeLastName}<br>
         ${data.employeeAddress}<br>
-        Date : ______/_____/______
+        Date : ${data.employeeSignatureDate ? new Date(data.employeeSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
   </div>
@@ -1009,7 +1011,7 @@ export function generateCDIContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.companyName}<br>
         ${data.employerName}, ${data.employerTitle}<br>
-        Date : ______/_____/______
+        Date : ${data.employerSignatureDate ? new Date(data.employerSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
     <div class="signature-box">
@@ -1022,7 +1024,7 @@ export function generateCDIContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.employeeFirstName} ${data.employeeLastName}<br>
         ${data.employeeAddress}<br>
-        Date : ______/_____/______
+        Date : ${data.employeeSignatureDate ? new Date(data.employeeSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
   </div>
@@ -1467,7 +1469,7 @@ export function generateStageContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.companyName}<br>
         ${data.employerName}, ${data.employerTitle}<br>
-        Date : ______/_____/______
+        Date : ${data.employerSignatureDate ? new Date(data.employerSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
     <div class="signature-box">
@@ -1480,7 +1482,7 @@ export function generateStageContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.employeeFirstName} ${data.employeeLastName}<br>
         ${data.employeeAddress}<br>
-        Date : ______/_____/______
+        Date : ${data.employeeSignatureDate ? new Date(data.employeeSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
   </div>
@@ -1925,7 +1927,7 @@ export function generateAlternanceContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.companyName}<br>
         ${data.employerName}, ${data.employerTitle}<br>
-        Date : ______/_____/______
+        Date : ${data.employerSignatureDate ? new Date(data.employerSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
     <div class="signature-box">
@@ -1938,7 +1940,7 @@ export function generateAlternanceContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.employeeFirstName} ${data.employeeLastName}<br>
         ${data.employeeAddress}<br>
-        Date : ______/_____/______
+        Date : ${data.employeeSignatureDate ? new Date(data.employeeSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
   </div>
@@ -2344,7 +2346,7 @@ function generateFreelanceContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.companyName}<br>
         ${data.employerName}, ${data.employerTitle}<br>
-        Date : ______/_____/______
+        Date : ${data.employerSignatureDate ? new Date(data.employerSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
     <div class="signature-box">
@@ -2357,7 +2359,7 @@ function generateFreelanceContract(data: ContractTemplateData): string {
       <div style="margin-top: auto; font-size: 9pt; color: #666;">
         ${data.employeeFirstName} ${data.employeeLastName}<br>
         ${data.employeeAddress}<br>
-        Date : ______/_____/______
+        Date : ${data.employeeSignatureDate ? new Date(data.employeeSignatureDate).toLocaleDateString('fr-FR') : '______/_____/______'}
       </div>
     </div>
   </div>

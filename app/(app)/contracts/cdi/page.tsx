@@ -23,9 +23,10 @@ import {
   Info,
   Sparkles
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { MagicSelect, CONTRACT_CDI_TYPES, BENEFIT_OPTIONS } from '@/components/ui/MagicSelect';
+import { MagicSelect, CONTRACT_CDI_TYPES, BENEFIT_OPTIONS, FRENCH_CCN_OPTIONS } from '@/components/ui/MagicSelect';
 import { SireneAutocomplete } from '@/components/ui/SireneAutocomplete';
 import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 import { ContractValidator } from '@/components/labor-law/ContractValidator';
@@ -81,9 +82,11 @@ interface CDIFormData {
   nonCompeteClause: boolean;
   mobilityClause: boolean;
 
-  // Signatures (base64)
+  // Signatures (base64) + dates
   employerSignature?: string;
   employeeSignature?: string;
+  employerSignatureDate?: string;
+  employeeSignatureDate?: string;
 }
 
 const initialFormData: CDIFormData = {
@@ -340,13 +343,19 @@ export default function CDIContractPage() {
           probation_clause: formData.probationClause,
           non_compete_clause: formData.nonCompeteClause,
           mobility_clause: formData.mobilityClause,
+          employer_signature: formData.employerSignature || null,
+          employee_signature: formData.employeeSignature || null,
+          employer_signature_date: formData.employerSignatureDate || null,
+          employee_signature_date: formData.employeeSignatureDate || null,
           document_status: 'draft',
         });
 
       if (error) throw error;
       setStep('success');
     } catch (err) {
-      setError('Erreur lors de la sauvegarde');
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     } finally {
       setLoading(false);
@@ -369,10 +378,15 @@ export default function CDIContractPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Erreur lors de l\'envoi');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errData.error || 'Erreur lors de l\'envoi');
+      }
       setStep('success');
     } catch (err) {
-      setError('Erreur lors de l\'envoi du contrat');
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du contrat';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     } finally {
       setLoading(false);
@@ -795,11 +809,14 @@ export default function CDIContractPage() {
                     />
                   </div>
 
-                  <input
-                    placeholder="Convention collective"
+                  <MagicSelect
+                    options={FRENCH_CCN_OPTIONS}
                     value={formData.collectiveAgreement}
-                    onChange={(e) => setFormData({ ...formData, collectiveAgreement: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    onChange={(value) => setFormData({ ...formData, collectiveAgreement: value })}
+                    placeholder="Sélectionner la convention collective..."
+                    label="Convention collective nationale"
+                    variant="default"
+                    searchable
                   />
                 </div>
               </div>
@@ -1124,20 +1141,27 @@ export default function CDIContractPage() {
               <ContractSigning
                 contractType="CDI"
                 contractHtml={contractHtml}
+                onDownloadPdf={downloadPDF}
                 onSave={(signedContract) => {
-                  // Extract signatures from signed contract
                   if (signedContract.signatures && signedContract.signatures.length > 0) {
                     const employerSig = signedContract.signatures.find(s => s.name.includes('Employeur'));
                     const employeeSig = signedContract.signatures.find(s => s.name.includes('Salarie'));
-
-                    if (employerSig) {
-                      setFormData(prev => ({ ...prev, employerSignature: employerSig.data }));
-                    }
-                    if (employeeSig) {
-                      setFormData(prev => ({ ...prev, employeeSignature: employeeSig.data }));
-                    }
+                    setFormData(prev => {
+                      const updated = {
+                        ...prev,
+                        ...(employerSig && {
+                          employerSignature: employerSig.data,
+                          employerSignatureDate: new Date(employerSig.date).toISOString().split('T')[0],
+                        }),
+                        ...(employeeSig && {
+                          employeeSignature: employeeSig.data,
+                          employeeSignatureDate: new Date(employeeSig.date).toISOString().split('T')[0],
+                        }),
+                      };
+                      setContractHtml(generateCDITemplate({ ...updated, contractType: 'cdi' as const }));
+                      return updated;
+                    });
                   }
-                  console.log('Contract signed:', signedContract);
                 }}
               />
             </div>

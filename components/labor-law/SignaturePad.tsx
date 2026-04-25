@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PenTool, Download, Share2, Check, X, Trash2, Plus, Loader2, AlertCircle, FileText, Upload as UploadIcon } from 'lucide-react';
+import { PenTool, Download, Share2, Check, X, Trash2, Loader2, AlertCircle, FileText, Upload as UploadIcon, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 
 interface Signature {
   id: string;
@@ -355,13 +356,15 @@ interface SignableDocumentProps {
   title: string;
   contractHtml: string;
   onSignatureComplete?: (signatures: Signature[]) => void;
+  onDownloadPdf?: () => Promise<void> | void;
 }
 
-export function SignableDocument({ title, contractHtml, onSignatureComplete }: SignableDocumentProps) {
+export function SignableDocument({ title, contractHtml, onSignatureComplete, onDownloadPdf }: SignableDocumentProps) {
   const [signatures, setSignatures] = useState<Signature[]>([]);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [currentSigner, setCurrentSigner] = useState<'employer' | 'employee' | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [signatureDate, setSignatureDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const employerSignature = signatures.find(s => s.name.includes('Employeur'));
   const employeeSignature = signatures.find(s => s.name.includes('Salarie'));
@@ -369,7 +372,8 @@ export function SignableDocument({ title, contractHtml, onSignatureComplete }: S
   const handleSignatureSave = (signature: Signature) => {
     const newSignature = {
       ...signature,
-      name: `${currentSigner === 'employer' ? 'Employeur' : 'Salarie'} - ${signature.name}`
+      name: `${currentSigner === 'employer' ? 'Employeur' : 'Salarie'} - ${signature.name}`,
+      date: signatureDate ? new Date(signatureDate) : new Date(),
     };
 
     const updatedSignatures = [...signatures, newSignature];
@@ -392,58 +396,17 @@ export function SignableDocument({ title, contractHtml, onSignatureComplete }: S
   };
 
   const downloadDocument = async () => {
-    setDownloading(true);
-    try {
-      // Create a complete HTML with signatures embedded
-      const completeHtml = `
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-          <meta charset="UTF-8">
-          <title>${title}</title>
-          <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-            .signature-section { margin-top: 60px; page-break-inside: avoid; }
-            .signature-box { width: 45%; min-height: 100px; border: 1px dashed #ccc; margin-bottom: 20px; }
-            .signature-img { max-height: 80px; }
-          </style>
-        </head>
-        <body>
-          ${contractHtml}
-          <div class="signature-section">
-            <h3>Signatures</h3>
-            <div style="display: flex; justify-content: space-between;">
-              <div class="signature-box">
-                <small>Signature de l'employeur</small>
-                ${employerSignature ? `<img src="${employerSignature.data}" class="signature-img" alt="Signature employeur" />` : '<br><br><br>'}
-              </div>
-              <div class="signature-box">
-                <small>Signature du salarié</small>
-                ${employeeSignature ? `<img src="${employeeSignature.data}" class="signature-img" alt="Signature salarié" />` : '<br><br><br>'}
-              </div>
-            </div>
-            <p style="font-size: 12px; color: #666; margin-top: 30px;">
-              Document signé numériquement le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}<br>
-              Conformément à l'article 1366 du Code civil, la signature numériquement a la même valeur juridique que la signature manuscrite.
-            </p>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Download as HTML file (can be converted to PDF)
-      const blob = new Blob([completeHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${title.replace(/\s+/g, '_')}_${Date.now()}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
+    if (onDownloadPdf) {
+      setDownloading(true);
+      try {
+        await onDownloadPdf();
+      } finally {
+        setDownloading(false);
+      }
+      return;
     }
+    // Fallback: print the iframe
+    toast.info('Utilisez le bouton Télécharger PDF en bas de page pour exporter en PDF.');
   };
 
   const isFullySigned = employerSignature && employeeSignature;
@@ -622,10 +585,22 @@ export function SignableDocument({ title, contractHtml, onSignatureComplete }: S
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <Calendar size={14} className="text-primary" />
+                    Date de signature
+                  </label>
+                  <MagnificentDatePicker
+                    value={signatureDate}
+                    onChange={setSignatureDate}
+                    placeholder="Date de signature"
+                    maxDate={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
                 <SignaturePad
                   onSave={handleSignatureSave}
-                  height={250}
+                  height={220}
                   label="Apposez votre signature"
                 />
               </div>
@@ -642,9 +617,10 @@ interface ContractSigningProps {
   contractType: string;
   contractHtml: string;
   onSave?: (signedContract: { html: string; signatures: Signature[] }) => void;
+  onDownloadPdf?: () => Promise<void> | void;
 }
 
-export function ContractSigning({ contractType, contractHtml, onSave }: ContractSigningProps) {
+export function ContractSigning({ contractType, contractHtml, onSave, onDownloadPdf }: ContractSigningProps) {
   const [signatures, setSignatures] = useState<Signature[]>([]);
 
   const handleSignaturesComplete = (newSignatures: Signature[]) => {
@@ -662,6 +638,7 @@ export function ContractSigning({ contractType, contractHtml, onSave }: Contract
       title={contractType}
       contractHtml={contractHtml}
       onSignatureComplete={handleSignaturesComplete}
+      onDownloadPdf={onDownloadPdf}
     />
   );
 }
