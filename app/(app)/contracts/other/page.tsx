@@ -30,7 +30,8 @@ import { SireneAutocomplete } from '@/components/ui/SireneAutocomplete';
 import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 import { ContractValidator } from '@/components/labor-law/ContractValidator';
 import { ContractSigning } from '@/components/labor-law/SignaturePad';
-import { creerBulletinDepuisContrat, ouvrirBulletinPaie } from '@/lib/labor-law/bulletin-paie';
+import { PayslipEditor } from '@/components/labor-law/PayslipEditor';
+import { creerBulletinDepuisContrat } from '@/lib/labor-law/bulletin-paie';
 
 interface OtherContractFormData {
   contractCategory: 'apprentissage' | 'professionnalisation' | 'cui_cie' | 'cui_cae' | 'portage' | 'interim' | 'domicile' | 'stage' | 'freelance' | 'other';
@@ -140,6 +141,8 @@ export default function OtherContractPage() {
   const [contractHtml, setContractHtml] = useState('');
   const [error, setError] = useState('');
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [showPayslipEditor, setShowPayslipEditor] = useState(false);
+  const [payslipData, setPayslipData] = useState<any>(null);
 
   const startRecording = async () => {
     try {
@@ -430,18 +433,35 @@ export default function OtherContractPage() {
   };
 
   const downloadPDF = async () => {
+    const missing: string[] = [];
+    if (!formData.employeeFirstName) missing.push('Prénom du salarié');
+    if (!formData.employeeLastName) missing.push('Nom du salarié');
+    if (!formData.employeeAddress) missing.push('Adresse du salarié');
+    if (!formData.startDate) missing.push('Date de début');
+    if (!formData.salaryAmount) missing.push('Salaire / Rémunération');
+    if (!formData.companyName) missing.push("Nom de l'entreprise");
+    if (!formData.companySiret) missing.push('SIRET');
+    if (!formData.employerName) missing.push("Nom de l'employeur");
+
+    if (missing.length > 0) {
+      setError(`Champs requis manquants : ${missing.join(', ')}`);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      // Map contract category to contract type
       const contractTypeMap: Record<string, 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
         'stage': 'stage',
+        'apprentissage': 'apprentissage',
+        'professionnalisation': 'professionnalisation',
+        'interim': 'interim',
+        'portage': 'portage',
+        'freelance': 'freelance',
         'apprenticeship': 'apprentissage',
         'professionalization': 'professionnalisation',
         'temp_work': 'interim',
-        'portage': 'portage',
-        'freelance': 'freelance'
       };
 
       const contractType = contractTypeMap[formData.contractCategory] || 'stage';
@@ -456,15 +476,25 @@ export default function OtherContractPage() {
             contractStartDate: formData.startDate,
             contractEndDate: formData.endDate,
             jobTitle: formData.jobTitle || formData.contractTitle || formData.contractCategory,
-            workLocation: formData.workLocation || formData.companyCity,
+            workLocation: formData.workLocation || formData.companyCity || '',
             workSchedule: formData.workSchedule || '35h hebdomadaires',
+            salaryFrequency: (formData as any).salaryFrequency || 'monthly',
+            employeeNationality: (formData as any).employeeNationality || 'Française',
+            employeePostalCode: formData.employeePostalCode || '',
+            employeeCity: formData.employeeCity || '',
+            employeeBirthDate: formData.employeeBirthDate || '',
+            companyAddress: formData.companyAddress || '',
+            companyPostalCode: formData.companyPostalCode || '',
+            companyCity: formData.companyCity || '',
+            employerTitle: formData.employerTitle || 'Gérant',
           }
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la génération du PDF');
+        const detail = errorData.fields ? ` (${errorData.fields.join(', ')})` : '';
+        throw new Error((errorData.error || 'Erreur lors de la génération du PDF') + detail);
       }
 
       const pdfBlob = await response.blob();
@@ -485,8 +515,8 @@ export default function OtherContractPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="w-full">
+      <div className="w-full">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -1046,8 +1076,9 @@ export default function OtherContractPage() {
                     onClick={() => {
                       const periodeDebut = formData.startDate || new Date().toISOString().split('T')[0];
                       const periodeFin = formData.endDate || new Date(new Date(periodeDebut).setMonth(new Date(periodeDebut).getMonth() + 1)).toISOString().split('T')[0];
-                      const bulletinData = creerBulletinDepuisContrat(formData, periodeDebut, periodeFin);
-                      ouvrirBulletinPaie(bulletinData);
+                      const bulletin = creerBulletinDepuisContrat(formData, periodeDebut, periodeFin);
+                      setPayslipData(bulletin);
+                      setShowPayslipEditor(true);
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2"
                   >
@@ -1185,6 +1216,16 @@ export default function OtherContractPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Payslip Editor Modal */}
+      <AnimatePresence>
+        {showPayslipEditor && payslipData && (
+          <PayslipEditor
+            initialData={payslipData}
+            onClose={() => setShowPayslipEditor(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
