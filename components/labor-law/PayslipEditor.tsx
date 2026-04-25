@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Download, Sparkles, Loader2, Check, AlertCircle,
-  User, Building2, Euro, Calendar, FileText, ChevronDown, ChevronUp
+  X, Download, Sparkles, Loader2, AlertCircle,
+  User, Building2, Euro, Calendar, FileText, ChevronDown, ChevronUp,
+  Heart, Gift, Plane, Activity, Clock, Truck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BulletinPaieData } from '@/lib/labor-law/bulletin-paie';
@@ -210,25 +211,33 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
             </div>
             <Field label="NIR (Séc. Sociale - 15 chiffres)" value={data.nir} onChange={(v) => update('nir', v)} />
             <Field label="Date de naissance" value={data.dateNaissance} onChange={(v) => update('dateNaissance', v)} type="date" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Situation familiale</label>
+                <select value={data.situationFamiliale} onChange={(e) => update('situationFamiliale', e.target.value as any)} className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none">
+                  <option value="celibataire">Célibataire</option>
+                  <option value="marie">Marié(e)</option>
+                  <option value="divorce">Divorcé(e)</option>
+                  <option value="veuf">Veuf/Veuve</option>
+                </select>
+              </div>
+              <Field label="Nombre d'enfants à charge" value={data.nombreEnfants} onChange={(v) => update('nombreEnfants', parseInt(v) || 0)} type="number" />
+            </div>
           </Section>
 
-          <Section id="salaire" title="Rémunération" icon={Euro}>
+          <Section id="salaire" title="Rémunération de base" icon={Euro}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Salaire brut (€)" value={data.salaireBrut} onChange={(v) => update('salaireBrut', parseFloat(v) || 0)} type="number" />
               <Field label="Salaire brut annuel (€)" value={data.salaireBrutAnnuel} onChange={(v) => update('salaireBrutAnnuel', parseFloat(v) || 0)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Heures mensuelles" value={data.heuresMensuelles} onChange={(v) => update('heuresMensuelles', parseFloat(v) || 0)} type="number" />
-              <Field label="Taux horaire (€)" value={data.tauxHoraire || ''} onChange={(v) => update('tauxHoraire', parseFloat(v) || undefined)} type="number" />
+              <Field label="Taux horaire (€)" value={data.tauxHoraire ?? ''} onChange={(v) => update('tauxHoraire', parseFloat(v) || undefined)} type="number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Statut</label>
-                <select
-                  value={data.statut}
-                  onChange={(e) => update('statut', e.target.value as any)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none"
-                >
+                <select value={data.statut} onChange={(e) => update('statut', e.target.value as any)} className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none">
                   <option value="cadre">Cadre</option>
                   <option value="non_cadre">Non cadre</option>
                   <option value="alternance">Alternance</option>
@@ -237,22 +246,97 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
               <Field label="Classification / Poste" value={data.classification} onChange={(v) => update('classification', v)} />
             </div>
             <Field label="Convention collective" value={data.conventionCollective} onChange={(v) => update('conventionCollective', v)} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Coefficient" value={data.coef} onChange={(v) => update('coef', parseFloat(v) || 0)} type="number" />
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Temps partiel</label>
+                <div className="flex items-center gap-3 h-10">
+                  <input type="checkbox" checked={!!data.tempsPartiel} onChange={(e) => update('tempsPartiel', e.target.checked)} className="w-4 h-4 accent-primary" />
+                  {data.tempsPartiel && <Field label="%" value={data.pourcentageTempsPartiel ?? ''} onChange={(v) => update('pourcentageTempsPartiel', parseFloat(v) || undefined)} type="number" />}
+                </div>
+              </div>
+            </div>
           </Section>
 
-          <Section id="periode" title="Période" icon={Calendar}>
+          <Section id="heures" title="Heures & Présence" icon={Clock}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Heures supp. à 25% (h)" value={data.heuresSupp25 ?? ''} onChange={(v) => update('heuresSupp25', parseFloat(v) || undefined)} type="number" />
+              <Field label="Heures supp. à 50% (h)" value={data.heuresSupp50 ?? ''} onChange={(v) => update('heuresSupp50', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Heures absence non payées (h)" value={data.heuresAbsenceNonPayees ?? ''} onChange={(v) => update('heuresAbsenceNonPayees', parseFloat(v) || undefined)} type="number" />
+              <Field label="Jours ouvrés du mois" value={data.nombreJoursOuvres} onChange={(v) => update('nombreJoursOuvres', parseInt(v) || 0)} type="number" />
+            </div>
+          </Section>
+
+          <Section id="primes" title="Primes & Gratifications" icon={Gift}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Prime exceptionnelle (€)" value={data.primeExceptionnelle ?? ''} onChange={(v) => update('primeExceptionnelle', parseFloat(v) || undefined)} type="number" />
+              <Field label="Prime 13e mois (€)" value={data.prime13Mois ?? ''} onChange={(v) => update('prime13Mois', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Prime de performance (€)" value={data.primePerformance ?? ''} onChange={(v) => update('primePerformance', parseFloat(v) || undefined)} type="number" />
+              <Field label="Prime d'ancienneté (€)" value={data.primeAnciennete ?? ''} onChange={(v) => update('primeAnciennete', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <Field label="Autres primes (€)" value={data.autresPrimes ?? ''} onChange={(v) => update('autresPrimes', parseFloat(v) || undefined)} type="number" />
+          </Section>
+
+          <Section id="conges" title="Congés & Absences" icon={Plane}>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="CP acquis (j)" value={data.congesPayesAcquis ?? ''} onChange={(v) => update('congesPayesAcquis', parseFloat(v) || undefined)} type="number" />
+              <Field label="CP pris (j)" value={data.congesPayesPris ?? ''} onChange={(v) => update('congesPayesPris', parseFloat(v) || undefined)} type="number" />
+              <Field label="Solde CP (j)" value={data.congesPayesSolde ?? ''} onChange={(v) => update('congesPayesSolde', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <Field label="Indemnité congés payés (€)" value={data.indemniteCongesPayes ?? ''} onChange={(v) => update('indemniteCongesPayes', parseFloat(v) || undefined)} type="number" />
+          </Section>
+
+          <Section id="maladie" title="Maladie & Arrêts de travail" icon={Activity}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Jours de maladie" value={data.joursMaladie ?? ''} onChange={(v) => update('joursMaladie', parseFloat(v) || undefined)} type="number" />
+              <Field label="Jours d'absence non justifiée" value={data.joursAbsenceNonJustifiee ?? ''} onChange={(v) => update('joursAbsenceNonJustifiee', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="IJ Sécurité Sociale (€)" value={data.indemnitesJournalieresSS ?? ''} onChange={(v) => update('indemnitesJournalieresSS', parseFloat(v) || undefined)} type="number" />
+              <Field label="Maintien salaire maladie (€)" value={data.maintienSalaireMaladie ?? ''} onChange={(v) => update('maintienSalaireMaladie', parseFloat(v) || undefined)} type="number" />
+            </div>
+          </Section>
+
+          <Section id="avantages" title="Avantages sociaux & Mutuelle" icon={Heart}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Mutuelle — Part employeur (€)" value={data.mutuellePartEmployeur ?? ''} onChange={(v) => update('mutuellePartEmployeur', parseFloat(v) || undefined)} type="number" />
+              <Field label="Mutuelle — Part salarié (€)" value={data.mutuellePartSalarie ?? ''} onChange={(v) => update('mutuellePartSalarie', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Prévoyance — Part employeur (€)" value={data.prevoyancePartEmployeur ?? ''} onChange={(v) => update('prevoyancePartEmployeur', parseFloat(v) || undefined)} type="number" />
+              <Field label="Prévoyance — Part salarié (€)" value={data.prevoyancePartSalarie ?? ''} onChange={(v) => update('prevoyancePartSalarie', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Tickets restaurant (nb)" value={data.ticketRestaurantNombre ?? ''} onChange={(v) => update('ticketRestaurantNombre', parseFloat(v) || undefined)} type="number" />
+              <Field label="TR — Part employeur (€/ticket)" value={data.ticketRestaurantMontantEmployeur ?? ''} onChange={(v) => update('ticketRestaurantMontantEmployeur', parseFloat(v) || undefined)} type="number" />
+            </div>
+          </Section>
+
+          <Section id="indemnites" title="Frais & Indemnités" icon={Truck}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Remboursement transport (€)" value={data.indemnitesTransport ?? ''} onChange={(v) => update('indemnitesTransport', parseFloat(v) || undefined)} type="number" />
+              <Field label="Indemnité déplacement véhicule (€)" value={data.indemniteDeplacementVehicule ?? ''} onChange={(v) => update('indemniteDeplacementVehicule', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Avantages en nature — repas (€)" value={data.avantagesEnNatureNourriture ?? ''} onChange={(v) => update('avantagesEnNatureNourriture', parseFloat(v) || undefined)} type="number" />
+              <Field label="Frais professionnels (€)" value={data.fraisProfessionnels ?? ''} onChange={(v) => update('fraisProfessionnels', parseFloat(v) || undefined)} type="number" />
+            </div>
+            <Field label="Autres indemnités (€)" value={data.autresIndemnites ?? ''} onChange={(v) => update('autresIndemnites', parseFloat(v) || undefined)} type="number" />
+          </Section>
+
+          <Section id="periode" title="Période & Contrat" icon={Calendar}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Début de période" value={data.periodeDebut} onChange={(v) => update('periodeDebut', v)} type="date" />
               <Field label="Fin de période" value={data.periodeFin} onChange={(v) => update('periodeFin', v)} type="date" />
             </div>
-            <Field label="Nombre de jours ouvrés" value={data.nombreJoursOuvres} onChange={(v) => update('nombreJoursOuvres', parseInt(v) || 0)} type="number" />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Type de contrat</label>
-                <select
-                  value={data.typeContrat}
-                  onChange={(e) => update('typeContrat', e.target.value as any)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none"
-                >
+                <select value={data.typeContrat} onChange={(e) => update('typeContrat', e.target.value as any)} className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none">
                   <option value="cdd">CDD</option>
                   <option value="cdi">CDI</option>
                   <option value="apprentissage">Apprentissage</option>

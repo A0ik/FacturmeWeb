@@ -425,7 +425,7 @@ export function generateCDDContract(data: ContractTemplateData): string {
       <p>Conformément aux articles L. 1243-1 et suivants du Code du travail :</p>
       <ul>
         <li>La rupture anticipée du contrat par le salarié ouvre droit à des dommages-intérêts d'un montant au moins égal aux rémunérations qu'il aurait perçues jusqu'au terme du contrat</li>
-        <li>Cette règle ne s'applique pas en cas de faute grave du salarié, de force majeure ou de rupture anticipée agreed by both parties</li>
+        <li>Cette règle ne s'applique pas en cas de faute grave du salarié, de force majeure ou de rupture anticipée d'un commun accord entre les deux parties</li>
         <li>L'employeur qui rompt le contrat de manière anticipée doit proposer au salarié un autre emploi dans l'entreprise</li>
       </ul>
     </div>

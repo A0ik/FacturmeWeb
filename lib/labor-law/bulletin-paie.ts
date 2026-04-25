@@ -33,12 +33,49 @@ export interface BulletinPaieData {
   heuresSupplementaires?: number;
   majorationHeuresSup?: number;
 
-  // Options
+  // Options temps de travail
   tempsPartiel?: boolean;
   pourcentageTempsPartiel?: number;
   avantagesEnNature?: number;
   fraisProfessionnels?: number;
   avantagesEnNatureNourriture?: number;
+
+  // Heures supplémentaires
+  heuresSupp25?: number;
+  heuresSupp50?: number;
+  heuresAbsenceNonPayees?: number;
+
+  // Primes & gratifications
+  primeExceptionnelle?: number;
+  prime13Mois?: number;
+  primePerformance?: number;
+  primeAnciennete?: number;
+  autresPrimes?: number;
+
+  // Congés payés
+  congesPayesAcquis?: number;
+  congesPayesPris?: number;
+  congesPayesSolde?: number;
+  indemniteCongesPayes?: number;
+
+  // Absences & maladie
+  joursMaladie?: number;
+  indemnitesJournalieresSS?: number;
+  maintienSalaireMaladie?: number;
+  joursAbsenceNonJustifiee?: number;
+
+  // Avantages sociaux
+  mutuellePartEmployeur?: number;
+  mutuellePartSalarie?: number;
+  prevoyancePartEmployeur?: number;
+  prevoyancePartSalarie?: number;
+  ticketRestaurantNombre?: number;
+  ticketRestaurantMontantEmployeur?: number;
+
+  // Indemnités & remboursements
+  indemnitesTransport?: number;
+  indemniteDeplacementVehicule?: number;
+  autresIndemnites?: number;
 
   // Entreprise
   raisonSociale: string;

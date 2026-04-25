@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -32,6 +32,7 @@ import { ContractValidator } from '@/components/labor-law/ContractValidator';
 import { ContractSigning } from '@/components/labor-law/SignaturePad';
 import { PayslipEditor } from '@/components/labor-law/PayslipEditor';
 import { creerBulletinDepuisContrat } from '@/lib/labor-law/bulletin-paie';
+import { generateContract as generateContractTemplate } from '@/lib/labor-law/contract-templates';
 
 interface OtherContractFormData {
   contractCategory: 'apprentissage' | 'professionnalisation' | 'cui_cie' | 'cui_cae' | 'portage' | 'interim' | 'domicile' | 'stage' | 'freelance' | 'other';
@@ -143,6 +144,46 @@ export default function OtherContractPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [showPayslipEditor, setShowPayslipEditor] = useState(false);
   const [payslipData, setPayslipData] = useState<any>(null);
+  const [textInput, setTextInput] = useState('');
+
+  useEffect(() => {
+    if (!profile) return;
+    setFormData(prev => ({
+      ...prev,
+      companyName: prev.companyName || profile.company_name || '',
+      companyAddress: prev.companyAddress || profile.address || '',
+      companyPostalCode: prev.companyPostalCode || profile.postal_code || '',
+      companyCity: prev.companyCity || profile.city || '',
+      companySiret: prev.companySiret || profile.siret || '',
+      employerName: prev.employerName || (profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : ''),
+    }));
+  }, [profile]);
+
+  const handleTextSubmit = async () => {
+    if (!textInput.trim()) return;
+    setProcessingVoice(true);
+    setError('');
+    try {
+      const response = await fetch('/api/process-text-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textInput, contract_type: 'other' }),
+      });
+      if (!response.ok) throw new Error('Erreur lors de l\'analyse');
+      const result = await response.json();
+      if (result.parsed) {
+        const nonNull = Object.fromEntries(
+          Object.entries(result.parsed).filter(([, v]) => v !== null && v !== undefined && v !== '')
+        );
+        setFormData(prev => ({ ...prev, ...nonNull }));
+        setTextInput('');
+      }
+    } catch (err) {
+      setError('Erreur lors de l\'analyse du texte');
+    } finally {
+      setProcessingVoice(false);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -208,141 +249,27 @@ export default function OtherContractPage() {
   };
 
   const generateContract = () => {
-    const html = generateOtherContract(formData);
+    const contractTypeMap: Record<string, 'cdd' | 'cdi' | 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
+      apprentissage: 'apprentissage',
+      professionnalisation: 'professionnalisation',
+      stage: 'stage',
+      freelance: 'freelance',
+      interim: 'interim',
+      portage: 'portage',
+      cui_cie: 'cdi',
+      cui_cae: 'cdi',
+      domicile: 'cdi',
+      other: 'cdi',
+    };
+    const contractType = contractTypeMap[formData.contractCategory] ?? 'cdi';
+    const html = generateContractTemplate({
+      ...formData,
+      contractType,
+      contractStartDate: formData.startDate,
+      contractEndDate: formData.endDate,
+    });
     setContractHtml(html);
     setStep('preview');
-  };
-
-  const generateOtherContract = (data: OtherContractFormData): string => {
-    const categoryLabels: Record<string, string> = {
-      stage: 'CONVENTION DE STAGE',
-      freelance: 'CONTRAT DE PRESTATION DE SERVICE FREELANCE',
-      temp_work: 'CONTRAT DE TRAVAIL TEMPORAIRE',
-      apprenticeship: "CONTRAT D'APPRENTISSAGE",
-      professionalization: 'CONTRAT DE PROFESSIONNALISATION',
-      other: data.contractTitle.toUpperCase(),
-    };
-
-    const title = categoryLabels[data.contractCategory] || data.contractTitle.toUpperCase();
-
-    return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - ${data.employeeFirstName} ${data.employeeLastName}</title>
-  <style>
-    body { font-family: 'Arial', sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
-    h1 { color: #1D9E75; text-align: center; margin-bottom: 30px; font-size: 22px; }
-    h2 { color: #333; margin-top: 25px; margin-bottom: 12px; font-size: 16px; border-bottom: 2px solid #1D9E75; padding-bottom: 4px; }
-    .section { margin-bottom: 18px; }
-    .field { margin-bottom: 10px; }
-    .label { font-weight: bold; color: #555; }
-    .value { color: #333; }
-    .signature-area { margin-top: 40px; display: flex; justify-content: space-between; }
-    .signature-box { width: 45%; height: 120px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-
-  <div class="section">
-    <h2>Article 1 - Parties</h2>
-    <div class="field">
-      <span class="label">Entreprise :</span>
-      <span class="value">${data.companyName} - ${data.companyAddress} - SIRET: ${data.companySiret}</span>
-    </div>
-    <div class="field">
-      <span class="label">Représentée par :</span>
-      <span class="value">${data.employerName}</span>
-    </div>
-    <div class="field">
-      <span class="label">Et :</span>
-      <span class="value">${data.employeeFirstName} ${data.employeeLastName} - ${data.employeeAddress}</span>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Article 2 - Objet</h2>
-    <div class="field">
-      <span class="label">Intitulé :</span>
-      <span class="value">${data.contractTitle || title}</span>
-    </div>
-    ${data.speciality ? `
-    <div class="field">
-      <span class="label">Spécialité :</span>
-      <span class="value">${data.speciality}</span>
-    </div>
-    ` : ''}
-  </div>
-
-  <div class="section">
-    <h2>Article 3 - Durée</h2>
-    <div class="field">
-      <span class="label">Date de début :</span>
-      <span class="value">${data.startDate}</span>
-    </div>
-    <div class="field">
-      <span class="label">Date de fin :</span>
-      <span class="value">${data.endDate || 'Non déterminée'}</span>
-    </div>
-    <div class="field">
-      <span class="label">Durée :</span>
-      <span class="value">${data.durationWeeks || 'Non spécifiée'}</span>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Article 4 - Tâches et Objectifs</h2>
-    ${data.tasks ? `
-    <div class="field">
-      <span class="label">Missions principales :</span>
-      <span class="value">${data.tasks}</span>
-    </div>
-    ` : '<p>Le stagiaire/freelance effectuera les missions confiées par l\'entreprise.</p>'}
-
-    ${data.objectives ? `
-    <div class="field">
-      <span class="label">Objectifs pédagogiques :</span>
-      <span class="value">${data.objectives}</span>
-    </div>
-    ` : ''}
-  </div>
-
-  ${data.contractCategory === 'stage' && data.tutorName ? `
-  <div class="section">
-    <h2>Article 5 - Tuteur de Stage</h2>
-    <div class="field">
-      <span class="label">Nom du tuteur :</span>
-      <span class="value">${data.tutorName}</span>
-    </div>
-  </div>
-  ` : ''}
-
-  ${data.schoolName ? `
-  <div class="section">
-    <h2>Article 6 - Établissement d'Enseignement</h2>
-    <div class="field">
-      <span class="label">École / Université :</span>
-      <span class="value">${data.schoolName}</span>
-    </div>
-  </div>
-  ` : ''}
-
-  <div class="section">
-    <h2>Article ${data.contractCategory === 'stage' ? '7' : '5'} - Rémunération</h2>
-    <div class="field">
-      <span class="label">Montant :</span>
-      <span class="value">${data.salaryAmount || 'Non rémunéré'} ${data.salaryAmount ? '€' : ''} ${data.salaryFrequency !== 'flat_rate' ? `/ ${data.salaryFrequency === 'monthly' ? 'mois' : data.salaryFrequency === 'weekly' ? 'semaine' : 'heure'}` : ''}</span>
-    </div>
-  </div>
-
-  <div class="signature-area">
-    <div class="signature-box">Signature Employeur</div>
-    <div class="signature-box">Signature ${data.contractCategory === 'stage' ? 'Stagiaire' : 'Prestateur'}</div>
-  </div>
-</body>
-</html>`;
   };
 
   const saveContract = async () => {
@@ -643,33 +570,34 @@ export default function OtherContractPage() {
                 <button
                   onClick={recording ? stopRecording : startRecording}
                   disabled={processingVoice}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
-                    recording
-                      ? 'bg-red-500 text-white'
-                      : 'bg-primary text-white hover:bg-primary/90'
+                  className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all ${
+                    recording ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-primary/90'
                   } ${processingVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {recording ? (
-                    <>
-                      <X className="w-5 h-5" />
-                      Arrêter
-                    </>
-                  ) : processingVoice ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Traitement...
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-5 h-5" />
-                      Enregistrer
-                    </>
-                  )}
+                  {recording ? <><X className="w-5 h-5" /> Arrêter</> : processingVoice ? <><Loader2 className="w-5 h-5 animate-spin" /> Traitement...</> : <><Mic className="w-5 h-5" /> Voix</>}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Décrivez le contrat en texte libre... Ex : 'Stage de 6 mois de Sophie Leroy, étudiante en master marketing à Paris Dauphine, du 1er février au 31 juillet 2025. Tuteur : M. Bernard. Gratification 560€/mois.'"
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm resize-none"
+                />
+                <button
+                  onClick={handleTextSubmit}
+                  disabled={processingVoice || !textInput.trim()}
+                  className="self-end flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {processingVoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Analyser et remplir
                 </button>
               </div>
 
               {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </div>
