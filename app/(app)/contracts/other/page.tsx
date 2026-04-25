@@ -1059,9 +1059,13 @@ export default function OtherContractPage() {
                 Aperçu du contrat
               </h2>
 
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 mb-6 overflow-auto max-h-[600px]">
-                <div dangerouslySetInnerHTML={{ __html: contractHtml }} />
-              </div>
+              <iframe
+                srcDoc={contractHtml}
+                className="w-full rounded-2xl border border-gray-100 dark:border-white/10 mb-6"
+                style={{ height: '600px' }}
+                title="Aperçu du contrat"
+                sandbox="allow-same-origin"
+              />
             </div>
 
             {/* Bulletin de paie estimé (pour les contrats rémunérés) */}
