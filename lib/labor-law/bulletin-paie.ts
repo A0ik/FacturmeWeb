@@ -102,6 +102,9 @@ export interface BulletinPaieData {
 
   // Date de paiement du salaire
   datePaiement?: string;
+
+  // Couleur d'accent (pour le design du bulletin)
+  accentColor?: string;
 }
 
 interface LigneBulletin {
@@ -208,6 +211,14 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   const fmt = (n: number) => n.toFixed(2);
   const fmtE = (n: number) => n ? n.toFixed(2) + ' €' : '';
 
+  // Récupérer la couleur d'accent depuis les données ou utiliser la couleur par défaut
+  const accentColor = (data as any).accentColor || '#1D9E75';
+  const headerColor = accentColor;
+  const sectionHeaderColor = accentColor;
+  const netBoxColor = accentColor;
+  const titleColor = accentColor;
+  const borderColor = accentColor;
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -223,31 +234,31 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #1a1a1a; background: #fff; }
   .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 8mm; }
   /* Header */
-  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid #1D9E75; padding-bottom:6px; margin-bottom:6px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid ${headerColor}; padding-bottom:6px; margin-bottom:6px; }
   .header-left { flex:1; }
   .header-right { text-align:right; }
-  .company-name { font-size:13pt; font-weight:bold; color:#1D9E75; }
-  .bulletin-title { font-size:11pt; font-weight:bold; color:#fff; background:#1D9E75; padding:3px 10px; border-radius:3px; display:inline-block; }
+  .company-name { font-size:13pt; font-weight:bold; color:${headerColor}; }
+  .bulletin-title { font-size:11pt; font-weight:bold; color:#fff; background:${headerColor}; padding:3px 10px; border-radius:3px; display:inline-block; }
   /* Blocs identité */
   .id-bloc { display:flex; gap:8px; margin-bottom:6px; }
   .id-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:5px 7px; font-size:7.5pt; }
-  .id-box-title { font-size:7pt; font-weight:bold; color:#1D9E75; text-transform:uppercase; border-bottom:1px solid #e0e0e0; margin-bottom:3px; padding-bottom:2px; }
+  .id-box-title { font-size:7pt; font-weight:bold; color:${titleColor}; text-transform:uppercase; border-bottom:1px solid #e0e0e0; margin-bottom:3px; padding-bottom:2px; }
   .id-row { display:flex; justify-content:space-between; margin-bottom:1px; }
   .id-key { color:#666; }
   .id-val { font-weight:bold; }
   /* Tableau cotisations */
-  .section-head { background:#1D9E75; color:#fff; font-size:7.5pt; font-weight:bold; padding:3px 6px; margin:5px 0 0 0; }
+  .section-head { background:${sectionHeaderColor}; color:#fff; font-size:7.5pt; font-weight:bold; padding:3px 6px; margin:5px 0 0 0; }
   table.cot { width:100%; border-collapse:collapse; font-size:7.5pt; }
   table.cot th { background:#f0f0f0; font-weight:bold; padding:3px 6px; border-bottom:2px solid #ccc; text-align:right; font-size:7pt; }
   table.cot th:first-child { text-align:left; }
   /* Bloc NET */
-  .net-box { display:flex; justify-content:space-between; align-items:center; background:#1D9E75; color:#fff; border-radius:4px; padding:8px 14px; margin-top:6px; }
+  .net-box { display:flex; justify-content:space-between; align-items:center; background:${netBoxColor}; color:#fff; border-radius:4px; padding:8px 14px; margin-top:6px; }
   .net-label { font-size:11pt; font-weight:bold; }
   .net-amount { font-size:15pt; font-weight:bold; }
   /* Pied */
   .footer-bloc { display:flex; gap:8px; margin-top:6px; font-size:7pt; color:#555; }
   .footer-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:4px 6px; }
-  .footer-box-title { font-weight:bold; color:#1D9E75; margin-bottom:2px; font-size:7pt; }
+  .footer-box-title { font-weight:bold; color:${titleColor}; margin-bottom:2px; font-size:7pt; }
   .cp-row { display:flex; justify-content:space-between; }
   .mention { font-size:6.5pt; color:#888; margin-top:6px; border-top:1px solid #ddd; padding-top:4px; }
 </style>

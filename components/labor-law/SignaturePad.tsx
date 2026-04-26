@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PenTool, Download, Share2, Check, X, Trash2, Loader2, AlertCircle, FileText, Upload as UploadIcon, Calendar } from 'lucide-react';
+import { PenTool, Download, Check, X, Trash2, Loader2, AlertCircle, FileText, Upload as UploadIcon, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 
@@ -437,16 +437,6 @@ export function SignableDocument({ title, contractHtml, onSignatureComplete, onD
                 <Download size={16} />
               )}
               Télécharger
-            </button>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                toast.success('Lien copié dans le presse-papier');
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 rounded-xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-            >
-              <Share2 size={16} />
-              Partager
             </button>
           </div>
         </div>

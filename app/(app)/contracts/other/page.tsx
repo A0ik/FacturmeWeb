@@ -259,6 +259,31 @@ export default function OtherContractPage() {
     }
   };
 
+  const loadPdfPreview = () => {
+    const contractTypeMap: Record<string, 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
+      'stage': 'stage',
+      'apprentissage': 'apprentissage',
+      'professionnalisation': 'professionnalisation',
+      'interim': 'interim',
+      'portage': 'portage',
+      'freelance': 'freelance',
+    };
+    const contractType = contractTypeMap[formData.contractCategory] || 'stage';
+    const previewData = { ...formData, contractType, contractStartDate: formData.startDate, contractEndDate: formData.endDate, employeeNationality: formData.employeeNationality || 'Française', employerTitle: formData.employerTitle || 'Gérant', workSchedule: formData.workSchedule || '35h hebdomadaires', salaryFrequency: formData.salaryFrequency || 'monthly' };
+    const missing = ['employeeFirstName','employeeLastName','employeeAddress','startDate','salaryAmount','companyName','companySiret','employerName'];
+    const hasMissing = missing.some(f => !(formData as any)[f]);
+    if (!hasMissing) {
+      setPdfPreviewLoading(true);
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+      fetch('/api/contracts/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contract: previewData }) })
+        .then(r => r.ok ? r.blob() : null)
+        .then(blob => { if (blob) setPdfPreviewUrl(URL.createObjectURL(blob)); })
+        .catch(() => {})
+        .finally(() => setPdfPreviewLoading(false));
+    }
+  };
+
   const generateContract = () => {
     const contractTypeMap: Record<string, 'cdd' | 'cdi' | 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = {
       apprentissage: 'apprentissage',
@@ -282,20 +307,7 @@ export default function OtherContractPage() {
     setContractHtml(html);
     setStep('preview');
     // Load PDF preview
-    const contractTypeForPdf = contractType;
-    const previewData = { ...formData, contractType: contractTypeForPdf, contractStartDate: formData.startDate, contractEndDate: formData.endDate, employeeNationality: formData.employeeNationality || 'Française', employerTitle: formData.employerTitle || 'Gérant', workSchedule: formData.workSchedule || '35h hebdomadaires', salaryFrequency: formData.salaryFrequency || 'monthly' };
-    const missing = ['employeeFirstName','employeeLastName','employeeAddress','startDate','salaryAmount','companyName','companySiret','employerName'];
-    const hasMissing = missing.some(f => !(formData as any)[f]);
-    if (!hasMissing) {
-      setPdfPreviewLoading(true);
-      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-      setPdfPreviewUrl(null);
-      fetch('/api/contracts/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contract: previewData }) })
-        .then(r => r.ok ? r.blob() : null)
-        .then(blob => { if (blob) setPdfPreviewUrl(URL.createObjectURL(blob)); })
-        .catch(() => {})
-        .finally(() => setPdfPreviewLoading(false));
-    }
+    loadPdfPreview();
   };
 
   const saveContract = async () => {
@@ -306,6 +318,28 @@ export default function OtherContractPage() {
       const supabase = getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
+
+      // Vérifier les champs obligatoires
+      const requiredFields = [
+        { field: 'employeeFirstName', label: 'Prénom du salarié', value: formData.employeeFirstName },
+        { field: 'employeeLastName', label: 'Nom du salarié', value: formData.employeeLastName },
+        { field: 'employeeAddress', label: 'Adresse du salarié', value: formData.employeeAddress },
+        { field: 'employeePostalCode', label: 'Code postal du salarié', value: formData.employeePostalCode },
+        { field: 'employeeCity', label: 'Ville du salarié', value: formData.employeeCity },
+        { field: 'startDate', label: 'Date de début du contrat', value: formData.startDate },
+        { field: 'jobTitle', label: 'Intitulé du poste', value: formData.jobTitle },
+        { field: 'workLocation', label: 'Lieu de travail', value: formData.workLocation },
+        { field: 'salaryAmount', label: 'Salaire/Rémunération', value: formData.salaryAmount },
+        { field: 'companyName', label: "Nom de l'entreprise", value: formData.companyName },
+        { field: 'companySiret', label: 'SIRET', value: formData.companySiret },
+        { field: 'employerName', label: "Nom de l'employeur", value: formData.employerName },
+      ];
+
+      const missing = requiredFields.filter(f => !f.value || f.value.trim() === '');
+      if (missing.length > 0) {
+        const missingLabels = missing.map(f => f.label).join(', ');
+        throw new Error(`Champs obligatoires manquants : ${missingLabels}. Veuillez remplir tous les champs requis avant de sauvegarder.`);
+      }
 
       const { error } = await supabase
         .from('contracts_other')
@@ -350,10 +384,14 @@ export default function OtherContractPage() {
           employee_signature: formData.employeeSignature || null,
           employer_signature_date: formData.employerSignatureDate || null,
           employee_signature_date: formData.employeeSignatureDate || null,
+          contract_html: contractHtml,
           document_status: 'draft',
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw new Error(`Erreur lors de l'enregistrement dans la base de données : ${error.message || error.code || 'Erreur inconnue'}`);
+      }
       setStep('success');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
@@ -1121,6 +1159,8 @@ export default function OtherContractPage() {
                         contractStartDate: updated.startDate,
                         contractEndDate: updated.endDate,
                       }));
+                      // Rafraîchir la prévisualisation PDF avec les nouvelles signatures
+                      loadPdfPreview();
                       return updated;
                     });
                   }

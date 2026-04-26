@@ -339,6 +339,31 @@ export default function CDDContractPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
 
+      // Vérifier les champs obligatoires
+      const requiredFields = [
+        { field: 'employeeFirstName', label: 'Prénom du salarié', value: formData.employeeFirstName },
+        { field: 'employeeLastName', label: 'Nom du salarié', value: formData.employeeLastName },
+        { field: 'employeeAddress', label: 'Adresse du salarié', value: formData.employeeAddress },
+        { field: 'employeePostalCode', label: 'Code postal du salarié', value: formData.employeePostalCode },
+        { field: 'employeeCity', label: 'Ville du salarié', value: formData.employeeCity },
+        { field: 'employeeBirthDate', label: 'Date de naissance', value: formData.employeeBirthDate },
+        { field: 'contractStartDate', label: 'Date de début du contrat', value: formData.contractStartDate },
+        { field: 'contractEndDate', label: 'Date de fin du contrat', value: formData.contractEndDate },
+        { field: 'contractReason', label: 'Motif du CDD', value: formData.contractReason },
+        { field: 'jobTitle', label: 'Intitulé du poste', value: formData.jobTitle },
+        { field: 'workLocation', label: 'Lieu de travail', value: formData.workLocation },
+        { field: 'salaryAmount', label: 'Salaire', value: formData.salaryAmount },
+        { field: 'companyName', label: "Nom de l'entreprise", value: formData.companyName },
+        { field: 'companySiret', label: 'SIRET', value: formData.companySiret },
+        { field: 'employerName', label: "Nom de l'employeur", value: formData.employerName },
+      ];
+
+      const missing = requiredFields.filter(f => !f.value || f.value.trim() === '');
+      if (missing.length > 0) {
+        const missingLabels = missing.map(f => f.label).join(', ');
+        throw new Error(`Champs obligatoires manquants : ${missingLabels}. Veuillez remplir tous les champs requis avant de sauvegarder.`);
+      }
+
       const { error } = await supabase
         .from('contracts_cdd')
         .insert({
@@ -379,10 +404,14 @@ export default function CDDContractPage() {
           employee_signature: formData.employeeSignature || null,
           employer_signature_date: formData.employerSignatureDate || null,
           employee_signature_date: formData.employeeSignatureDate || null,
+          contract_html: contractHtml,
           document_status: 'draft',
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw new Error(`Erreur lors de l'enregistrement dans la base de données : ${error.message || error.code || 'Erreur inconnue'}`);
+      }
       setStep('success');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
@@ -1176,6 +1205,8 @@ export default function CDDContractPage() {
                         }),
                       };
                       setContractHtml(generateCDDTemplate({ ...updated, contractType: 'cdd' as const }));
+                      // Rafraîchir la prévisualisation PDF avec les nouvelles signatures
+                      loadPdfPreview();
                       return updated;
                     });
                   }
