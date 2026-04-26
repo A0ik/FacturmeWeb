@@ -341,10 +341,11 @@ export default function OtherContractPage() {
         throw new Error(`Champs obligatoires manquants : ${missingLabels}. Veuillez remplir tous les champs requis avant de sauvegarder.`);
       }
 
-      // Retirer les signatures base64 du HTML pour réduire la taille du payload
-      const cleanHtml = contractHtml
-        .replace(/<img src="data:image\/[^"]+" alt="Signature [^"]+">/g, '<span class="sig-area-label">Signature manuscrite</span>')
-        .replace(/<img src="data:image\/[^"]+" alt="Cachet \+ Signature">/g, '<span class="sig-area-label">Cachet + Signature</span>');
+      // Retirer les signatures base64 en générant un HTML propre
+      const cleanFormData = { ...formData, employerSignature: undefined, employeeSignature: undefined };
+      const contractTypeMap: Record<string, 'cdd' | 'cdi' | 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance'> = { apprentissage: 'apprentissage', professionnalisation: 'professionnalisation', stage: 'stage', freelance: 'freelance', interim: 'interim', portage: 'portage', cui_cie: 'cdi', cui_cae: 'cdi', domicile: 'cdi', other: 'cdi' };
+      const contractType = contractTypeMap[formData.contractCategory] ?? 'cdi';
+      const cleanHtml = generateContractTemplate({ ...cleanFormData, contractType, contractStartDate: formData.startDate, contractEndDate: formData.endDate });
 
       const { error } = await supabase
         .from('contracts_other')
@@ -448,8 +449,8 @@ export default function OtherContractPage() {
 
       const contractType = contractTypeMap[formData.contractCategory] || 'stage';
 
-      // Utiliser l'API qui retourne le MÊME HTML que l'aperçu
-      const response = await fetch('/api/contracts/html-pdf', {
+      // Utiliser l'API qui retourne directement le fichier PDF
+      const response = await fetch('/api/contracts/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -475,23 +476,21 @@ export default function OtherContractPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         const detail = errorData.fields ? ` (${errorData.fields.join(', ')})` : '';
         throw new Error((errorData.error || 'Erreur lors de la génération du PDF') + detail);
       }
 
-      // Ouvrir dans une nouvelle fenêtre pour impression
-      const htmlContent = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(htmlContent);
-        newWindow.document.close();
-        setTimeout(() => {
-          newWindow.print();
-        }, 500);
-      } else {
-        throw new Error('Impossible d\'ouvrir une nouvelle fenêtre. Veuillez autoriser les popups pour ce site.');
-      }
+      // Télécharger le document PDF généré
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Contrat_${contractType}_${formData.employeeLastName || 'Salarie'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
       console.error(err);
@@ -1273,10 +1272,30 @@ export default function OtherContractPage() {
       {/* Email Modal */}
       {showEmailModal && (
         <ContractEmailModal
-          contractType={formData.contractCategory}
+          contractType={(() => {
+            const contractTypeMap: Record<string, string> = { apprentissage: 'apprentissage', professionnalisation: 'professionnalisation', stage: 'stage', freelance: 'freelance', interim: 'interim', portage: 'portage', cui_cie: 'cdi', cui_cae: 'cdi', domicile: 'cdi', other: 'cdi' };
+            return contractTypeMap[formData.contractCategory] ?? 'cdi';
+          })()}
           employeeName={`${formData.employeeFirstName} ${formData.employeeLastName}`}
           defaultEmail={formData.employeeEmail}
           contractHtml={contractHtml}
+          contractData={{
+            ...formData,
+            contractStartDate: formData.startDate,
+            contractEndDate: formData.endDate,
+            jobTitle: formData.jobTitle || formData.contractTitle || formData.contractCategory,
+            workLocation: formData.workLocation || formData.companyCity || '',
+            workSchedule: formData.workSchedule || '35h hebdomadaires',
+            salaryFrequency: (formData as any).salaryFrequency || 'monthly',
+            employeeNationality: (formData as any).employeeNationality || 'Française',
+            employeePostalCode: formData.employeePostalCode || '',
+            employeeCity: formData.employeeCity || '',
+            employeeBirthDate: formData.employeeBirthDate || '',
+            companyAddress: formData.companyAddress || '',
+            companyPostalCode: formData.companyPostalCode || '',
+            companyCity: formData.companyCity || '',
+            employerTitle: formData.employerTitle || 'Gérant',
+          }}
           onClose={() => setShowEmailModal(false)}
         />
       )}

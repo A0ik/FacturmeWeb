@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateContractPdfBuffer } from '@/lib/contract-pdf-server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { to, contractType, employeeName, html, subject: customSubject } = await req.json();
+    const { to, contractType, employeeName, html, subject: customSubject, contractData } = await req.json();
 
     if (!to || !employeeName || !html) {
       return NextResponse.json({ error: 'Données manquantes' }, { status: 400 });
@@ -23,6 +24,21 @@ export async function POST(req: NextRequest) {
     };
     const contractLabel = contractLabels[contractType] || contractType || 'Contrat';
 
+    // Génération du PDF si les données sont fournies
+    let attachment = undefined;
+    if (contractData) {
+      try {
+        const _contractData = { ...contractData, contractType: contractType.toLowerCase() };
+        const pdfBytes = await generateContractPdfBuffer(_contractData);
+        attachment = [{
+          content: Buffer.from(pdfBytes).toString('base64'),
+          name: `Contrat_${contractLabel}_${employeeName.replace(/[^a-z0-9]/gi, '_')}.pdf`
+        }];
+      } catch (err) {
+        console.error("Erreur génération PDF attachment (fallback sur l'email texte):", err);
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -36,6 +52,7 @@ export async function POST(req: NextRequest) {
           to: [{ email: to }],
           subject: customSubject || `Votre ${contractLabel} — ${employeeName}`,
           htmlContent: html,
+          attachment: attachment,
         }),
         signal: controller.signal,
       });

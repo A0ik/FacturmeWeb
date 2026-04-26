@@ -10,6 +10,7 @@ interface ContractEmailModalProps {
   employeeName: string;
   defaultEmail?: string;
   contractHtml: string;
+  contractData?: any;
   onClose: () => void;
 }
 
@@ -29,6 +30,7 @@ export function ContractEmailModal({
   employeeName,
   defaultEmail = '',
   contractHtml,
+  contractData,
   onClose,
 }: ContractEmailModalProps) {
   const label = CONTRACT_LABELS[contractType.toLowerCase()] || contractType;
@@ -77,10 +79,11 @@ export function ContractEmailModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email.trim(),
-          contractType: label,
+          contractType, // send raw ID like 'cdi', 'cdd', 'stage'
           employeeName,
           subject: subject.trim(),
           html: fullHtml,
+          contractData,
         }),
       });
 

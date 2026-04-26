@@ -377,14 +377,18 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   ct(`Fait a ${safe(data.companyCity)}, le ${formatDate(new Date().toISOString().split('T')[0])}, en deux exemplaires originaux.`, y, 8.5, timesFont, muted);
   y -= 30;
 
-  // Signatures
-  checkY(80);
+  // Signatures (Forcing space if not enough)
+  checkY(130);
   const sigHalfW = (contentW - 40) / 2;
   const sigRightX = ML + sigHalfW + 40;
 
-  dt('LE SALARIE', ML + 5, y, 9, boldFont, accent);
-  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, ML + 5, y - 14, 8, regFont, ink);
-  dt('(Precede de la mention "Lu et approuve")', ML + 5, y - 26, 7.5, timesFont, muted);
+  // Draw light borders around signature boxes for better distinction
+  page.drawRectangle({ x: ML, y: y - 110, width: sigHalfW, height: 110, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
+  page.drawRectangle({ x: sigRightX, y: y - 110, width: sigHalfW, height: 110, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
+
+  dt('LE SALARIE', ML + 10, y - 15, 9, boldFont, accent);
+  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, ML + 10, y - 30, 9, boldFont, ink);
+  dt('(Precede de la mention "Lu et approuve")', ML + 10, y - 42, 7.5, timesFont, muted);
 
   if (data.employeeSignature) {
     try {
@@ -392,18 +396,19 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
       if (matches) {
         const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
         const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-        const dims = img.scaleToFit(sigHalfW - 10, 45);
-        page.drawImage(img, { x: ML + 5, y: y - 74, width: dims.width, height: dims.height });
+        const dims = img.scaleToFit(sigHalfW - 20, 50);
+        const imgX = ML + 10 + (sigHalfW - 20 - dims.width) / 2;
+        page.drawImage(img, { x: imgX, y: y - 100, width: dims.width, height: dims.height });
       }
     } catch { /* ignore */ }
   }
 
-  page.drawLine({ start: { x: ML, y: y - 42 }, end: { x: ML + sigHalfW, y: y - 42 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
-  dt('Signature', ML + 5, y - 54, 7.5, timesFont, muted);
+  page.drawLine({ start: { x: ML + 10, y: y - 55 }, end: { x: ML + sigHalfW - 10, y: y - 55 }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+  dt('Signature', ML + 10, y - 68, 7.5, timesFont, muted);
 
-  dt("L'EMPLOYEUR", sigRightX, y, 9, boldFont, accent);
-  dt(`${safe(data.employerName)} — ${safe(data.companyName)}`, sigRightX, y - 14, 8, regFont, ink);
-  dt("(Cachet + Signature de l'employeur)", sigRightX, y - 26, 7.5, timesFont, muted);
+  dt("L'EMPLOYEUR", sigRightX + 10, y - 15, 9, boldFont, accent);
+  dt(`${safe(data.companyName)}`, sigRightX + 10, y - 30, 9, boldFont, ink);
+  dt("(Cachet + Signature de l'employeur)", sigRightX + 10, y - 42, 7.5, timesFont, muted);
 
   if (data.employerSignature) {
     try {
@@ -411,14 +416,15 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
       if (matches) {
         const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
         const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-        const dims = img.scaleToFit(sigHalfW - 10, 45);
-        page.drawImage(img, { x: sigRightX, y: y - 74, width: dims.width, height: dims.height });
+        const dims = img.scaleToFit(sigHalfW - 20, 50);
+        const imgX = sigRightX + 10 + (sigHalfW - 20 - dims.width) / 2;
+        page.drawImage(img, { x: imgX, y: y - 100, width: dims.width, height: dims.height });
       }
     } catch { /* ignore */ }
   }
 
-  page.drawLine({ start: { x: sigRightX, y: y - 42 }, end: { x: sigRightX + sigHalfW, y: y - 42 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
-  dt('Signature & Cachet', sigRightX, y - 54, 7.5, timesFont, muted);
+  page.drawLine({ start: { x: sigRightX + 10, y: y - 55 }, end: { x: sigRightX + sigHalfW - 10, y: y - 55 }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+  dt('Signature & Cachet', sigRightX + 10, y - 68, 7.5, timesFont, muted);
 
   return new Uint8Array(await pdfDoc.save());
 }
