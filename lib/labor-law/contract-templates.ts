@@ -1036,7 +1036,6 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   <!-- PAGE BREAK AVANT SIGNATURES -->
   <div class="signature-page-break"></div>
-  <div style="height: 200px;"></div>
 
   <!-- SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE -->
   <div class="signatures-section">

@@ -121,26 +121,26 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     try {
-      const res = await fetch('/api/payslips/pdf', {
+      const res = await fetch('/api/payslips/html', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payslip: data }),
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Erreur PDF');
+        throw new Error(err.error || 'Erreur HTML');
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const period = new Date(data.periodeDebut).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-      a.download = `Bulletin_Paie_${data.nom}_${data.prenom}_${period.replace(/ /g, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('Bulletin de paie téléchargé');
+      const htmlContent = await res.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        setTimeout(() => {
+          newWindow.print();
+        }, 500);
+      } else {
+        throw new Error('Impossible d\'ouvrir une nouvelle fenêtre. Veuillez autoriser les popups.');
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
     } finally {
@@ -401,10 +401,20 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
           </button>
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                const html = genererBulletinPaieHTML(data);
-                const w = window.open('', '_blank');
-                if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 250); }
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/payslips/html', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payslip: data }),
+                  });
+                  if (!res.ok) throw new Error('Erreur génération HTML');
+                  const html = await res.text();
+                  const w = window.open('', '_blank');
+                  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 250); }
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'Erreur lors de la génération');
+                }
               }}
               className="px-5 py-2.5 bg-gray-100 dark:bg-slate-700 rounded-xl font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors flex items-center gap-2"
             >

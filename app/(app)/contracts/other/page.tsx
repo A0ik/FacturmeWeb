@@ -441,7 +441,8 @@ export default function OtherContractPage() {
 
       const contractType = contractTypeMap[formData.contractCategory] || 'stage';
 
-      const response = await fetch('/api/contracts/pdf', {
+      // Utiliser l'API qui retourne le MÊME HTML que l'aperçu
+      const response = await fetch('/api/contracts/html-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -472,15 +473,18 @@ export default function OtherContractPage() {
         throw new Error((errorData.error || 'Erreur lors de la génération du PDF') + detail);
       }
 
-      const pdfBlob = await response.blob();
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${formData.contractCategory}_${formData.employeeLastName}_${formData.employeeFirstName}_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Ouvrir dans une nouvelle fenêtre pour impression
+      const htmlContent = await response.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        setTimeout(() => {
+          newWindow.print();
+        }, 500);
+      } else {
+        throw new Error('Impossible d\'ouvrir une nouvelle fenêtre. Veuillez autoriser les popups pour ce site.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
       console.error(err);
