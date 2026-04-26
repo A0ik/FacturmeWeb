@@ -233,15 +233,14 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   y -= 8;
 
   // Title
-  ct(contractTitle, y, 15, timesBoldFont, ink);
+  ct(contractTitle, y, 15, timesBoldFont, accent); // Use accent instead of ink
+  y -= 12;
+  page.drawRectangle({ x: (W - 150) / 2, y: y - 2, width: 150, height: 2, color: accent }); // underline
   y -= 22;
   ct('Document confidentiel — ' + new Date().toLocaleDateString('fr-FR'), y, 7.5, regFont, muted);
   y -= 28;
 
-  page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 1, color: accent });
-  y -= 20;
-
-  ct('ENTRE LES SOUSSIGNES', y, 9.5, boldFont, ink);
+  ct('ENTRE LES SOUSSIGNES', y, 9.5, boldFont, accent); // Use accent instead of ink
   y -= 22;
 
   // Parties grid

@@ -2,7 +2,7 @@
 // Design ultra-aéré, professionnel, conforme au Code du travail français
 // Couleur personnalisable, format 1 page A4, erreurs détaillées
 
-import { calculerCotisations, getCotisationsDisplay, SMIC_2024, getSalaireMinimumAlternance } from './cotisations';
+import { calculerCotisations, getCotisationsDisplay, SMIC_2026, getSalaireMinimumAlternance } from './cotisations';
 import { validateContract } from './rules';
 
 export interface BulletinPaieData {
@@ -538,8 +538,8 @@ export function creerBulletinDepuisContrat(
     conventionCollective: contrat.collectiveAgreement || '',
     coef: 100,
 
-    salaireBrut: parseFloat(contrat.salaryAmount) || SMIC_2024.mensuel_35h,
-    salaireBrutAnnuel: (parseFloat(contrat.salaryAmount) || SMIC_2024.mensuel_35h) * 12,
+    salaireBrut: parseFloat(contrat.salaryAmount) || SMIC_2026.mensuel_35h,
+    salaireBrutAnnuel: (parseFloat(contrat.salaryAmount) || SMIC_2026.mensuel_35h) * 12,
     heuresMensuelles: parseFloat(contrat.workingHours) || 151.67,
     tauxHoraire: (() => {
       const s = parseFloat(contrat.salaryAmount);

@@ -413,8 +413,8 @@ export default function CDDContractPage() {
         });
 
       if (error) {
-        console.error('Erreur Supabase:', error);
-        throw new Error(`Erreur BDD : ${error.message || error.code || 'Erreur inconnue'}`);
+        console.error('Erreur Supabase Détail:', JSON.stringify(error, null, 2));
+        throw new Error(`Erreur BDD: ${error.message}${error.details ? ` - Détails: ${error.details}` : ''}${error.hint ? ` - Indication: ${error.hint}` : ''}`);
       }
 
       toast.success('Contrat sauvegardé avec succès !');
