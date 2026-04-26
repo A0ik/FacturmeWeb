@@ -1,7 +1,6 @@
 /**
- * Templates de contrats de travail — Version 3.0
- * Design ultra-aéré, professionnel, conforme
- * Signatures dans section dédiée en bas de page
+ * Templates de contrats de travail — Version MAXIMUM ESPACEMENT
+ * Espacement DRAMATIQUEMENT augmenté, signatures sur page séparée
  */
 
 export interface ContractTemplateData {
@@ -232,20 +231,21 @@ function getSummaryRows(data: ContractTemplateData): [string, string][] {
 }
 
 // ─────────────────────────────────────────────
-// CSS AÉRÉ ET MODERNE
+// CSS ULTRA-ESPACÉ
 // ─────────────────────────────────────────────
 
 function getStyles(accent: string): string {
   return `
     @page {
       size: A4;
-      margin: 22mm 20mm 25mm 20mm;
+      margin: 30mm 25mm 35mm 25mm;
     }
     @media print {
       html, body { height: auto; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .page-break { page-break-before: always; }
       .no-print { display: none !important; }
+      .signature-page-break { page-break-before: always; }
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -253,9 +253,9 @@ function getStyles(accent: string): string {
       font-family: 'Georgia', 'Times New Roman', serif;
       max-width: 210mm;
       margin: 0 auto;
-      padding: 16mm 18mm 18mm;
-      font-size: 10pt;
-      line-height: 1.8;
+      padding: 25mm 25mm 30mm;
+      font-size: 11pt;
+      line-height: 2.8;
       color: #1a1a1a;
       background: #fff;
     }
@@ -265,100 +265,104 @@ function getStyles(accent: string): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 16px;
-      margin-bottom: 12px;
-      border-bottom: 3px solid ${accent};
+      padding-bottom: 35px;
+      margin-bottom: 30px;
+      border-bottom: 4px solid ${accent};
     }
     .doc-header-company { flex: 1; }
     .doc-header-company .company-name {
-      font-size: 14pt;
+      font-size: 16pt;
       font-weight: bold;
       font-family: 'Arial', sans-serif;
       color: #111;
-      letter-spacing: 0.8px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 18px;
     }
     .doc-header-company .company-details {
-      font-size: 8.5pt;
+      font-size: 10pt;
       color: #555;
       font-family: 'Arial', sans-serif;
-      line-height: 1.6;
+      line-height: 2.5;
     }
     .doc-header-meta {
       text-align: right;
       font-family: 'Arial', sans-serif;
-      font-size: 8pt;
+      font-size: 10pt;
       color: #888;
     }
     .doc-header-meta .doc-ref {
       display: inline-block;
       background: linear-gradient(135deg, ${accent}15, ${accent}25);
-      border: 1px solid ${accent}40;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 8pt;
-      margin-bottom: 6px;
+      border: 1px solid ${accent}50;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 10pt;
+      margin-bottom: 15px;
       color: ${accent};
-      font-weight: 600;
+      font-weight: 700;
     }
     .legal-ref {
-      font-size: 8pt;
+      font-size: 10pt;
       color: #666;
       font-style: italic;
       text-align: center;
-      margin-bottom: 28px;
-      padding: 8px;
-      background: #f9f9f9;
-      border-radius: 4px;
+      margin-bottom: 50px;
+      padding: 18px;
+      background: #f8f9f8;
+      border-radius: 8px;
+      line-height: 2.2;
     }
 
     /* ── TITRE PRINCIPAL ── */
     .main-title {
       text-align: center;
       font-family: 'Arial', sans-serif;
-      font-size: 16pt;
+      font-size: 20pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 3px;
       color: #111;
-      margin: 32px 0 8px;
-      padding: 16px;
-      background: linear-gradient(135deg, ${accent}08, ${accent}15);
-      border-radius: 8px;
-      border-left: 4px solid ${accent};
+      margin: 60px 0 25px;
+      padding: 30px;
+      background: linear-gradient(135deg, ${accent}10, ${accent}20);
+      border-radius: 12px;
+      border-left: 5px solid ${accent};
+      line-height: 1.6;
     }
     .sub-title {
       text-align: center;
       font-family: 'Arial', sans-serif;
-      font-size: 10pt;
+      font-size: 12pt;
       color: #555;
-      margin-bottom: 8px;
+      margin-bottom: 25px;
+      line-height: 2;
     }
     .between-parties {
       text-align: center;
       font-style: italic;
-      font-size: 10pt;
+      font-size: 12pt;
       color: #444;
-      margin-bottom: 24px;
-      padding: 12px;
-      background: #fafafa;
-      border-radius: 6px;
+      margin-bottom: 50px;
+      padding: 25px;
+      background: #f9f9f9;
+      border-radius: 10px;
+      line-height: 2.2;
     }
 
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
       border: 1px solid #d0d0d0;
-      border-top: 4px solid ${accent};
-      margin-bottom: 36px;
+      border-top: 5px solid ${accent};
+      margin-bottom: 70px;
       display: flex;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.06);
     }
     .party-col {
       flex: 1;
-      padding: 20px 22px;
+      padding: 45px 40px;
     }
     .party-col:first-child {
       border-right: 1px solid #e8e8e8;
@@ -366,232 +370,255 @@ function getStyles(accent: string): string {
     }
     .party-col-title {
       font-family: 'Arial', sans-serif;
-      font-size: 9pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: ${accent};
-      border-bottom: 2px solid ${accent}30;
-      padding-bottom: 8px;
-      margin-bottom: 14px;
-    }
-    .party-col .name-main {
       font-size: 11pt;
       font-weight: bold;
-      color: #111;
-      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: ${accent};
+      border-bottom: 3px solid ${accent}40;
+      padding-bottom: 18px;
+      margin-bottom: 30px;
     }
-    .info-row {
-      font-size: 9pt;
-      color: #333;
-      margin-bottom: 6px;
+    .party-col .name-main {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #111;
+      margin-bottom: 20px;
       line-height: 1.6;
     }
+    .info-row {
+      font-size: 11pt;
+      color: #333;
+      margin-bottom: 16px;
+      line-height: 2.2;
+    }
     .info-row .lbl {
-      font-weight: 600;
+      font-weight: 700;
       color: #222;
     }
 
     /* ── TABLEAU RÉCAPITULATIF ── */
     .section-label {
       font-family: 'Arial', sans-serif;
-      font-size: 8pt;
+      font-size: 11pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       color: ${accent};
-      margin-bottom: 10px;
-      margin-top: 32px;
-      padding-left: 4px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid ${accent}30;
+      margin-bottom: 20px;
+      margin-top: 60px;
+      padding-left: 8px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid ${accent}40;
     }
     .recap-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 32px;
-      font-size: 9.5pt;
-      border-radius: 8px;
+      margin-bottom: 60px;
+      font-size: 11pt;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
     }
     .recap-table tr:first-child th,
     .recap-table tr:first-child td {
-      border-top: 3px solid ${accent};
-      background: linear-gradient(135deg, ${accent}10, ${accent}20);
+      border-top: 4px solid ${accent};
+      background: linear-gradient(135deg, ${accent}12, ${accent}22);
     }
     .recap-table th {
-      background: #f5f5f5;
+      background: #f3f3f3;
       font-family: 'Arial', sans-serif;
-      font-weight: 600;
+      font-weight: 700;
       color: #333;
-      padding: 14px 16px;
-      border: 1px solid #e8e8e8;
-      width: 40%;
+      padding: 22px 25px;
+      border: 1px solid #e5e5e5;
+      width: 42%;
       text-align: left;
-      font-size: 9pt;
+      font-size: 10pt;
     }
     .recap-table td {
       background: #fff;
-      padding: 14px 16px;
-      border: 1px solid #e8e8e8;
+      padding: 22px 25px;
+      border: 1px solid #e5e5e5;
       color: #1a1a1a;
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 12px; }
+    .articles-section { margin-top: 30px; }
     .article-block {
-      margin-bottom: 24px;
+      margin-bottom: 50px;
       page-break-inside: avoid;
     }
     .article-title {
       font-family: 'Arial', sans-serif;
-      font-size: 10pt;
+      font-size: 12pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 1px;
       color: #111;
-      background: linear-gradient(135deg, ${accent}12, ${accent}20);
-      border-left: 4px solid ${accent};
-      padding: 10px 16px;
-      margin-bottom: 14px;
-      border-radius: 0 6px 6px 0;
+      background: linear-gradient(135deg, ${accent}15, ${accent}25);
+      border-left: 5px solid ${accent};
+      padding: 18px 25px;
+      margin-bottom: 25px;
+      border-radius: 0 8px 8px 0;
     }
     .article-body {
-      font-size: 10pt;
+      font-size: 11pt;
       text-align: justify;
-      padding: 0 6px;
+      padding: 0 10px;
       color: #222;
-      line-height: 1.9;
+      line-height: 2.8;
     }
-    .article-body p { margin-bottom: 12px; text-indent: 0; }
+    .article-body p { margin-bottom: 25px; text-indent: 0; }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
-      background: linear-gradient(135deg, #f9f9f9, #f5f5f5);
-      border-left: 4px solid ${accent};
-      padding: 14px 18px;
-      margin-top: 14px;
-      font-size: 9.5pt;
+      background: linear-gradient(135deg, #f9f9f9, #f3f3f3);
+      border-left: 5px solid ${accent};
+      padding: 25px 30px;
+      margin-top: 25px;
+      font-size: 11pt;
       color: #333;
-      border-radius: 0 6px 6px 0;
+      border-radius: 0 8px 8px 0;
+      line-height: 2.5;
     }
     .highlight-box strong { color: #111; }
     .legal-note {
-      font-size: 8.5pt;
+      font-size: 10pt;
       color: #777;
       font-style: italic;
-      margin-top: 8px;
-      padding: 8px 12px;
+      margin-top: 18px;
+      padding: 15px 20px;
       background: #fafafa;
-      border-radius: 4px;
+      border-radius: 6px;
+      line-height: 2.2;
     }
 
     /* ── AVANTAGES ── */
     .benefits-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
+      gap: 20px;
+      margin-top: 25px;
     }
     .benefit-badge {
       background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
       border: 1px solid #ddd;
-      border-radius: 16px;
-      padding: 6px 14px;
-      font-size: 9pt;
+      border-radius: 20px;
+      padding: 12px 22px;
+      font-size: 10pt;
       font-family: 'Arial', sans-serif;
       color: #333;
-      font-weight: 500;
+      font-weight: 600;
     }
 
-    /* ── SIGNATURES ── */
+    /* ── SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE ── */
+    .signature-page-break {
+      page-break-before: always;
+      min-height: 50px;
+    }
     .signatures-section {
-      margin-top: 80px;
+      margin-top: 400px;
       page-break-inside: avoid;
-      padding-top: 40px;
-      border-top: 2px solid ${accent}30;
+      padding-top: 80px;
+      border-top: 4px solid ${accent}40;
+    }
+    .signatures-intro {
+      text-align: center;
+      font-size: 13pt;
+      font-style: italic;
+      color: #666;
+      margin-bottom: 60px;
+      padding: 25px;
+      background: #f9f9f9;
+      border-radius: 10px;
+      line-height: 2.2;
     }
     .fait-a {
       text-align: right;
-      font-size: 10pt;
+      font-size: 12pt;
       font-style: italic;
       color: #444;
-      margin-bottom: 50px;
-      padding: 12px;
+      margin-bottom: 100px;
+      padding: 20px;
       background: #fafafa;
-      border-radius: 6px;
+      border-radius: 8px;
+      border-right: 4px solid ${accent}30;
+      line-height: 2;
     }
     .sig-grid {
       display: flex;
-      gap: 60px;
+      gap: 100px;
     }
     .sig-block {
       flex: 1;
       border: 1px solid #d0d0d0;
-      border-top: 3px solid ${accent};
-      padding: 24px 20px;
-      border-radius: 8px;
-      background: #fafafa;
+      border-top: 5px solid ${accent};
+      padding: 50px 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #fafafa, #f5f5f5);
     }
     .sig-block-title {
       font-family: 'Arial', sans-serif;
       font-weight: bold;
-      font-size: 9pt;
+      font-size: 11pt;
       text-transform: uppercase;
       color: ${accent};
-      margin-bottom: 8px;
-      letter-spacing: 0.8px;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
     }
     .sig-block-name {
-      font-size: 10pt;
+      font-size: 13pt;
       font-weight: bold;
       color: #111;
-      margin-bottom: 4px;
+      margin-bottom: 12px;
+      line-height: 1.6;
     }
     .sig-block-sub {
-      font-size: 9pt;
+      font-size: 11pt;
       color: #666;
       font-style: italic;
-      margin-bottom: 18px;
+      margin-bottom: 40px;
+      line-height: 1.8;
     }
     .sig-area {
-      height: 90px;
+      height: 140px;
       border-bottom: 2px dashed #bbb;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #fff;
-      border-radius: 4px;
+      border-radius: 6px;
     }
     .sig-area img {
-      max-height: 80px;
+      max-height: 120px;
       max-width: 100%;
       object-fit: contain;
     }
     .sig-area-label {
-      font-size: 8pt;
+      font-size: 10pt;
       color: #aaa;
       font-family: 'Arial', sans-serif;
     }
     .sig-mention {
-      font-size: 8pt;
+      font-size: 10pt;
       color: #888;
       font-style: italic;
-      line-height: 1.5;
+      line-height: 2;
     }
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
-      margin-top: 40px;
-      padding-top: 12px;
+      margin-top: 80px;
+      padding-top: 25px;
       border-top: 2px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-family: 'Arial', sans-serif;
-      font-size: 8pt;
+      font-size: 10pt;
       color: #aaa;
+      line-height: 2;
     }
     .doc-footer strong { color: #888; }
 
@@ -599,13 +626,13 @@ function getStyles(accent: string): string {
     .divider {
       border: none;
       border-top: 1px solid #eee;
-      margin: 28px 0;
+      margin: 60px 0;
     }
   `;
 }
 
 // ─────────────────────────────────────────────
-// ARTICLES DYNAMIQUES (même logique, plus aéré)
+// ARTICLES DYNAMIQUES
 // ─────────────────────────────────────────────
 
 function generateArticles(data: ContractTemplateData, accent: string): string {
@@ -721,7 +748,7 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
       <strong>Objectifs assignés&nbsp;:</strong><br>${esc(data.objectives)}
     </div>` : ''}
     ${data.tasks ? `
-    <div class="highlight-box" style="margin-top: 12px;">
+    <div class="highlight-box" style="margin-top: 16px;">
       <strong>Missions détaillées&nbsp;:</strong><br>${esc(data.tasks)}
     </div>` : ''}
     <p class="legal-note">Cette liste est indicative et non limitative. ${fullName} pourra être amené(e)
@@ -974,7 +1001,7 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   ${data.contractType === 'stage' && data.schoolName ? `
   <!-- ÉTABLISSEMENT D'ENSEIGNEMENT (stage tripartite) -->
-  <div class="parties-wrapper" style="margin-bottom: 32px;">
+  <div class="parties-wrapper" style="margin-bottom: 40px;">
     <div class="party-col" style="flex: 1; border-right: none; background: #fff;">
       <div class="party-col-title">L'Établissement d'enseignement</div>
       <div class="name-main">${esc(data.schoolName)}</div>
@@ -985,7 +1012,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
   ` : ''}
 
-  <p style="text-align: center; font-style: italic; font-size: 10pt; color: #444; margin-bottom: 8px;">
+  <p style="text-align: center; font-style: italic; font-size: 11pt; color: #444; margin-bottom: 12px; line-height: 1.8;">
     Il a été librement convenu et arrêté ce qui suit :
   </p>
 
@@ -1007,8 +1034,16 @@ function buildContractHTML(data: ContractTemplateData): string {
     ${generateArticles(data, accent)}
   </div>
 
-  <!-- SIGNATURES -->
+  <!-- PAGE BREAK AVANT SIGNATURES -->
+  <div class="signature-page-break"></div>
+  <div style="height: 200px;"></div>
+
+  <!-- SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE -->
   <div class="signatures-section">
+    <div class="signatures-intro">
+      Pour valider ce contrat, les deux parties apposent leurs signatures ci-dessous :
+    </div>
+
     <div class="fait-a">
       Fait à <strong>${sigCity}</strong>, le <strong>${today}</strong>, en deux exemplaires originaux,
       dont un remis à chaque partie.
@@ -1022,7 +1057,7 @@ function buildContractHTML(data: ContractTemplateData): string {
         <div class="sig-area">
           ${data.employeeSignature
       ? `<img src="${data.employeeSignature}" alt="Signature salarié">`
-      : `<span class="sig-area-label">Signature</span>`}
+      : `<span class="sig-area-label">Signature manuscrite</span>`}
         </div>
         ${data.contractType !== 'freelance' && data.contractType !== 'stage'
       ? `<div class="sig-mention">Précédée de la mention manuscrite « Lu et approuvé »</div>`
@@ -1043,7 +1078,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
 
   ${data.contractType === 'stage' ? `
-  <div style="margin-top: 32px; page-break-inside: avoid;">
+  <div style="margin-top: 40px; page-break-inside: avoid;">
     <div class="sig-grid">
       <div class="sig-block">
         <div class="sig-block-title">L'Établissement d'enseignement</div>
