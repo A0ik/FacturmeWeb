@@ -1,6 +1,6 @@
 /**
- * Templates de contrats de travail — Version MAXIMUM ESPACEMENT
- * Espacement DRAMATIQUEMENT augmenté, signatures sur page séparée
+ * Templates de contrats de travail — Version MEGA ULTRA ESPACÉE
+ * Espacement MAXIMUM ABSOLU - signatures sur page séparée avec saut de page
  */
 
 export interface ContractTemplateData {
@@ -255,7 +255,7 @@ function getStyles(accent: string): string {
       margin: 0 auto;
       padding: 25mm 25mm 30mm;
       font-size: 11pt;
-      line-height: 2.8;
+      line-height: 5;
       color: #1a1a1a;
       background: #fff;
     }
@@ -265,8 +265,8 @@ function getStyles(accent: string): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 35px;
-      margin-bottom: 30px;
+      padding-bottom: 60px;
+      margin-bottom: 60px;
       border-bottom: 4px solid ${accent};
     }
     .doc-header-company { flex: 1; }
@@ -307,11 +307,11 @@ function getStyles(accent: string): string {
       color: #666;
       font-style: italic;
       text-align: center;
-      margin-bottom: 50px;
-      padding: 18px;
+      margin-bottom: 100px;
+      padding: 30px;
       background: #f8f9f8;
       border-radius: 8px;
-      line-height: 2.2;
+      line-height: 2.8;
     }
 
     /* ── TITRE PRINCIPAL ── */
@@ -323,8 +323,8 @@ function getStyles(accent: string): string {
       text-transform: uppercase;
       letter-spacing: 3px;
       color: #111;
-      margin: 60px 0 25px;
-      padding: 30px;
+      margin: 100px 0 50px;
+      padding: 50px;
       background: linear-gradient(135deg, ${accent}10, ${accent}20);
       border-radius: 12px;
       border-left: 5px solid ${accent};
@@ -335,26 +335,26 @@ function getStyles(accent: string): string {
       font-family: 'Arial', sans-serif;
       font-size: 12pt;
       color: #555;
-      margin-bottom: 25px;
-      line-height: 2;
+      margin-bottom: 50px;
+      line-height: 2.5;
     }
     .between-parties {
       text-align: center;
       font-style: italic;
       font-size: 12pt;
       color: #444;
-      margin-bottom: 50px;
-      padding: 25px;
+      margin-bottom: 80px;
+      padding: 40px;
       background: #f9f9f9;
       border-radius: 10px;
-      line-height: 2.2;
+      line-height: 3;
     }
 
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
       border: 1px solid #d0d0d0;
       border-top: 5px solid ${accent};
-      margin-bottom: 70px;
+      margin-bottom: 120px;
       display: flex;
       border-radius: 12px;
       overflow: hidden;
@@ -362,7 +362,7 @@ function getStyles(accent: string): string {
     }
     .party-col {
       flex: 1;
-      padding: 45px 40px;
+      padding: 60px 50px;
     }
     .party-col:first-child {
       border-right: 1px solid #e8e8e8;
@@ -389,8 +389,8 @@ function getStyles(accent: string): string {
     .info-row {
       font-size: 11pt;
       color: #333;
-      margin-bottom: 16px;
-      line-height: 2.2;
+      margin-bottom: 35px;
+      line-height: 3;
     }
     .info-row .lbl {
       font-weight: 700;
@@ -405,16 +405,16 @@ function getStyles(accent: string): string {
       text-transform: uppercase;
       letter-spacing: 2px;
       color: ${accent};
-      margin-bottom: 20px;
-      margin-top: 60px;
+      margin-bottom: 40px;
+      margin-top: 120px;
       padding-left: 8px;
-      padding-bottom: 12px;
+      padding-bottom: 20px;
       border-bottom: 3px solid ${accent}40;
     }
     .recap-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 60px;
+      margin-bottom: 120px;
       font-size: 11pt;
       border-radius: 10px;
       overflow: hidden;
@@ -430,7 +430,7 @@ function getStyles(accent: string): string {
       font-family: 'Arial', sans-serif;
       font-weight: 700;
       color: #333;
-      padding: 22px 25px;
+      padding: 40px 35px;
       border: 1px solid #e5e5e5;
       width: 42%;
       text-align: left;
@@ -438,28 +438,28 @@ function getStyles(accent: string): string {
     }
     .recap-table td {
       background: #fff;
-      padding: 22px 25px;
+      padding: 40px 40px;
       border: 1px solid #e5e5e5;
       color: #1a1a1a;
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 30px; }
+    .articles-section { margin-top: 100px; }
     .article-block {
-      margin-bottom: 50px;
+      margin-bottom: 150px;
       page-break-inside: avoid;
     }
     .article-title {
       font-family: 'Arial', sans-serif;
-      font-size: 12pt;
+      font-size: 13pt;
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #111;
       background: linear-gradient(135deg, ${accent}15, ${accent}25);
       border-left: 5px solid ${accent};
-      padding: 18px 25px;
-      margin-bottom: 25px;
+      padding: 35px 40px;
+      margin-bottom: 60px;
       border-radius: 0 8px 8px 0;
     }
     .article-body {
@@ -467,30 +467,30 @@ function getStyles(accent: string): string {
       text-align: justify;
       padding: 0 10px;
       color: #222;
-      line-height: 2.8;
+      line-height: 5;
     }
-    .article-body p { margin-bottom: 25px; text-indent: 0; }
+    .article-body p { margin-bottom: 70px; text-indent: 0; }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
       background: linear-gradient(135deg, #f9f9f9, #f3f3f3);
       border-left: 5px solid ${accent};
-      padding: 25px 30px;
-      margin-top: 25px;
+      padding: 50px 55px;
+      margin-top: 70px;
       font-size: 11pt;
       color: #333;
       border-radius: 0 8px 8px 0;
-      line-height: 2.5;
+      line-height: 4.5;
     }
     .highlight-box strong { color: #111; }
     .legal-note {
       font-size: 10pt;
       color: #777;
       font-style: italic;
-      margin-top: 18px;
-      padding: 15px 20px;
+      margin-top: 25px;
+      padding: 20px 25px;
       background: #fafafa;
       border-radius: 6px;
-      line-height: 2.2;
+      line-height: 2.5;
     }
 
     /* ── AVANTAGES ── */
@@ -514,46 +514,61 @@ function getStyles(accent: string): string {
     /* ── SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE ── */
     .signature-page-break {
       page-break-before: always;
-      min-height: 50px;
+      page-break-after: always;
+      clear: both;
+      width: 100%;
+      height: 1200px;
+      border-bottom: 8px solid ${accent}30;
+      margin-bottom: 100px;
+    }
+    @media print {
+      .signature-page-break {
+        height: 0;
+        border-bottom: none;
+        margin-bottom: 0;
+        page-break-before: always;
+        page-break-after: always;
+      }
     }
     .signatures-section {
-      margin-top: 400px;
       page-break-inside: avoid;
       padding-top: 80px;
-      border-top: 4px solid ${accent}40;
+      border-top: 8px solid ${accent}50;
+      margin-top: 50px;
+      background: linear-gradient(180deg, #fafafa 0%, #fff 50px);
     }
     .signatures-intro {
       text-align: center;
       font-size: 13pt;
       font-style: italic;
       color: #666;
-      margin-bottom: 60px;
-      padding: 25px;
+      margin-bottom: 100px;
+      padding: 40px;
       background: #f9f9f9;
       border-radius: 10px;
-      line-height: 2.2;
+      line-height: 3;
     }
     .fait-a {
       text-align: right;
       font-size: 12pt;
       font-style: italic;
       color: #444;
-      margin-bottom: 100px;
-      padding: 20px;
+      margin-bottom: 150px;
+      padding: 35px;
       background: #fafafa;
       border-radius: 8px;
       border-right: 4px solid ${accent}30;
-      line-height: 2;
+      line-height: 2.5;
     }
     .sig-grid {
       display: flex;
-      gap: 100px;
+      gap: 150px;
     }
     .sig-block {
       flex: 1;
       border: 1px solid #d0d0d0;
       border-top: 5px solid ${accent};
-      padding: 50px 40px;
+      padding: 70px 50px;
       border-radius: 12px;
       background: linear-gradient(135deg, #fafafa, #f5f5f5);
     }
@@ -581,9 +596,9 @@ function getStyles(accent: string): string {
       line-height: 1.8;
     }
     .sig-area {
-      height: 140px;
+      height: 180px;
       border-bottom: 2px dashed #bbb;
-      margin-bottom: 20px;
+      margin-bottom: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -609,8 +624,8 @@ function getStyles(accent: string): string {
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
-      margin-top: 80px;
-      padding-top: 25px;
+      margin-top: 150px;
+      padding-top: 50px;
       border-top: 2px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
@@ -618,7 +633,7 @@ function getStyles(accent: string): string {
       font-family: 'Arial', sans-serif;
       font-size: 10pt;
       color: #aaa;
-      line-height: 2;
+      line-height: 2.5;
     }
     .doc-footer strong { color: #888; }
 
@@ -626,7 +641,7 @@ function getStyles(accent: string): string {
     .divider {
       border: none;
       border-top: 1px solid #eee;
-      margin: 60px 0;
+      margin: 120px 0;
     }
   `;
 }
@@ -1036,6 +1051,9 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   <!-- PAGE BREAK AVANT SIGNATURES -->
   <div class="signature-page-break"></div>
+
+  <!-- SAUT DE PAGE HTML EXPLICITE -->
+  <div style="page-break-before: always; break-after: always; min-height: 800px; border-top: 3px solid ${accent}40; margin-top: 100px; padding-top: 50px;"></div>
 
   <!-- SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE -->
   <div class="signatures-section">
