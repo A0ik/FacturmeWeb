@@ -110,7 +110,10 @@
       "Bash(xargs wc *)",
       "Bash(grep -r \"import.*from.*\\\\\\\\.ts\\\\|\\\\\\\\.tsx\\\\|from ['\\\\\"]\\\\\\\\./\\\\|from ['\\\\\"]\\\\\\\\.\\\\\\\\.\" \"c:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-ESPOIR\\\\app\\\\api\" --include=\"*.ts\")",
       "mcp__claude_ai_Supabase__get_project",
-      "mcp__claude_ai_Supabase__list_tables"
+      "mcp__claude_ai_Supabase__list_tables",
+      "Bash(sed -n '1060,1075p' \"c:/Users/salma/Desktop/FACTU.ME/app/\\(app\\)/contracts/cdd/page.tsx\")",
+      "Bash(sed -n '1190,1215p' \"c:/Users/salma/Desktop/FACTU.ME/app/\\(app\\)/contracts/cdd/page.tsx\")",
+      "Bash(sed -n '1244,1260p' \"c:/Users/salma/Desktop/FACTU.ME/app/\\(app\\)/contracts/cdd/page.tsx\")"
     ]
   },
   "enableAllProjectMcpServers": true,

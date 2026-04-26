@@ -367,13 +367,30 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
 
           <PayslipSection id="entreprise" title="Entreprise" icon={Building2} openSection={openSection} onToggle={handleToggle}>
             <PayslipField label="Raison sociale" value={data.raisonSociale} onChange={(v) => update('raisonSociale', v)} />
-            <PayslipField label="SIRET (14 chiffres)" value={data.siret} onChange={(v) => update('siret', v)} />
+            <div className="grid grid-cols-2 gap-3">
+              <PayslipField label="SIRET (14 chiffres)" value={data.siret} onChange={(v) => update('siret', v)} />
+              <PayslipField label="Code APE/NAF" value={(data as any).codeAPE ?? ''} onChange={(v) => update('codeAPE' as any, v || undefined)} />
+            </div>
             <PayslipField label="Adresse entreprise" value={data.adresseEntreprise} onChange={(v) => update('adresseEntreprise', v)} />
             <div className="grid grid-cols-2 gap-3">
               <PayslipField label="Code postal" value={data.codePostalEntreprise} onChange={(v) => update('codePostalEntreprise', v)} />
               <PayslipField label="Ville" value={data.villeEntreprise} onChange={(v) => update('villeEntreprise', v)} />
             </div>
-            <PayslipField label="URSSAF (SIRET)" value={data.urssaf} onChange={(v) => update('urssaf', v)} />
+            <div className="grid grid-cols-2 gap-3">
+              <PayslipField label="URSSAF (SIRET)" value={data.urssaf} onChange={(v) => update('urssaf', v)} />
+              <PayslipField label="Date de paiement" value={(data as any).datePaiement ?? ''} onChange={(v) => update('datePaiement' as any, v || undefined)} type="date" />
+            </div>
+          </PayslipSection>
+
+          <PayslipSection id="cumuls" title="Cumuls annuels & PAS (obligatoires)" icon={Euro} openSection={openSection} onToggle={handleToggle}>
+            <div className="grid grid-cols-2 gap-3">
+              <PayslipField label="Cumul salaire brut annuel (€)" value={(data as any).cumulsAnnuelsBrut ?? data.salaireBrutAnnuel ?? ''} onChange={(v) => update('cumulsAnnuelsBrut' as any, parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Cumul net annuel (€)" value={(data as any).cumulsAnnuelsNet ?? ''} onChange={(v) => update('cumulsAnnuelsNet' as any, parseFloat(v) || undefined)} type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <PayslipField label="Taux PAS (%)" value={(data as any).tauxPAS ?? ''} onChange={(v) => update('tauxPAS' as any, parseFloat(v) || undefined)} type="number" />
+              <PayslipField label="Montant PAS prélevé (€)" value={(data as any).montantPAS ?? ''} onChange={(v) => update('montantPAS' as any, parseFloat(v) || undefined)} type="number" />
+            </div>
           </PayslipSection>
         </div>
 

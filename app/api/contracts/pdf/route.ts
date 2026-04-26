@@ -1,47 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { generateContractHTML, ContractHtmlData } from '@/lib/contract-html-generator';
-import { generateContractPdfBuffer, ContractTemplateData } from '@/lib/contract-pdf-server';
+import { ContractTemplateData } from '@/lib/contract-pdf-server';
+import htmlPdf from 'html-pdf-node';
 
-/**
- * API Route - Generate Contract PDF
- *
- * Generates a downloadable PDF for labor contracts using pdf-lib server-side
- * Supports all contract types: CDD, CDI, stage, alternance, professionnalisation, interim, portage, freelance
- *
- * POST /api/contracts/pdf
- *
- * Authentification required
- * Generates legally compliant French labor contract PDFs with signature support
- */
 export async function POST(req: NextRequest) {
   try {
-    // ── Authentification ─────────────────────────────────────────────────────
     const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // ── Parse request body ───────────────────────────────────────────────────
     const body = await req.json();
     const contractData: ContractTemplateData = body.contract;
 
     if (!contractData) {
-      return NextResponse.json(
-        { error: 'Données de contrat manquantes' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Données de contrat manquantes' }, { status: 400 });
     }
 
-    // ── Validate required fields ─────────────────────────────────────────────
     const requiredFields = [
       'employeeFirstName', 'employeeLastName', 'employeeAddress', 'employeePostalCode', 'employeeCity',
       'employeeBirthDate', 'employeeNationality',
@@ -57,39 +35,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Validate contract type ───────────────────────────────────────────────
     const validContractTypes = ['cdd', 'cdi', 'stage', 'apprentissage', 'professionnalisation', 'interim', 'portage', 'freelance'];
     if (!validContractTypes.includes(contractData.contractType)) {
-      return NextResponse.json(
-        { error: 'Type de contrat invalide', validTypes: validContractTypes },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Type de contrat invalide' }, { status: 400 });
     }
 
-    // ── Validate salary frequency ─────────────────────────────────────────────
-    const validSalaryFrequencies = ['monthly', 'hourly', 'weekly', 'flat_rate'];
-    if (!validSalaryFrequencies.includes(contractData.salaryFrequency)) {
-      return NextResponse.json(
-        { error: 'Fréquence de salaire invalide', validFrequencies: validSalaryFrequencies },
-        { status: 400 }
-      );
-    }
-
-    // ── Get user profile for accent color ──────────────────────────────────────
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('accent_color')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.accent_color) {
-      contractData.accentColor = profile.accent_color;
-    }
-
-    // ── Generate PDF (using NEW HTML design) ───────────────────────────────────
-    // Convert ContractTemplateData to ContractHtmlData
     const htmlData: ContractHtmlData = {
-      // Employee
       employeeFirstName: contractData.employeeFirstName,
       employeeLastName: contractData.employeeLastName,
       employeeAddress: contractData.employeeAddress,
@@ -100,8 +51,6 @@ export async function POST(req: NextRequest) {
       employeeBirthDate: contractData.employeeBirthDate,
       employeeSocialSecurity: contractData.employeeSocialSecurity,
       employeeNationality: contractData.employeeNationality,
-
-      // Contract
       contractType: contractData.contractType,
       contractStartDate: contractData.contractStartDate,
       contractEndDate: contractData.contractEndDate,
@@ -114,8 +63,6 @@ export async function POST(req: NextRequest) {
       contractClassification: contractData.contractClassification,
       contractReason: contractData.contractReason,
       replacedEmployeeName: contractData.replacedEmployeeName,
-
-      // Company
       companyName: contractData.companyName,
       companyAddress: contractData.companyAddress,
       companyPostalCode: contractData.companyPostalCode,
@@ -123,74 +70,50 @@ export async function POST(req: NextRequest) {
       companySiret: contractData.companySiret,
       employerName: contractData.employerName,
       employerTitle: contractData.employerTitle,
-
-      // Benefits
       hasTransport: contractData.hasTransport,
       hasMeal: contractData.hasMeal,
       hasHealth: contractData.hasHealth,
       hasOther: contractData.hasOther,
       otherBenefits: contractData.otherBenefits,
-
-      // Clauses
       collectiveAgreement: contractData.collectiveAgreement,
       probationClause: contractData.probationClause,
       nonCompeteClause: contractData.nonCompeteClause,
       mobilityClause: contractData.mobilityClause,
-
-      // Stage/Alternance
       tutorName: contractData.tutorName,
       schoolName: contractData.schoolName,
       speciality: contractData.speciality,
       objectives: contractData.objectives,
       tasks: contractData.tasks,
       durationWeeks: contractData.durationWeeks,
-
-      // Signatures
       employerSignature: contractData.employerSignature,
       employeeSignature: contractData.employeeSignature,
     };
 
-    let pdfBuffer: Uint8Array;
-    try {
-      // Generate HTML with new design
-      const htmlContent = generateContractHTML(htmlData);
+    const htmlContent = generateContractHTML(htmlData);
 
-      // For now, use the old pdf-lib generator as fallback
-      // TODO: Implement HTML to PDF conversion (puppeteer, html-pdf-node, etc.)
-      pdfBuffer = await generateContractPdfBuffer(contractData);
+    const pdfBuffer = await htmlPdf.generatePdf(
+      { content: htmlContent },
+      {
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' },
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate: `<div style="font-size:8px;width:100%;text-align:center;color:#888;padding:0 10mm;font-family:Arial,sans-serif;">
+          ${contractData.companyName} — Page <span class="pageNumber"></span> / <span class="totalPages"></span>
+        </div>`,
+      } as any
+    );
 
-      // In a future update, we'll convert htmlContent to PDF directly
-      // For now, the old design is still used for PDF generation
-      // The HTML is available if you want to display it in browser
-    } catch (pdfError) {
-      console.error('Erreur génération PDF contrat:', pdfError);
-      return NextResponse.json(
-        {
-          error: 'Erreur lors de la génération du PDF',
-          details: pdfError instanceof Error ? pdfError.message : 'Erreur inconnue',
-        },
-        { status: 500 }
-      );
-    }
-
-    // ── Generate filename ────────────────────────────────────────────────────
     const contractLabels: Record<string, string> = {
-      cdd: 'CDD',
-      cdi: 'CDI',
-      stage: 'Stage',
-      apprentissage: 'Apprentissage',
-      professionnalisation: 'Professionnalisation',
-      interim: 'Interim',
-      portage: 'Portage',
-      freelance: 'Freelance'
+      cdd: 'CDD', cdi: 'CDI', stage: 'Stage', apprentissage: 'Apprentissage',
+      professionnalisation: 'Professionnalisation', interim: 'Interim', portage: 'Portage', freelance: 'Freelance'
     };
-
     const contractLabel = contractLabels[contractData.contractType] || 'Contrat';
     const employeeName = `${contractData.employeeLastName}-${contractData.employeeFirstName}`;
     const filename = `${contractLabel}_${employeeName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    // ── Return PDF ───────────────────────────────────────────────────────────
-    return new NextResponse(Buffer.from(pdfBuffer), {
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -199,20 +122,14 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Erreur inattendue génération PDF contrat:', error);
+    console.error('Erreur génération PDF contrat:', error);
     return NextResponse.json(
-      {
-        error: 'Erreur interne du serveur',
-        details: error instanceof Error ? error.message : 'Erreur inconnue',
-      },
+      { error: 'Erreur interne du serveur', details: error instanceof Error ? error.message : 'Erreur inconnue' },
       { status: 500 }
     );
   }
 }
 
-/**
- * OPTIONS - Support CORS pour requêtes préflight
- */
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

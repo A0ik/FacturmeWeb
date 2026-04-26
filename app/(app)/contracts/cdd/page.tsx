@@ -32,6 +32,7 @@ import { MagnificentDatePicker } from '@/components/ui/MagnificentDatePicker';
 import { ContractValidator } from '@/components/labor-law/ContractValidator';
 import { ContractSigning } from '@/components/labor-law/SignaturePad';
 import { PayslipEditor } from '@/components/labor-law/PayslipEditor';
+import { ContractEmailModal } from '@/components/labor-law/ContractEmailModal';
 import { creerBulletinDepuisContrat } from '@/lib/labor-law/bulletin-paie';
 import { generateCDDContract as generateCDDTemplate } from '@/lib/labor-law/contract-templates';
 
@@ -140,6 +141,9 @@ export default function CDDContractPage() {
   const [showPayslipEditor, setShowPayslipEditor] = useState(false);
   const [payslipData, setPayslipData] = useState<any>(null);
   const [textInput, setTextInput] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -296,6 +300,34 @@ export default function CDDContractPage() {
     const html = generateCDDTemplate({ ...formData, contractType: 'cdd' as const });
     setContractHtml(html);
     setStep('preview');
+    loadPdfPreview();
+  };
+
+  const loadPdfPreview = async () => {
+    const missing = ['employeeFirstName','employeeLastName','employeeAddress','employeePostalCode','employeeCity',
+      'employeeBirthDate','contractStartDate','jobTitle','workLocation','salaryAmount','companyName','companySiret','employerName'];
+    const hasMissing = missing.some(f => !(formData as any)[f]);
+    if (hasMissing) return;
+    setPdfPreviewLoading(true);
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    setPdfPreviewUrl(null);
+    try {
+      const response = await fetch('/api/contracts/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract: { ...formData, contractType: 'cdd' as const, employeeNationality: formData.employeeNationality || 'Française', employerTitle: formData.employerTitle || 'Gérant', workSchedule: formData.workSchedule || '35h hebdomadaires', salaryFrequency: formData.salaryFrequency || 'monthly' }
+        }),
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        setPdfPreviewUrl(URL.createObjectURL(blob));
+      }
+    } catch {
+      // silent fail — HTML preview is fallback
+    } finally {
+      setPdfPreviewLoading(false);
+    }
   };
 
   const saveContract = async () => {
@@ -362,35 +394,8 @@ export default function CDDContractPage() {
     }
   };
 
-  const sendByEmail = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/send-contract-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: formData.employeeEmail,
-          contractType: 'CDD',
-          employeeName: `${formData.employeeFirstName} ${formData.employeeLastName}`,
-          html: contractHtml,
-        }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
-        throw new Error(errData.error || 'Erreur lors de l\'envoi');
-      }
-      setStep('success');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de l\'envoi du contrat';
-      setError(errorMsg);
-      toast.error(errorMsg);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const sendByEmail = () => {
+    setShowEmailModal(true);
   };
 
   const downloadPDF = async () => {
@@ -1063,13 +1068,30 @@ export default function CDDContractPage() {
                 Aperçu du contrat
               </h2>
 
-              <iframe
-                srcDoc={contractHtml}
-                className="w-full rounded-2xl border border-gray-100 dark:border-white/10 mb-6"
-                style={{ height: '600px' }}
-                title="Aperçu du contrat CDD"
-                sandbox="allow-same-origin"
-              />
+              {pdfPreviewLoading && (
+                <div className="flex items-center justify-center h-[600px] rounded-2xl border border-gray-100 dark:border-white/10 mb-6 bg-gray-50 dark:bg-slate-800/50">
+                  <div className="flex flex-col items-center gap-3 text-primary">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <span className="text-sm font-medium">Génération du PDF en cours...</span>
+                  </div>
+                </div>
+              )}
+              {!pdfPreviewLoading && pdfPreviewUrl ? (
+                <iframe
+                  src={pdfPreviewUrl}
+                  className="w-full rounded-2xl border border-gray-100 dark:border-white/10 mb-6"
+                  style={{ height: '600px' }}
+                  title="Aperçu PDF du contrat CDD"
+                />
+              ) : !pdfPreviewLoading && (
+                <iframe
+                  srcDoc={contractHtml}
+                  className="w-full rounded-2xl border border-gray-100 dark:border-white/10 mb-6"
+                  style={{ height: '600px' }}
+                  title="Aperçu du contrat CDD"
+                  sandbox="allow-same-origin"
+                />
+              )}
             </div>
 
             {/* Bulletin de paie estimé */}
@@ -1081,8 +1103,10 @@ export default function CDDContractPage() {
                 </div>
                 <button
                   onClick={() => {
-                    const periodeDebut = formData.contractStartDate || new Date().toISOString().split('T')[0];
-                    const periodeFin = formData.contractEndDate || new Date().toISOString().split('T')[0];
+                    const ref = new Date(formData.contractStartDate || new Date());
+                    const y = ref.getFullYear(), m = ref.getMonth();
+                    const periodeDebut = new Date(y, m, 1).toISOString().split('T')[0];
+                    const periodeFin = new Date(y, m + 1, 0).toISOString().split('T')[0];
                     const bulletin = creerBulletinDepuisContrat(formData, periodeDebut, periodeFin);
                     setPayslipData(bulletin);
                     setShowPayslipEditor(true);
@@ -1193,20 +1217,10 @@ export default function CDDContractPage() {
               </button>
               <button
                 onClick={sendByEmail}
-                disabled={loading}
-                className="px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition-colors flex items-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Envoi...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    Envoyer par email
-                  </>
-                )}
+                <Send className="w-5 h-5" />
+                Envoyer par email
               </button>
             </div>
           </motion.div>
@@ -1252,6 +1266,17 @@ export default function CDDContractPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <ContractEmailModal
+          contractType="cdd"
+          employeeName={`${formData.employeeFirstName} ${formData.employeeLastName}`}
+          defaultEmail={formData.employeeEmail}
+          contractHtml={contractHtml}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
     </div>
   );
 }

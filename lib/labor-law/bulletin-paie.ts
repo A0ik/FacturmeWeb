@@ -83,12 +83,25 @@ export interface BulletinPaieData {
   adresseEntreprise: string;
   codePostalEntreprise: string;
   villeEntreprise: string;
-  urssaf: string; // Numéro SIRET pour URSSAF
+  urssaf: string;
+  codeAPE?: string;
 
   // Période
   periodeDebut: string;
   periodeFin: string;
   nombreJoursOuvres: number;
+
+  // Cumuls annuels (obligatoires R3243-1)
+  cumulsAnnuelsBrut?: number;
+  cumulsAnnuelsNet?: number;
+  cumulsAnnuelsNetImposable?: number;
+
+  // Prélèvement à la source
+  tauxPAS?: number;
+  montantPAS?: number;
+
+  // Date de paiement du salaire
+  datePaiement?: string;
 }
 
 interface LigneBulletin {
@@ -138,6 +151,9 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   const cpAcquis = data.congesPayesAcquis ?? Math.floor(data.nombreJoursOuvres * 2.0833 / 10);
   const cpPris = data.congesPayesPris ?? 0;
   const cpSolde = data.congesPayesSolde ?? (cpAcquis - cpPris);
+  const datePaiement = data.datePaiement
+    ? new Date(data.datePaiement).toLocaleDateString('fr-FR')
+    : new Date().toLocaleDateString('fr-FR');
 
   const tauxH = data.tauxHoraire ?? (data.salaireBrut / (data.heuresMensuelles || 151.67));
   const joursOuvres = data.nombreJoursOuvres || 22;
@@ -244,12 +260,13 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
     <div class="header-left">
       <div class="company-name">${data.raisonSociale}</div>
       <div style="font-size:7.5pt;color:#555;">${data.adresseEntreprise}, ${data.codePostalEntreprise} ${data.villeEntreprise}</div>
-      <div style="font-size:7.5pt;color:#555;">SIRET : ${data.siret} &nbsp;|&nbsp; URSSAF : ${data.urssaf || data.siret}</div>
+      <div style="font-size:7.5pt;color:#555;">SIRET : ${data.siret}${data.codeAPE ? ` &nbsp;|&nbsp; APE/NAF : ${data.codeAPE}` : ''} &nbsp;|&nbsp; URSSAF : ${data.urssaf || data.siret}</div>
     </div>
     <div class="header-right">
       <div class="bulletin-title">BULLETIN DE PAIE</div>
       <div style="font-size:8.5pt;margin-top:4px;">Période : <strong>${dateDebPeriode} – ${dateFinPeriode}</strong></div>
-      <div style="font-size:8.5pt;">Date de paiement : <strong>${datePaie}</strong></div>
+      <div style="font-size:8.5pt;">Date de paiement : <strong>${datePaiement}</strong></div>
+      <div style="font-size:7pt;color:#888;margin-top:2px;">Établi le ${datePaie}</div>
     </div>
   </div>
 
@@ -374,22 +391,46 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       <div class="cp-row"><span>Solde</span><span><strong>${fmt(cpSolde)} j</strong></span></div>
     </div>
     <div class="footer-box">
-      <div class="footer-box-title">Récapitulatif financier</div>
+      <div class="footer-box-title">Récapitulatif du mois</div>
       <div class="cp-row"><span>Salaire brut</span><span>${fmtE(totalBrut)}</span></div>
-      <div class="cp-row"><span>Cotisations salariales</span><span>− ${fmtE(cotisations.salariales.total)}</span></div>
+      <div class="cp-row"><span>Cotisations salariales</span><span style="color:#c0392b;">− ${fmtE(cotisations.salariales.total)}</span></div>
       <div class="cp-row"><span>Net avant impôt</span><span><strong>${fmtE(Math.max(0, netAvantImpot))}</strong></span></div>
-      <div class="cp-row"><span>Coût employeur total</span><span>${fmtE(cotisations.coutEmployer)}</span></div>
+      <div class="cp-row"><span>Coût total employeur</span><span>${fmtE(cotisations.coutEmployer)}</span></div>
     </div>
     <div class="footer-box">
-      <div class="footer-box-title">Prélèvement à la source</div>
-      <div class="cp-row"><span>Net imposable</span><span>${fmtE(cotisations.salaireNetImposable)}</span></div>
-      <div class="cp-row"><span>Taux PAS</span><span>Cf. DGFIP</span></div>
-      <div class="cp-row"><span>Montant prélevé</span><span>Cf. DGFIP</span></div>
+      <div class="footer-box-title">Cumuls annuels (obligatoires)</div>
+      <div class="cp-row"><span>Salaire brut cumulé</span><span><strong>${fmtE(data.cumulsAnnuelsBrut ?? data.salaireBrutAnnuel ?? totalBrut * 12)}</strong></span></div>
+      <div class="cp-row"><span>Net cumulé</span><span><strong>${fmtE(data.cumulsAnnuelsNet ?? Math.max(0, netAvantImpot) * 12)}</strong></span></div>
+      <div class="cp-row"><span>Net imposable cumulé</span><span>${fmtE(data.cumulsAnnuelsNetImposable ?? cotisations.salaireNetImposable * 12)}</span></div>
+    </div>
+  </div>
+
+  <!-- Prélèvement à la source -->
+  <div style="display:flex;gap:8px;margin-top:4px;">
+    <div class="footer-box" style="flex:1;">
+      <div class="footer-box-title">Prélèvement à la source (PAS)</div>
+      <div class="cp-row"><span>Net imposable du mois</span><span>${fmtE(cotisations.salaireNetImposable)}</span></div>
+      <div class="cp-row"><span>Taux PAS</span><span>${data.tauxPAS ? data.tauxPAS.toFixed(1) + ' %' : 'Cf. DGFIP'}</span></div>
+      <div class="cp-row"><span>Montant prélevé</span><span style="color:#c0392b;"><strong>${data.montantPAS ? '− ' + fmtE(data.montantPAS) : 'Cf. DGFIP'}</strong></span></div>
+      ${data.montantPAS ? `<div class="cp-row"><span>Net après PAS</span><span><strong>${fmtE(Math.max(0, netAvantImpot - (data.montantPAS ?? 0)))}</strong></span></div>` : ''}
+    </div>
+    <div class="footer-box" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+      <div class="footer-box-title">Signatures</div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <div style="text-align:center;flex:1;">
+          <div style="font-size:6pt;color:#888;margin-bottom:16px;">L'employeur</div>
+          <div style="border-top:1px solid #ccc;padding-top:2px;font-size:6pt;color:#888;">${data.raisonSociale}</div>
+        </div>
+        <div style="text-align:center;flex:1;">
+          <div style="font-size:6pt;color:#888;margin-bottom:16px;">Le(la) salarié(e)</div>
+          <div style="border-top:1px solid #ccc;padding-top:2px;font-size:6pt;color:#888;">${data.prenom} ${data.nom}</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="mention">
-    Art. R3243-1 C. trav. — Conservez ce bulletin sans limitation de durée. | Généré le ${datePaie} | ${data.raisonSociale} — SIRET ${data.siret}
+    Art. R3243-1 C. trav. — Ce bulletin de paie doit être conservé sans limitation de durée. | Établi le ${datePaie} | Date de paiement : ${datePaiement} | ${data.raisonSociale} — SIRET ${data.siret}
   </div>
 
 </div>

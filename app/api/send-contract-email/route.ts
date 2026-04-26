@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { to, contractType, employeeName, html } = await req.json();
+    const { to, contractType, employeeName, html, subject: customSubject } = await req.json();
 
     if (!to || !employeeName || !html) {
       return NextResponse.json({ error: 'Données manquantes' }, { status: 400 });
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           sender: { name: senderName, email: senderEmail },
           to: [{ email: to }],
-          subject: `Votre ${contractLabel} — ${employeeName}`,
+          subject: customSubject || `Votre ${contractLabel} — ${employeeName}`,
           htmlContent: html,
         }),
         signal: controller.signal,

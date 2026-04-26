@@ -182,6 +182,7 @@ export function generateContractHTML(data: ContractHtmlData): string {
             color: var(--ink-muted);
             letter-spacing: 0.02em;
         }
+        .page-num { font-weight: 600; }
         .separator { margin: 0 12px; color: var(--rule); }
         .contract-title { text-align: center; margin-bottom: 6px; }
         .contract-title h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.55rem; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -208,7 +209,13 @@ export function generateContractHTML(data: ContractHtmlData): string {
         @media print {
             body { background: white; }
             body::before { display: none; }
-            .document { margin: 0; box-shadow: none; border-radius: 0; }
+            .document { margin: 0; box-shadow: none; border-radius: 0; max-width: 100%; }
+            .page-break { page-break-before: always; break-before: page; }
+            .keep-together { page-break-inside: avoid; break-inside: avoid; }
+        }
+        @page {
+            size: A4;
+            margin: 15mm 18mm 20mm 18mm;
         }
     </style>
 </head>
@@ -314,28 +321,28 @@ export function generateContractHTML(data: ContractHtmlData): string {
                 <p>Des heures supplémentaires pourront être demandées en fonction des nécessités du service, dans le strict respect des dispositions légales et conventionnelles.</p>
             </section>
 
-            <section class="article">
+            <section class="article page-break keep-together">
                 <h2 class="article-title">Article VI — Absences — Maladie</h2>
                 <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> s'engage à informer immédiatement <strong>${data.companyName}</strong> de toute absence, en précisant le motif. Un certificat médical devra être transmis dans un délai de 48 heures à compter du premier jour d'arrêt.</p>
             </section>
 
-            <section class="article">
+            <section class="article keep-together">
                 <h2 class="article-title">Article VII — Congés payés</h2>
                 <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> bénéficiera des congés payés conformément aux articles L. 3141-1 et suivants du Code du travail.</p>
             </section>
 
-            <section class="article">
+            <section class="article keep-together">
                 <h2 class="article-title">Article VIII — Discrétion — Non-concurrence</h2>
                 <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> s'engage à observer la plus stricte confidentialité concernant les informations, procédés et données dont il aura connaissance dans le cadre de ses fonctions.</p>
                 ${data.nonCompeteClause ? `<p>Il s'engage également à n'exercer, pendant la durée du contrat, aucune activité concurrente à celle de ${data.companyName}.</p>` : ''}
             </section>
 
-            <section class="article">
+            <section class="article keep-together">
                 <h2 class="article-title">Article IX — Rupture du contrat</h2>
                 <p>Chacune des parties pourra rompre le présent contrat en respectant les dispositions légales et conventionnelles en vigueur.</p>
             </section>
 
-            <section class="article">
+            <section class="article keep-together">
                 <h2 class="article-title">Article X — Dispositions diverses</h2>
                 <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> déclare avoir pris connaissance du règlement intérieur de <strong>${data.companyName}</strong>.</p>
                 <p>Le présent contrat est régi par le droit français. Tout litige relatif à son exécution sera soumis à la juridiction compétente du ressort du siège social de la société.</p>
@@ -369,7 +376,7 @@ export function generateContractHTML(data: ContractHtmlData): string {
             <span class="separator">—</span>
             <span>${data.companyAddress}, ${data.companyPostalCode} ${data.companyCity}</span>
             <span class="separator">—</span>
-            <span>Page 1</span>
+            <span class="page-num">Document confidentiel</span>
         </footer>
     </div>
 </body>
