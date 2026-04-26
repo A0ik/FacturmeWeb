@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { generateContractHTML, ContractHtmlData } from '@/lib/contract-html-generator';
 import { generateContractPdfBuffer, ContractTemplateData } from '@/lib/contract-pdf-server';
 
 /**
@@ -85,10 +86,84 @@ export async function POST(req: NextRequest) {
       contractData.accentColor = profile.accent_color;
     }
 
-    // ── Generate PDF ────────────────────────────────────────────────────────
+    // ── Generate PDF (using NEW HTML design) ───────────────────────────────────
+    // Convert ContractTemplateData to ContractHtmlData
+    const htmlData: ContractHtmlData = {
+      // Employee
+      employeeFirstName: contractData.employeeFirstName,
+      employeeLastName: contractData.employeeLastName,
+      employeeAddress: contractData.employeeAddress,
+      employeePostalCode: contractData.employeePostalCode,
+      employeeCity: contractData.employeeCity,
+      employeeEmail: contractData.employeeEmail,
+      employeePhone: contractData.employeePhone,
+      employeeBirthDate: contractData.employeeBirthDate,
+      employeeSocialSecurity: contractData.employeeSocialSecurity,
+      employeeNationality: contractData.employeeNationality,
+      employeeQualification: contractData.employeeQualification,
+
+      // Contract
+      contractType: contractData.contractType,
+      contractStartDate: contractData.contractStartDate,
+      contractEndDate: contractData.contractEndDate,
+      trialPeriodDays: contractData.trialPeriodDays,
+      jobTitle: contractData.jobTitle,
+      workLocation: contractData.workLocation,
+      workSchedule: contractData.workSchedule,
+      workingHours: contractData.workingHours,
+      salaryAmount: contractData.salaryAmount,
+      salaryFrequency: contractData.salaryFrequency,
+      contractClassification: contractData.contractClassification,
+      contractReason: contractData.contractReason,
+      replacedEmployeeName: contractData.replacedEmployeeName,
+
+      // Company
+      companyName: contractData.companyName,
+      companyAddress: contractData.companyAddress,
+      companyPostalCode: contractData.companyPostalCode,
+      companyCity: contractData.companyCity,
+      companySiret: contractData.companySiret,
+      employerName: contractData.employerName,
+      employerTitle: contractData.employerTitle,
+
+      // Benefits
+      hasTransport: contractData.hasTransport,
+      hasMeal: contractData.hasMeal,
+      hasHealth: contractData.hasHealth,
+      hasOther: contractData.hasOther,
+      otherBenefits: contractData.otherBenefits,
+
+      // Clauses
+      collectiveAgreement: contractData.collectiveAgreement,
+      probationClause: contractData.probationClause,
+      nonCompeteClause: contractData.nonCompeteClause,
+      mobilityClause: contractData.mobilityClause,
+
+      // Stage/Alternance
+      tutorName: contractData.tutorName,
+      schoolName: contractData.schoolName,
+      speciality: contractData.speciality,
+      objectives: contractData.objectives,
+      tasks: contractData.tasks,
+      durationWeeks: contractData.durationWeeks,
+
+      // Signatures
+      employerSignature: contractData.employerSignature,
+      employeeSignature: contractData.employeeSignature,
+    };
+
     let pdfBuffer: Uint8Array;
     try {
+      // Generate HTML with new design
+      const htmlContent = generateContractHTML(htmlData);
+
+      // For now, use the old pdf-lib generator as fallback
+      // TODO: Implement HTML to PDF conversion (puppeteer, html-pdf-node, etc.)
       pdfBuffer = await generateContractPdfBuffer(contractData);
+
+      // In a future update, we'll convert htmlContent to PDF directly
+      // For now, the old design is still used for PDF generation
+      // The HTML is available if you want to display it in browser
     } catch (pdfError) {
       console.error('Erreur génération PDF contrat:', pdfError);
       return NextResponse.json(

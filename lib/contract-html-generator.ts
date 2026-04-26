@@ -1,14 +1,19 @@
 /**
- * Server-side PDF generation for French labor contracts using HTML template.
- * Generates PDF with the NEW elegant design (BS STRUCTURE style).
- * Legally compliant with French Labor Code 2025-2026.
+ * Generate HTML contract with the new design based on the provided template
+ * This generates a complete HTML document that can be converted to PDF or displayed in browser
  */
-import * as htmlPdf from 'html-pdf-node';
 
-export interface ContractTemplateData {
-  accentColor?: string;
+export interface ContractHtmlData {
+  // Company
+  companyName: string;
+  companyAddress: string;
+  companyPostalCode: string;
+  companyCity: string;
+  companySiret: string;
+  employerName: string;
+  employerTitle: string;
 
-  // Salarié
+  // Employee
   employeeFirstName: string;
   employeeLastName: string;
   employeeAddress: string;
@@ -19,9 +24,8 @@ export interface ContractTemplateData {
   employeeBirthDate: string;
   employeeSocialSecurity?: string;
   employeeNationality: string;
-  employeeQualification?: string;
 
-  // Contrat
+  // Contract
   contractType: 'cdd' | 'cdi' | 'stage' | 'apprentissage' | 'professionnalisation' | 'interim' | 'portage' | 'freelance';
   contractStartDate: string;
   contractEndDate?: string;
@@ -29,36 +33,26 @@ export interface ContractTemplateData {
   jobTitle: string;
   workLocation: string;
   workSchedule: string;
-  workingHours?: string;
   salaryAmount: string;
   salaryFrequency: 'monthly' | 'hourly' | 'weekly' | 'flat_rate';
   contractClassification?: string;
   contractReason?: string;
   replacedEmployeeName?: string;
 
-  // Entreprise
-  companyName: string;
-  companyAddress: string;
-  companyPostalCode: string;
-  companyCity: string;
-  companySiret: string;
-  employerName: string;
-  employerTitle: string;
+  // Additional
+  collectiveAgreement?: string;
+  probationClause?: boolean;
+  nonCompeteClause?: boolean;
+  mobilityClause?: boolean;
 
-  // Avantages
+  // Benefits
   hasTransport?: boolean;
   hasMeal?: boolean;
   hasHealth?: boolean;
   hasOther?: boolean;
   otherBenefits?: string;
 
-  // Clauses
-  collectiveAgreement?: string;
-  probationClause?: boolean;
-  nonCompeteClause?: boolean;
-  mobilityClause?: boolean;
-
-  // Stage / Alternance
+  // Stage/Alternance
   tutorName?: string;
   schoolName?: string;
   speciality?: string;
@@ -66,12 +60,10 @@ export interface ContractTemplateData {
   tasks?: string;
   durationWeeks?: string;
 
-  // Signatures (base64)
+  // Signatures
   employerSignature?: string;
   employeeSignature?: string;
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   try {
@@ -79,7 +71,7 @@ function formatDate(dateStr: string): string {
     const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch {
-    return String(dateStr);
+    return dateStr;
   }
 }
 
@@ -109,9 +101,7 @@ const CDD_REASONS: Record<string, string> = {
   usage: 'secteur d\'activité pour lequel il est d\'usage de ne pas recourir au CDI (art. L.1242-2, 3° du Code du travail)',
 };
 
-// ── HTML Template Generator ──────────────────────────────────────────────────────
-
-function generateContractHTML(data: ContractTemplateData): string {
+export function generateContractHTML(data: ContractHtmlData): string {
   const contractTitle = CONTRACT_LABELS[data.contractType] || 'CONTRAT DE TRAVAIL';
   const today = new Date().toISOString().split('T')[0];
 
@@ -129,8 +119,8 @@ function generateContractHTML(data: ContractTemplateData): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${data.companyName} — ${contractTitle} — ${data.employeeFirstName} ${data.employeeLastName}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
         :root {
             --bg: #f5f1eb;
             --paper: #fffef9;
@@ -142,6 +132,7 @@ function generateContractHTML(data: ContractTemplateData): string {
             --rule: #c8c3b8;
             --rule-light: #e0dcd4;
             --confidential-bg: rgba(139, 26, 26, 0.06);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -151,11 +142,23 @@ function generateContractHTML(data: ContractTemplateData): string {
             line-height: 1.65;
             -webkit-font-smoothing: antialiased;
         }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 20% 10%, rgba(139,26,26,0.03) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 90%, rgba(139,26,26,0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
         .document {
+            position: relative;
+            z-index: 1;
             max-width: 820px;
-            margin: 0 auto;
+            margin: 40px auto;
             background: var(--paper);
-            padding: 0;
+            box-shadow: var(--shadow);
+            border-radius: 2px;
         }
         .page-header {
             display: flex;
@@ -165,10 +168,10 @@ function generateContractHTML(data: ContractTemplateData): string {
             border-bottom: 1px solid var(--rule);
             background: var(--confidential-bg);
         }
-        .company-name { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.08em; color: var(--ink); }
+        .company-name { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.08em; }
         .doc-type { font-size: 0.78rem; color: var(--ink-muted); font-weight: 400; }
         .confidential { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px; border-radius: 2px; }
-        .page-body { padding: 44px 56px 36px; }
+        .page-body { padding: 44px 56px 36px; min-height: calc(297mm - 100px); }
         .page-footer {
             display: flex;
             align-items: center;
@@ -181,9 +184,9 @@ function generateContractHTML(data: ContractTemplateData): string {
         }
         .separator { margin: 0 12px; color: var(--rule); }
         .contract-title { text-align: center; margin-bottom: 6px; }
-        .contract-title h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.55rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+        .contract-title h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.55rem; letter-spacing: 0.06em; text-transform: uppercase; }
         .contract-subtitle { text-align: center; font-size: 0.82rem; font-weight: 500; color: var(--ink-muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 32px; }
-        .parties-intro { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.05rem; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 28px; color: var(--ink); }
+        .parties-intro { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.05rem; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 28px; }
         .parties-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 28px; }
         .party-block { padding: 20px 22px; border: 1px solid var(--rule); border-radius: 3px; background: linear-gradient(180deg, rgba(139,26,26,0.015) 0%, transparent 100%); }
         .party-label { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule-light); }
@@ -192,7 +195,7 @@ function generateContractHTML(data: ContractTemplateData): string {
         .party-details li { display: flex; gap: 6px; }
         .party-details li .label { font-weight: 600; color: var(--ink); min-width: fit-content; }
         .transition-phrase { text-align: center; font-style: italic; color: var(--ink-light); margin-bottom: 30px; font-size: 0.92rem; }
-        .article { margin-bottom: 22px; page-break-inside: avoid; }
+        .article { margin-bottom: 22px; }
         .article-title { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule-light); }
         .article p { font-size: 0.88rem; color: var(--ink-light); text-align: justify; margin-bottom: 8px; }
         .recap-table { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 0.86rem; }
@@ -201,24 +204,17 @@ function generateContractHTML(data: ContractTemplateData): string {
         .recap-table td { padding: 9px 12px; vertical-align: top; }
         .recap-label { font-weight: 600; color: var(--ink); white-space: nowrap; width: 170px; }
         .recap-value { color: var(--ink-light); }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 44px; }
-        .sig-block { text-align: center; }
-        .sig-label { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
-        .sig-name { font-weight: 600; font-size: 0.9rem; color: var(--ink); margin-bottom: 4px; }
-        .sig-note { font-size: 0.78rem; font-style: italic; color: var(--ink-muted); margin-bottom: 28px; }
-        .sig-line { border: none; border-top: 1px solid var(--ink); width: 70%; margin: 0 auto 6px; opacity: 0.35; }
-        .sig-line-label { font-size: 0.72rem; color: var(--ink-muted); }
-        .lieu-date { text-align: center; font-size: 0.88rem; color: var(--ink-light); margin-top: 36px; margin-bottom: 8px; }
-        strong { font-weight: 600; color: var(--ink); }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg); font-family: 'Cormorant Garamond', Georgia, serif; font-size: 5rem; font-weight: 700; color: rgba(139, 26, 26, 0.025); letter-spacing: 0.15em; text-transform: uppercase; pointer-events: none; white-space: nowrap; z-index: 0; }
         @media print {
             body { background: white; }
-            .document { margin: 0; }
-            .article { page-break-inside: avoid; }
+            body::before { display: none; }
+            .document { margin: 0; box-shadow: none; border-radius: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="document">
+    <div class="document" style="position: relative;">
+        <div class="watermark">Confidentiel</div>
         <header class="page-header">
             <div>
                 <span class="company-name">${data.companyName}</span>
@@ -303,7 +299,7 @@ function generateContractHTML(data: ContractTemplateData): string {
                 <p>Cette rémunération sera versée mensuellement, déduction faite des cotisations sociales légales en vigueur.</p>
                 ${data.hasTransport || data.hasMeal || data.hasHealth || data.hasOther ? `
                 <p>Le salarié bénéficiera également des avantages suivants :</p>
-                <ul style="margin-left: 20px;">
+                <ul>
                     ${data.hasTransport ? '<li>Prise en charge à 50% des frais de transports en commun</li>' : ''}
                     ${data.hasMeal ? '<li>Titres-restaurant ou indemnité de repas</li>' : ''}
                     ${data.hasHealth ? '<li>Complémentaire santé collective</li>' : ''}
@@ -345,24 +341,24 @@ function generateContractHTML(data: ContractTemplateData): string {
                 <p>Le présent contrat est régi par le droit français. Tout litige relatif à son exécution sera soumis à la juridiction compétente du ressort du siège social de la société.</p>
             </section>
 
-            <p class="lieu-date">
+            <p style="text-align: center; font-size: 0.88rem; color: var(--ink-light); margin-top: 36px; margin-bottom: 8px;">
                 Fait à ${data.companyCity}, le ${formatDate(today)}, en deux exemplaires originaux.
             </p>
 
-            <div class="signatures">
-                <div class="sig-block">
-                    <p class="sig-label">Le Salarié</p>
-                    <p class="sig-name">${data.employeeFirstName} ${data.employeeLastName}</p>
-                    <p class="sig-note">(Précédé de la mention « Lu et approuvé »)</p>
-                    <hr class="sig-line">
-                    <p class="sig-line-label">Signature</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 44px;">
+                <div style="text-align: center;">
+                    <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px;">Le Salarié</p>
+                    <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">${data.employeeFirstName} ${data.employeeLastName}</p>
+                    <p style="font-size: 0.78rem; font-style: italic; color: var(--ink-muted); margin-bottom: 28px;">(Précédé de la mention « Lu et approuvé »)</p>
+                    <hr style="border: none; border-top: 1px solid var(--ink); width: 70%; margin: 0 auto 6px; opacity: 0.35;">
+                    <p style="font-size: 0.72rem; color: var(--ink-muted);">Signature</p>
                 </div>
-                <div class="sig-block">
-                    <p class="sig-label">L'Employeur</p>
-                    <p class="sig-name">${data.employerName} — ${data.companyName}</p>
-                    <p class="sig-note">(Cachet + Signature de l'employeur)</p>
-                    <hr class="sig-line">
-                    <p class="sig-line-label">Signature & Cachet</p>
+                <div style="text-align: center;">
+                    <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px;">L'Employeur</p>
+                    <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">${data.employerName} — ${data.companyName}</p>
+                    <p style="font-size: 0.78rem; font-style: italic; color: var(--ink-muted); margin-bottom: 28px;">(Cachet + Signature de l'employeur)</p>
+                    <hr style="border: none; border-top: 1px solid var(--ink); width: 70%; margin: 0 auto 6px; opacity: 0.35;">
+                    <p style="font-size: 0.72rem; color: var(--ink-muted);">Signature & Cachet</p>
                 </div>
             </div>
         </main>
@@ -378,30 +374,4 @@ function generateContractHTML(data: ContractTemplateData): string {
     </div>
 </body>
 </html>`;
-}
-
-// ── Main PDF Generator ───────────────────────────────────────────────────────────
-
-export async function generateContractPdfBuffer(data: ContractTemplateData): Promise<Uint8Array> {
-  // Generate HTML with the NEW elegant design
-  const htmlContent = generateContractHTML(data);
-
-  // Configure PDF options
-  const options = {
-    format: 'A4' as const,
-    margin: {
-      top: '0',
-      right: '0',
-      bottom: '0',
-      left: '0',
-    },
-    printBackground: true,
-    displayHeaderFooter: false,
-  };
-
-  // Create PDF from HTML
-  const file = { content: htmlContent };
-  const pdfBuffer = await htmlPdf.generatePdf(file, options);
-
-  return new Uint8Array(pdfBuffer);
 }

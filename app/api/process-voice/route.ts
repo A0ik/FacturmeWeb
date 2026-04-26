@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import OpenAI from 'openai';
+import { processVoiceTranscript } from '@/lib/groq-translator';
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,13 +27,18 @@ export async function POST(req: NextRequest) {
 
     if (!audio) return NextResponse.json({ error: 'No audio file' }, { status: 400 });
 
-    // Transcription with Groq Whisper
+    // Transcription with Groq Whisper (auto-detect language - supports Arabic and French)
     const transcription = await groq.audio.transcriptions.create({
       file: audio,
       model: 'whisper-large-v3-turbo',
-      language: 'fr',
+      // language: 'fr', // Removed - auto-detect to support Arabic
     });
-    const transcript = transcription.text;
+    const rawTranscript = transcription.text;
+
+    // Translate Arabic (any dialect) to French if needed
+    const { transcript, wasTranslated, originalLanguage } = await processVoiceTranscript(rawTranscript);
+
+    console.log(`[process-voice] Language detected: ${originalLanguage}${wasTranslated ? ' (translated)' : ''}`);
 
     const sectorHint = sector ? `L'utilisateur travaille dans le secteur : ${sector}.` : '';
 
@@ -133,7 +139,15 @@ Règles ABSOLUES pour les descriptions :
       parsed = {};
     }
 
-    return NextResponse.json({ transcript, parsed, action: parsed.action, summary: parsed.summary });
+    return NextResponse.json({
+      transcript,
+      originalTranscript: rawTranscript,
+      wasTranslated,
+      originalLanguage,
+      parsed,
+      action: parsed.action,
+      summary: parsed.summary
+    });
   } catch (error: any) {
     console.error('[Process Voice] Error:', error);
     const message = error.message || 'Erreur lors du traitement vocal';

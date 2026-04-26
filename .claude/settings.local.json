@@ -108,7 +108,9 @@
       "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('lib/bulletin-paie-pdf-server.ts','utf8'\\);const fixed=content.replace\\(/cotisations\\\\.sarial/g,'cotisations.sariales'\\);fs.writeFileSync\\('lib/bulletin-paie-pdf-server.ts',fixed\\);console.log\\('Fixed to salariales'\\);\")",
       "Bash(xargs head *)",
       "Bash(xargs wc *)",
-      "Bash(grep -r \"import.*from.*\\\\\\\\.ts\\\\|\\\\\\\\.tsx\\\\|from ['\\\\\"]\\\\\\\\./\\\\|from ['\\\\\"]\\\\\\\\.\\\\\\\\.\" \"c:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-ESPOIR\\\\app\\\\api\" --include=\"*.ts\")"
+      "Bash(grep -r \"import.*from.*\\\\\\\\.ts\\\\|\\\\\\\\.tsx\\\\|from ['\\\\\"]\\\\\\\\./\\\\|from ['\\\\\"]\\\\\\\\.\\\\\\\\.\" \"c:\\\\Users\\\\salma\\\\Desktop\\\\FacturmeWeb-ESPOIR\\\\app\\\\api\" --include=\"*.ts\")",
+      "mcp__claude_ai_Supabase__get_project",
+      "mcp__claude_ai_Supabase__list_tables"
     ]
   },
   "enableAllProjectMcpServers": true,
