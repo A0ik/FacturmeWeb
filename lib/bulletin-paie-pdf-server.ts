@@ -1,7 +1,7 @@
 /**
- * Server-side PDF generation for French State compliant payslips (bulletins de paie)
- * Conforms to articles R3243-1 et suivants du Code du travail français
- * Implements all mandatory mentions and proper formatting
+ * Server-side PDF generation for French State compliant payslips (bulletins de paie) — Version 3.0
+ * Design ultra-aéré, professionnel, conforme
+ * Couleur personnalisable, format 1 page A4, gestion d'erreurs robuste
  */
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage, RGB } from 'pdf-lib';
 
@@ -86,19 +86,32 @@ interface CotisationResult {
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
 function hexToRgb(hex: string): RGB {
-  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!r) return rgb(0.114, 0.62, 0.459);
-  return rgb(parseInt(r[1], 16) / 255, parseInt(r[2], 16) / 255, parseInt(r[3], 16) / 255);
+  try {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!r) return rgb(0.114, 0.62, 0.459);
+    return rgb(
+      Math.min(1, parseInt(r[1], 16) / 255),
+      Math.min(1, parseInt(r[2], 16) / 255),
+      Math.min(1, parseInt(r[3], 16) / 255)
+    );
+  } catch {
+    return rgb(0.114, 0.62, 0.459);
+  }
 }
 
 function mixRgb(c: RGB, alpha: number, bg: RGB = rgb(1, 1, 1)): RGB {
-  return rgb(c.red * alpha + bg.red * (1 - alpha), c.green * alpha + bg.green * (1 - alpha), c.blue * alpha + bg.blue * (1 - alpha));
+  return rgb(
+    c.red * alpha + bg.red * (1 - alpha),
+    c.green * alpha + bg.green * (1 - alpha),
+    c.blue * alpha + bg.blue * (1 - alpha)
+  );
 }
 
-// ── Safe text ─────────────────────────────────────────────────────────────────
+// ── Safe text with better error handling ─────────────────────────────────────────
 
 function safe(str: unknown): string {
-  return String(str ?? '')
+  if (str === null || str === undefined) return '';
+  return String(str)
     .replace(/–/g, '-').replace(/—/g, '--')
     .replace(/[‘’]/g, "'").replace(/["""]"/g, '"')
     .replace(/…/g, '...').replace(/€/g, 'EUR')
@@ -109,6 +122,7 @@ function safe(str: unknown): string {
 
 async function embedBase64Image(pdfDoc: PDFDocument, base64: string): Promise<{ image: any; dims: { width: number; height: number } } | null> {
   try {
+    if (!base64 || typeof base64 !== 'string') return null;
     const matches = /^data:image\/(png|jpeg|jpg);base64,(.+)$/.exec(base64);
     if (!matches) return null;
     const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
@@ -120,7 +134,8 @@ async function embedBase64Image(pdfDoc: PDFDocument, base64: string): Promise<{ 
     }
     const dims = embeddedImage.scaleToFit(150, 60);
     return { image: embeddedImage, dims };
-  } catch {
+  } catch (error) {
+    console.warn('Failed to embed signature image:', error);
     return null;
   }
 }
@@ -131,36 +146,54 @@ function drawText(
   page: PDFPage, text: string, x: number, y: number,
   size: number, font: PDFFont, color: RGB,
 ): void {
-  const t = safe(text);
-  if (!t) return;
-  page.drawText(t, { x, y, size, font, color });
+  try {
+    const t = safe(text);
+    if (!t) return;
+    page.drawText(t, { x, y, size, font, color });
+  } catch (error) {
+    console.warn('Failed to draw text:', error);
+  }
 }
 
 function rightText(
   page: PDFPage, text: string, rightEdge: number, y: number,
   size: number, font: PDFFont, color: RGB,
 ): void {
-  const t = safe(text);
-  const w = font.widthOfTextAtSize(t, size);
-  page.drawText(t, { x: rightEdge - w, y, size, font, color });
+  try {
+    const t = safe(text);
+    const w = font.widthOfTextAtSize(t, size);
+    page.drawText(t, { x: Math.max(0, rightEdge - w), y, size, font, color });
+  } catch (error) {
+    console.warn('Failed to draw right-aligned text:', error);
+  }
 }
 
 function centreText(
   page: PDFPage, text: string, x: number, w: number, y: number,
   size: number, font: PDFFont, color: RGB,
 ): void {
-  const t = safe(text);
-  const tw = font.widthOfTextAtSize(t, size);
-  page.drawText(t, { x: x + (w - tw) / 2, y, size, font, color });
+  try {
+    const t = safe(text);
+    const tw = font.widthOfTextAtSize(t, size);
+    page.drawText(t, { x: x + Math.max(0, (w - tw) / 2), y, size, font, color });
+  } catch (error) {
+    console.warn('Failed to draw centered text:', error);
+  }
 }
 
 function formatMonnaie(montant: number): string {
-  return montant.toFixed(2) + ' EUR';
+  try {
+    if (!isFinite(montant)) return '0.00 EUR';
+    return montant.toFixed(2) + ' EUR';
+  } catch {
+    return '0.00 EUR';
+  }
 }
 
 function formatDate(dateStr: string): string {
   try {
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
     const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch {
@@ -168,10 +201,10 @@ function formatDate(dateStr: string): string {
   }
 }
 
-// ── Calculate cotisations (simplified French 2024 rates) ─────────────────────
+// ── Calculate cotisations (French 2024 rates) ─────────────────────────────────────
 
 function calculerCotisations(data: BulletinPaieData): CotisationResult {
-  const salaireBrut = data.salaireBrut;
+  const salaireBrut = Math.max(0, data.salaireBrut) || 0;
   const plafondSS = 3428; // PLAFOND SS 2024 mensuel
 
   // Cotisations salariales 2024
@@ -218,7 +251,7 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
     { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0209, taux: 2.09, base: salaireBrut },
     { label: 'Vieillesse plafonnée', value: Math.min(salaireBrut, plafondSS) * 0.0855, taux: 8.55, base: Math.min(salaireBrut, plafondSS) },
     { label: 'Allocations familiales', value: salaireBrut * 0.0345, taux: 3.45, base: salaireBrut },
-    { label: 'Accidents du travail', value: salaireBrut * 0.0200, taux: 2.00, base: salaireBrut }, // Taux moyen
+    { label: 'Accidents du travail', value: salaireBrut * 0.0200, taux: 2.00, base: salaireBrut },
     { label: 'FNAL', value: salaireBrut > plafondSS ? salaireBrut * 0.0010 : Math.min(salaireBrut, plafondSS) * 0.0050, taux: salaireBrut > plafondSS ? 0.10 : 0.50, base: salaireBrut },
   ];
 
@@ -259,265 +292,271 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
     salaireNet -= data.avantagesEnNature;
   }
 
-  const salaireNetImposable = salaireNet - (salaireBrut * 0.0240); // CSG imposable deductible
+  const salaireNetImposable = salaireNet - (salaireBrut * 0.0240);
   const coutEmployer = salaireBrut + totalPatronales;
 
   return {
     salariales: { total: totalSalariales, lines: salariales },
     patronales: { total: totalPatronales, lines: patronales },
-    salaireNet,
-    salaireNetImposable,
+    salaireNet: Math.max(0, salaireNet),
+    salaireNetImposable: Math.max(0, salaireNetImposable),
     coutEmployer
   };
 }
 
-// ── Main PDF generator ────────────────────────────────────────────────────────
+// ── Main PDF generator — Ultra-aéré, design professionnel ────────────────────────
 
 export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.create();
+  try {
+    const pdfDoc = await PDFDocument.create();
 
-  const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const helvReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-  const timesReg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+    const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const helvReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const timesReg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
 
-  const accent = hexToRgb(data.accentColor || '#1D9E75');
-  const ink = rgb(0.07, 0.07, 0.07);
-  const muted = rgb(0.42, 0.45, 0.50);
-  const lightBg = mixRgb(accent, 0.05);
+    const accent = hexToRgb(data.accentColor || '#1D9E75');
+    const ink = rgb(0.07, 0.07, 0.07);
+    const muted = rgb(0.40, 0.43, 0.48);
+    const lightBg = mixRgb(accent, 0.06);
 
-  const W = 595.28, H = 841.89;
-  const margin = 40;
-  const contentW = W - margin * 2;
-  const minY = 60;
+    const W = 595.28, H = 841.89;
+    const margin = 45;
+    const contentW = W - margin * 2;
+    const minY = 70;
 
-  let page = pdfDoc.addPage([W, H]);
-  let y = H - 50;
+    let page = pdfDoc.addPage([W, H]);
+    let y = H - 55;
 
-  const needPage = () => {
-    if (y > minY) return;
-    page = pdfDoc.addPage([W, H]);
-    y = H - 50;
-  };
+    const needPage = () => {
+      if (y > minY) return;
+      page = pdfDoc.addPage([W, H]);
+      y = H - 55;
+    };
 
-  // Calculate cotisations
-  const cotisations = calculerCotisations(data);
+    // Calculate cotisations
+    const cotisations = calculerCotisations(data);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── HEADER ────────────────────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── HEADER ────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
 
-  // Title bar
-  page.drawRectangle({ x: 0, y: H - 10, width: W, height: 10, color: accent });
-  centreText(page, 'BULLETIN DE PAIE', 0, W, H - 25, 16, timesBold, ink);
-  centreText(page, `${data.typeContrat.toUpperCase()} - ${data.statut.toUpperCase()}`, 0, W, H - 42, 9, helvReg, muted);
-  y -= 65;
+    // Title bar
+    page.drawRectangle({ x: 0, y: H - 12, width: W, height: 12, color: accent });
+    centreText(page, 'BULLETIN DE PAIE', 0, W, H - 30, 17, timesBold, ink);
+    centreText(page, `${data.typeContrat.toUpperCase()} - ${data.statut.toUpperCase()}`, 0, W, H - 48, 9, helvReg, muted);
+    y -= 70;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── ENTETE: EMPLOYEUR ET SALARIÉ ────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── ENTETE: EMPLOYEUR ET SALARIÉ ────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
 
-  // Employee info (left)
-  page.drawRectangle({ x: margin, y: y - 55, width: contentW / 2 - 10, height: 55, color: lightBg });
-  drawText(page, 'SALARIE', margin + 5, y - 8, 7, helvBold, accent);
-  drawText(page, `${data.prenom} ${data.nom}`, margin + 5, y - 20, 10, helvBold, ink);
-  drawText(page, `${data.adresse}`, margin + 5, y - 32, 8, helvReg, muted);
-  drawText(page, `${data.codePostal} ${data.ville}`, margin + 5, y - 42, 8, helvReg, muted);
-  rightText(page, `NIR: ${safe(data.nir)}`, margin + contentW / 2 - 15, y - 20, 7, helvReg, muted);
+    // Employee info (left)
+    page.drawRectangle({ x: margin, y: y - 60, width: contentW / 2 - 12, height: 60, color: lightBg, borderColor: accent, borderWidth: 1 });
+    drawText(page, 'SALARIE', margin + 6, y - 10, 8, helvBold, accent);
+    drawText(page, `${data.prenom} ${data.nom}`, margin + 6, y - 24, 11, helvBold, ink);
+    drawText(page, `${data.adresse}`, margin + 6, y - 38, 8, helvReg, muted);
+    drawText(page, `${data.codePostal} ${data.ville}`, margin + 6, y - 50, 8, helvReg, muted);
+    rightText(page, `NIR: ${safe(data.nir)}`, margin + contentW / 2 - 18, y - 24, 8, helvReg, muted);
 
-  // Period info (right)
-  const rightX = margin + contentW / 2 + 10;
-  page.drawRectangle({ x: rightX, y: y - 55, width: contentW / 2 - 10, height: 55, color: lightBg });
-  drawText(page, 'PERIODE', rightX + 5, y - 8, 7, helvBold, accent);
-  drawText(page, `Du ${formatDate(data.periodeDebut)} au ${formatDate(data.periodeFin)}`, rightX + 5, y - 20, 8, helvReg, ink);
-  drawText(page, `Date de paie: ${formatDate(new Date().toISOString())}`, rightX + 5, y - 32, 8, helvReg, ink);
-  rightText(page, `Jours ouvrés: ${data.nombreJoursOuvres}`, W - margin, y - 20, 7, helvReg, muted);
-  y -= 70;
+    // Period info (right)
+    const rightX = margin + contentW / 2 + 12;
+    page.drawRectangle({ x: rightX, y: y - 60, width: contentW / 2 - 12, height: 60, color: lightBg, borderColor: accent, borderWidth: 1 });
+    drawText(page, 'PERIODE', rightX + 6, y - 10, 8, helvBold, accent);
+    drawText(page, `Du ${formatDate(data.periodeDebut)} au ${formatDate(data.periodeFin)}`, rightX + 6, y - 24, 8, helvReg, ink);
+    drawText(page, `Date de paie: ${formatDate(new Date().toISOString())}`, rightX + 6, y - 38, 8, helvReg, ink);
+    rightText(page, `Jours ouvrés: ${data.nombreJoursOuvres}`, W - margin, y - 24, 8, helvReg, muted);
+    y -= 78;
 
-  // Employer info
-  page.drawRectangle({ x: margin, y: y - 50, width: contentW / 2 - 10, height: 50, color: mixRgb(accent, 0.03) });
-  drawText(page, 'EMPLOYEUR', margin + 5, y - 8, 7, helvBold, accent);
-  drawText(page, safe(data.raisonSociale), margin + 5, y - 20, 10, helvBold, ink);
-  drawText(page, `${data.adresseEntreprise}`, margin + 5, y - 32, 8, helvReg, muted);
-  drawText(page, `${data.codePostalEntreprise} ${data.villeEntreprise}`, margin + 5, y - 42, 8, helvReg, muted);
+    // Employer info
+    page.drawRectangle({ x: margin, y: y - 55, width: contentW / 2 - 12, height: 55, color: mixRgb(accent, 0.04), borderColor: accent, borderWidth: 1 });
+    drawText(page, 'EMPLOYEUR', margin + 6, y - 10, 8, helvBold, accent);
+    drawText(page, safe(data.raisonSociale), margin + 6, y - 24, 11, helvBold, ink);
+    drawText(page, `${data.adresseEntreprise}`, margin + 6, y - 38, 8, helvReg, muted);
+    drawText(page, `${data.codePostalEntreprise} ${data.villeEntreprise}`, margin + 6, y - 50, 8, helvReg, muted);
 
-  // Contract info (right)
-  page.drawRectangle({ x: rightX, y: y - 50, width: contentW / 2 - 10, height: 50, color: mixRgb(accent, 0.03) });
-  drawText(page, 'CONTRAT', rightX + 5, y - 8, 7, helvBold, accent);
-  drawText(page, `Statut: ${data.statut.toUpperCase()}`, rightX + 5, y - 20, 8, helvReg, ink);
-  drawText(page, `Classification: ${safe(data.classification)}`, rightX + 5, y - 32, 8, helvReg, ink);
-  drawText(page, `Coef: ${data.coef}`, rightX + 5, y - 42, 8, helvReg, ink);
-  rightText(page, `CCN: ${safe(data.conventionCollective)}`, W - margin, y - 20, 7, helvReg, muted);
-  y -= 70;
+    // Contract info (right)
+    page.drawRectangle({ x: rightX, y: y - 55, width: contentW / 2 - 12, height: 55, color: mixRgb(accent, 0.04), borderColor: accent, borderWidth: 1 });
+    drawText(page, 'CONTRAT', rightX + 6, y - 10, 8, helvBold, accent);
+    drawText(page, `Statut: ${data.statut.toUpperCase()}`, rightX + 6, y - 24, 8, helvReg, ink);
+    drawText(page, `Classification: ${safe(data.classification)}`, rightX + 6, y - 38, 8, helvReg, ink);
+    drawText(page, `Coef: ${data.coef}`, rightX + 6, y - 50, 8, helvReg, ink);
+    rightText(page, `CCN: ${safe(data.conventionCollective)}`, W - margin, y - 24, 8, helvReg, muted);
+    y -= 78;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── SECTION: REMUNERATION ───────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── SECTION: REMUNERATION ───────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
 
-  needPage();
-  page.drawRectangle({ x: margin, y: y - 14, width: contentW, height: 14, color: accent });
-  drawText(page, 'ELEMENTS DE REMUNERATION', margin + 5, y - 10, 8, helvBold, rgb(1, 1, 1));
-  y -= 20;
+    needPage();
+    page.drawRectangle({ x: margin, y: y - 16, width: contentW, height: 16, color: accent });
+    drawText(page, 'ELEMENTS DE REMUNERATION', margin + 6, y - 11, 9, helvBold, rgb(1, 1, 1));
+    y -= 24;
 
-  // Table header
-  const colX = { label: margin, base: margin + 120, taux: margin + 180, prelever: margin + 240, payer: margin + 300 };
-  drawText(page, 'Libelle', colX.label, y, 7, helvBold, ink);
-  drawText(page, 'Base', colX.base, y, 7, helvBold, ink);
-  rightText(page, 'Taux', colX.taux + 20, y, 7, helvBold, ink);
-  rightText(page, 'A prelever', colX.prelever + 20, y, 7, helvBold, ink);
-  rightText(page, 'A payer', W - margin, y, 7, helvBold, ink);
-  y -= 12;
+    // Table header
+    const colX = { label: margin, base: margin + 130, taux: margin + 195, prelever: margin + 260, payer: margin + 320 };
+    drawText(page, 'Libelle', colX.label, y, 8, helvBold, ink);
+    drawText(page, 'Base', colX.base, y, 8, helvBold, ink);
+    rightText(page, 'Taux', colX.taux + 25, y, 8, helvBold, ink);
+    rightText(page, 'A prelever', colX.prelever + 25, y, 8, helvBold, ink);
+    rightText(page, 'A payer', W - margin, y, 8, helvBold, ink);
+    y -= 14;
 
-  // Salaire de base
-  drawText(page, 'Salaire de base', colX.label, y, 8, helvReg, ink);
-  rightText(page, formatMonnaie(data.salaireBrut), colX.base, y, 8, helvReg, ink);
-  rightText(page, formatMonnaie(data.salaireBrut), W - margin, y, 8, helvBold, rgb(0, 114, 69)); // green
-  y -= 12;
+    // Salaire de base
+    drawText(page, 'Salaire de base', colX.label, y, 9, helvReg, ink);
+    rightText(page, formatMonnaie(data.salaireBrut), colX.base, y, 9, helvReg, ink);
+    rightText(page, formatMonnaie(data.salaireBrut), W - margin, y, 9, helvBold, rgb(0.114, 0.62, 0.459));
+    y -= 14;
 
-  // Heures supplementaires
-  if (data.heuresSupplementaires && data.tauxHoraire) {
-    const hsAmount = data.heuresSupplementaires * data.tauxHoraire * (1 + (data.majorationHeuresSup || 0) / 100);
-    drawText(page, `Heures supplementaires (${data.heuresSupplementaires}h)`, colX.label, y, 8, helvReg, ink);
-    rightText(page, formatMonnaie(hsAmount), colX.base, y, 8, helvReg, ink);
-    rightText(page, formatMonnaie(hsAmount), W - margin, y, 8, helvBold, rgb(0, 114, 69));
-    y -= 12;
-  }
-
-  // Avantages en nature
-  if (data.avantagesEnNature) {
-    drawText(page, 'Avantages en nature', colX.label, y, 8, helvReg, ink);
-    rightText(page, formatMonnaie(data.avantagesEnNature), colX.base, y, 8, helvReg, ink);
-    rightText(page, formatMonnaie(data.avantagesEnNature), colX.prelever + 20, y, 8, helvBold, rgb(220, 53, 69)); // red
-    y -= 12;
-  }
-
-  // Total brut line
-  page.drawLine({ start: { x: margin, y: y + 4 }, end: { x: W - margin, y: y + 4 }, thickness: 1, color: accent });
-  drawText(page, 'TOTAL BRUT', colX.label, y, 9, helvBold, ink);
-  rightText(page, formatMonnaie(data.salaireBrut), W - margin, y, 9, helvBold, rgb(0, 114, 69));
-  y -= 22;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── SECTION: COTISATIONS SALARIALES ───────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  needPage();
-  page.drawRectangle({ x: margin, y: y - 14, width: contentW, height: 14, color: accent });
-  drawText(page, 'COTISATIONS SALARIALES', margin + 5, y - 10, 8, helvBold, rgb(1, 1, 1));
-  y -= 20;
-
-  // Table header
-  drawText(page, 'Libelle', colX.label, y, 7, helvBold, ink);
-  drawText(page, 'Base', colX.base, y, 7, helvBold, ink);
-  rightText(page, 'Taux', colX.taux + 20, y, 7, helvBold, ink);
-  rightText(page, 'Montant', W - margin, y, 7, helvBold, ink);
-  y -= 12;
-
-  for (const cotis of cotisations.salariales.lines) {
-    drawText(page, cotis.label, colX.label, y, 7, helvReg, ink);
-    rightText(page, formatMonnaie(cotis.base), colX.base, y, 7, helvReg, ink);
-    const tauxStr = typeof cotis.taux === 'number' ? `${cotis.taux.toFixed(2)}%` : cotis.taux;
-    rightText(page, tauxStr, colX.taux + 20, y, 7, helvReg, ink);
-    rightText(page, formatMonnaie(cotis.value), W - margin, y, 7, helvReg, rgb(220, 53, 69));
-    y -= 12;
-  }
-
-  // Total salariales
-  page.drawLine({ start: { x: margin, y: y + 4 }, end: { x: W - margin, y: y + 4 }, thickness: 1, color: accent });
-  drawText(page, 'TOTAL COTISATIONS SALARIALES', colX.label, y, 9, helvBold, ink);
-  rightText(page, formatMonnaie(cotisations.salariales.total), W - margin, y, 9, helvBold, rgb(220, 53, 69));
-  y -= 22;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── SECTION: NET A PAYER ─────────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  needPage();
-  page.drawRectangle({ x: margin, y: y - 60, width: contentW, height: 60, color: mixRgb(accent, 0.08), borderColor: accent, borderWidth: 1 });
-  centreText(page, 'NET A PAYER', 0, W, y - 15, 12, timesBold, accent);
-  centreText(page, formatMonnaie(cotisations.salaireNet), 0, W, y - 35, 24, timesBold, rgb(0, 114, 69));
-  centreText(page, `Salaire net imposable: ${formatMonnaie(cotisations.salaireNetImposable)}`, 0, W, y - 52, 7, helvReg, muted);
-  y -= 75;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── MENTIONS LEGALES ────────────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  needPage();
-  drawText(page, 'MENTIONS LEGALES', margin, y, 8, helvBold, ink);
-  y -= 15;
-  drawText(page, `Salaire net imposable: ${formatMonnaie(cotisations.salaireNetImposable)}`, margin, y, 7, helvReg, ink);
-  y -= 12;
-  drawText(page, `Coût employeur: ${formatMonnaie(cotisations.coutEmployer)}`, margin, y, 7, helvReg, ink);
-  y -= 12;
-  drawText(page, 'Article R3243-2 du Code du travail: Ce bulletin est remis en ligne sur support électronique.', margin, y, 6, timesItalic, muted);
-  y -= 20;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── SIGNATURES ───────────────────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  needPage();
-  const signatureY = y - 40;
-  const leftX = margin;
-  const signatureRightX = W - margin - 150;
-  const signatureW = 150;
-
-  drawText(page, 'SIGNATURES', leftX, y, 9, helvBold, accent);
-  y -= 20;
-
-  // Employer signature
-  drawText(page, 'Employeur', leftX, y, 9, helvBold, ink);
-  drawText(page, safe(data.raisonSociale), leftX, y - 12, 8, helvReg, ink);
-
-  if (data.employerSignature) {
-    const sigData = await embedBase64Image(pdfDoc, data.employerSignature);
-    if (sigData) {
-      page.drawImage(sigData.image, {
-        x: leftX,
-        y: signatureY - sigData.dims.height,
-        width: sigData.dims.width,
-        height: sigData.dims.height,
-      });
-    } else {
-      page.drawLine({ start: { x: leftX, y: signatureY }, end: { x: leftX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-      drawText(page, 'Signature', leftX, signatureY - 8, 7, timesItalic, muted);
+    // Heures supplementaires
+    if (data.heuresSupplementaires && data.tauxHoraire) {
+      const hsAmount = data.heuresSupplementaires * data.tauxHoraire * (1 + (data.majorationHeuresSup || 0) / 100);
+      drawText(page, `Heures supplementaires (${data.heuresSupplementaires}h)`, colX.label, y, 9, helvReg, ink);
+      rightText(page, formatMonnaie(hsAmount), colX.base, y, 9, helvReg, ink);
+      rightText(page, formatMonnaie(hsAmount), W - margin, y, 9, helvBold, rgb(0.114, 0.62, 0.459));
+      y -= 14;
     }
-  } else {
-    page.drawLine({ start: { x: leftX, y: signatureY }, end: { x: leftX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-    drawText(page, 'Signature', leftX, signatureY - 8, 7, timesItalic, muted);
-  }
 
-  // Employee signature
-  drawText(page, 'Salarie', signatureRightX, y, 9, helvBold, ink);
-  drawText(page, `${data.prenom} ${data.nom}`, signatureRightX, y - 12, 8, helvReg, ink);
-
-  if (data.employeeSignature) {
-    const sigData = await embedBase64Image(pdfDoc, data.employeeSignature);
-    if (sigData) {
-      page.drawImage(sigData.image, {
-        x: signatureRightX,
-        y: signatureY - sigData.dims.height,
-        width: sigData.dims.width,
-        height: sigData.dims.height,
-      });
-    } else {
-      page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-      drawText(page, 'Signature', signatureRightX, signatureY - 8, 7, timesItalic, muted);
+    // Avantages en nature
+    if (data.avantagesEnNature) {
+      drawText(page, 'Avantages en nature', colX.label, y, 9, helvReg, ink);
+      rightText(page, formatMonnaie(data.avantagesEnNature), colX.base, y, 9, helvReg, ink);
+      rightText(page, formatMonnaie(data.avantagesEnNature), colX.prelever + 25, y, 9, helvBold, rgb(0.82, 0.11, 0.11));
+      y -= 14;
     }
-  } else {
-    page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 0.5, color: ink });
-    drawText(page, 'Signature', signatureRightX, signatureY - 8, 7, timesItalic, muted);
+
+    // Total brut line
+    page.drawLine({ start: { x: margin, y: y + 6 }, end: { x: W - margin, y: y + 6 }, thickness: 1.5, color: accent });
+    drawText(page, 'TOTAL BRUT', colX.label, y, 10, helvBold, ink);
+    rightText(page, formatMonnaie(data.salaireBrut), W - margin, y, 10, helvBold, rgb(0.114, 0.62, 0.459));
+    y -= 26;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── SECTION: COTISATIONS SALARIALES ───────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    needPage();
+    page.drawRectangle({ x: margin, y: y - 16, width: contentW, height: 16, color: accent });
+    drawText(page, 'COTISATIONS SALARIALES', margin + 6, y - 11, 9, helvBold, rgb(1, 1, 1));
+    y -= 24;
+
+    // Table header
+    drawText(page, 'Libelle', colX.label, y, 8, helvBold, ink);
+    drawText(page, 'Base', colX.base, y, 8, helvBold, ink);
+    rightText(page, 'Taux', colX.taux + 25, y, 8, helvBold, ink);
+    rightText(page, 'Montant', W - margin, y, 8, helvBold, ink);
+    y -= 14;
+
+    for (const cotis of cotisations.salariales.lines) {
+      drawText(page, cotis.label, colX.label, y, 8, helvReg, ink);
+      rightText(page, formatMonnaie(cotis.base), colX.base, y, 8, helvReg, ink);
+      const tauxStr = typeof cotis.taux === 'number' ? `${cotis.taux.toFixed(2)}%` : cotis.taux;
+      rightText(page, tauxStr, colX.taux + 25, y, 8, helvReg, ink);
+      rightText(page, formatMonnaie(cotis.value), W - margin, y, 8, helvReg, rgb(0.82, 0.11, 0.11));
+      y -= 14;
+    }
+
+    // Total salariales
+    page.drawLine({ start: { x: margin, y: y + 6 }, end: { x: W - margin, y: y + 6 }, thickness: 1.5, color: accent });
+    drawText(page, 'TOTAL COTISATIONS SALARIALES', colX.label, y, 10, helvBold, ink);
+    rightText(page, formatMonnaie(cotisations.salariales.total), W - margin, y, 10, helvBold, rgb(0.82, 0.11, 0.11));
+    y -= 26;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── SECTION: NET A PAYER ─────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    needPage();
+    const netBoxHeight = 70;
+    page.drawRectangle({ x: margin, y: y - netBoxHeight, width: contentW, height: netBoxHeight, color: mixRgb(accent, 0.10), borderColor: accent, borderWidth: 1.5 });
+    centreText(page, 'NET A PAYER', 0, W, y - 18, 13, timesBold, accent);
+    centreText(page, formatMonnaie(cotisations.salaireNet), 0, W, y - 42, 26, timesBold, rgb(0.114, 0.62, 0.459));
+    centreText(page, `Salaire net imposable: ${formatMonnaie(cotisations.salaireNetImposable)}`, 0, W, y - 62, 8, helvReg, rgb(1, 1, 1));
+    y -= netBoxHeight + 20;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── MENTIONS LEGALES ────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    needPage();
+    drawText(page, 'MENTIONS LEGALES', margin, y, 9, helvBold, ink);
+    y -= 16;
+    drawText(page, `Salaire net imposable: ${formatMonnaie(cotisations.salaireNetImposable)}`, margin, y, 8, helvReg, ink);
+    y -= 12;
+    drawText(page, `Coût employeur: ${formatMonnaie(cotisations.coutEmployer)}`, margin, y, 8, helvReg, ink);
+    y -= 12;
+    drawText(page, 'Article R3243-2 du Code du travail: Ce bulletin est remis en ligne sur support électronique.', margin, y, 7, timesItalic, muted);
+    y -= 24;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── SIGNATURES ───────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    needPage();
+    const signatureY = y - 50;
+    const leftX = margin;
+    const signatureRightX = W - margin - 160;
+    const signatureW = 160;
+
+    drawText(page, 'SIGNATURES', leftX, y, 10, helvBold, accent);
+    y -= 24;
+
+    // Employer signature
+    drawText(page, 'Employeur', leftX, y, 10, helvBold, ink);
+    drawText(page, safe(data.raisonSociale), leftX, y - 14, 9, helvReg, ink);
+
+    if (data.employerSignature) {
+      const sigData = await embedBase64Image(pdfDoc, data.employerSignature);
+      if (sigData) {
+        page.drawImage(sigData.image, {
+          x: leftX,
+          y: signatureY - sigData.dims.height - 4,
+          width: sigData.dims.width,
+          height: sigData.dims.height,
+        });
+      } else {
+        page.drawLine({ start: { x: leftX, y: signatureY }, end: { x: leftX + signatureW, y: signatureY }, thickness: 1, color: ink });
+        drawText(page, 'Signature', leftX, signatureY - 10, 8, timesItalic, muted);
+      }
+    } else {
+      page.drawLine({ start: { x: leftX, y: signatureY }, end: { x: leftX + signatureW, y: signatureY }, thickness: 1, color: ink });
+      drawText(page, 'Signature', leftX, signatureY - 10, 8, timesItalic, muted);
+    }
+
+    // Employee signature
+    drawText(page, 'Salarie', signatureRightX, y, 10, helvBold, ink);
+    drawText(page, `${data.prenom} ${data.nom}`, signatureRightX, y - 14, 9, helvReg, ink);
+
+    if (data.employeeSignature) {
+      const sigData = await embedBase64Image(pdfDoc, data.employeeSignature);
+      if (sigData) {
+        page.drawImage(sigData.image, {
+          x: signatureRightX,
+          y: signatureY - sigData.dims.height - 4,
+          width: sigData.dims.width,
+          height: sigData.dims.height,
+        });
+      } else {
+        page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 1, color: ink });
+        drawText(page, 'Signature', signatureRightX, signatureY - 10, 8, timesItalic, muted);
+      }
+    } else {
+      page.drawLine({ start: { x: signatureRightX, y: signatureY }, end: { x: signatureRightX + signatureW, y: signatureY }, thickness: 1, color: ink });
+      drawText(page, 'Signature', signatureRightX, signatureY - 10, 8, timesItalic, muted);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── FOOTER ───────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const footerY = 45;
+    page.drawLine({ start: { x: margin, y: footerY + 24 }, end: { x: W - margin, y: footerY + 24 }, thickness: 1.5, color: mixRgb(accent, 0.4) });
+    centreText(page, `Bulletin généré le ${formatDate(new Date().toISOString())} - ${safe(data.raisonSociale)} - SIRET: ${safe(data.siret)}`, 0, W, footerY + 8, 7, timesReg, muted);
+
+    return pdfDoc.save();
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw new Error(`Erreur lors de la génération du PDF: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ── FOOTER ───────────────────────────────────────────────────────────────────
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const footerY = 40;
-  page.drawLine({ start: { x: margin, y: footerY + 20 }, end: { x: W - margin, y: footerY + 20 }, thickness: 1, color: mixRgb(accent, 0.3) });
-  centreText(page, `Bulletin généré le ${formatDate(new Date().toISOString())} - ${safe(data.raisonSociale)} - SIRET: ${safe(data.siret)}`, 0, W, footerY + 6, 6, timesReg, muted);
-
-  return pdfDoc.save();
 }

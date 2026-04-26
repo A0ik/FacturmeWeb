@@ -1,7 +1,7 @@
 /**
- * Templates de contrats de travail — Version 2.0
- * Conforme au Code du travail français (2024)
- * Design professionnel premium — Prêt pour impression A4
+ * Templates de contrats de travail — Version 3.0
+ * Design ultra-aéré, professionnel, conforme
+ * Signatures dans section dédiée en bas de page
  */
 
 export interface ContractTemplateData {
@@ -103,10 +103,9 @@ export interface ContractTemplateData {
 }
 
 // ─────────────────────────────────────────────
-// UTILITAIRES SÉCURISÉS
+// UTILITAIRES
 // ─────────────────────────────────────────────
 
-/** Échappe les caractères HTML pour prévenir les injections XSS */
 function esc(value: string | undefined | null): string {
   if (!value) return '';
   return value
@@ -117,7 +116,6 @@ function esc(value: string | undefined | null): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Formate une date ISO en date française, retourne la valeur brute si invalide */
 function fmtDate(dateStr?: string): string {
   if (!dateStr) return '___________';
   const d = new Date(dateStr);
@@ -125,7 +123,6 @@ function fmtDate(dateStr?: string): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-/** Formate un montant en euros */
 function fmtMoney(amount?: string): string {
   if (!amount) return '___________';
   const num = parseFloat(amount);
@@ -133,7 +130,6 @@ function fmtMoney(amount?: string): string {
   return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '\u00a0€';
 }
 
-/** Calcule la date de fin de période d'essai */
 function calcTrialEnd(startDate: string, days: string): string {
   const d = new Date(startDate);
   if (isNaN(d.getTime())) return '___________';
@@ -236,14 +232,14 @@ function getSummaryRows(data: ContractTemplateData): [string, string][] {
 }
 
 // ─────────────────────────────────────────────
-// CSS
+// CSS AÉRÉ ET MODERNE
 // ─────────────────────────────────────────────
 
 function getStyles(accent: string): string {
   return `
     @page {
       size: A4;
-      margin: 20mm 18mm 22mm 18mm;
+      margin: 22mm 20mm 25mm 20mm;
     }
     @media print {
       html, body { height: auto; }
@@ -257,9 +253,9 @@ function getStyles(accent: string): string {
       font-family: 'Georgia', 'Times New Roman', serif;
       max-width: 210mm;
       margin: 0 auto;
-      padding: 14mm 16mm 16mm;
-      font-size: 9.8pt;
-      line-height: 1.6;
+      padding: 16mm 18mm 18mm;
+      font-size: 10pt;
+      line-height: 1.8;
       color: #1a1a1a;
       background: #fff;
     }
@@ -269,24 +265,25 @@ function getStyles(accent: string): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 10px;
-      margin-bottom: 6px;
+      padding-bottom: 16px;
+      margin-bottom: 12px;
       border-bottom: 3px solid ${accent};
     }
     .doc-header-company { flex: 1; }
     .doc-header-company .company-name {
-      font-size: 13pt;
+      font-size: 14pt;
       font-weight: bold;
       font-family: 'Arial', sans-serif;
       color: #111;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
+      margin-bottom: 6px;
     }
     .doc-header-company .company-details {
-      font-size: 8pt;
+      font-size: 8.5pt;
       color: #555;
-      margin-top: 3px;
       font-family: 'Arial', sans-serif;
+      line-height: 1.6;
     }
     .doc-header-meta {
       text-align: right;
@@ -296,264 +293,304 @@ function getStyles(accent: string): string {
     }
     .doc-header-meta .doc-ref {
       display: inline-block;
-      background: #f4f4f4;
-      border: 1px solid #ddd;
-      padding: 3px 8px;
-      border-radius: 3px;
-      font-size: 7.5pt;
-      margin-bottom: 4px;
+      background: linear-gradient(135deg, ${accent}15, ${accent}25);
+      border: 1px solid ${accent}40;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 8pt;
+      margin-bottom: 6px;
+      color: ${accent};
+      font-weight: 600;
     }
     .legal-ref {
-      font-size: 7.8pt;
-      color: #777;
+      font-size: 8pt;
+      color: #666;
       font-style: italic;
       text-align: center;
-      margin-bottom: 18px;
+      margin-bottom: 28px;
+      padding: 8px;
+      background: #f9f9f9;
+      border-radius: 4px;
     }
 
     /* ── TITRE PRINCIPAL ── */
     .main-title {
       text-align: center;
       font-family: 'Arial', sans-serif;
-      font-size: 15pt;
+      font-size: 16pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       color: #111;
-      margin: 20px 0 4px;
+      margin: 32px 0 8px;
+      padding: 16px;
+      background: linear-gradient(135deg, ${accent}08, ${accent}15);
+      border-radius: 8px;
+      border-left: 4px solid ${accent};
     }
     .sub-title {
       text-align: center;
       font-family: 'Arial', sans-serif;
-      font-size: 9.5pt;
+      font-size: 10pt;
       color: #555;
-      margin-bottom: 22px;
+      margin-bottom: 8px;
     }
     .between-parties {
       text-align: center;
       font-style: italic;
-      font-size: 9.5pt;
+      font-size: 10pt;
       color: #444;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 6px;
     }
 
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
       border: 1px solid #d0d0d0;
-      border-top: 3px solid ${accent};
-      margin-bottom: 24px;
+      border-top: 4px solid ${accent};
+      margin-bottom: 36px;
       display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .party-col {
       flex: 1;
-      padding: 14px 16px;
+      padding: 20px 22px;
     }
     .party-col:first-child {
-      border-right: 1px solid #e0e0e0;
+      border-right: 1px solid #e8e8e8;
+      background: #fafafa;
     }
     .party-col-title {
       font-family: 'Arial', sans-serif;
-      font-size: 8pt;
+      font-size: 9pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 1.2px;
       color: ${accent};
-      border-bottom: 1px solid #eee;
-      padding-bottom: 5px;
-      margin-bottom: 8px;
+      border-bottom: 2px solid ${accent}30;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
     }
     .party-col .name-main {
-      font-size: 10.5pt;
+      font-size: 11pt;
       font-weight: bold;
       color: #111;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
     .info-row {
-      font-size: 8.8pt;
+      font-size: 9pt;
       color: #333;
-      margin-bottom: 3px;
-      line-height: 1.5;
+      margin-bottom: 6px;
+      line-height: 1.6;
     }
     .info-row .lbl {
-      font-weight: bold;
+      font-weight: 600;
       color: #222;
     }
 
     /* ── TABLEAU RÉCAPITULATIF ── */
     .section-label {
       font-family: 'Arial', sans-serif;
-      font-size: 7.5pt;
+      font-size: 8pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       color: ${accent};
-      margin-bottom: 6px;
-      margin-top: 22px;
-      padding-left: 2px;
+      margin-bottom: 10px;
+      margin-top: 32px;
+      padding-left: 4px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid ${accent}30;
     }
     .recap-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 24px;
-      font-size: 9pt;
+      margin-bottom: 32px;
+      font-size: 9.5pt;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
     .recap-table tr:first-child th,
     .recap-table tr:first-child td {
-      border-top: 2px solid ${accent};
+      border-top: 3px solid ${accent};
+      background: linear-gradient(135deg, ${accent}10, ${accent}20);
     }
     .recap-table th {
-      background: #f7f7f7;
+      background: #f5f5f5;
       font-family: 'Arial', sans-serif;
-      font-weight: bold;
+      font-weight: 600;
       color: #333;
-      padding: 8px 10px;
-      border: 1px solid #e0e0e0;
-      width: 38%;
+      padding: 14px 16px;
+      border: 1px solid #e8e8e8;
+      width: 40%;
       text-align: left;
-      font-size: 8.8pt;
+      font-size: 9pt;
     }
     .recap-table td {
       background: #fff;
-      padding: 8px 10px;
-      border: 1px solid #e0e0e0;
+      padding: 14px 16px;
+      border: 1px solid #e8e8e8;
       color: #1a1a1a;
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 8px; }
+    .articles-section { margin-top: 12px; }
     .article-block {
-      margin-bottom: 16px;
+      margin-bottom: 24px;
       page-break-inside: avoid;
     }
     .article-title {
       font-family: 'Arial', sans-serif;
-      font-size: 9pt;
+      font-size: 10pt;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       color: #111;
-      background: #f2f2f2;
-      border-left: 3px solid ${accent};
-      padding: 5px 10px;
-      margin-bottom: 8px;
+      background: linear-gradient(135deg, ${accent}12, ${accent}20);
+      border-left: 4px solid ${accent};
+      padding: 10px 16px;
+      margin-bottom: 14px;
+      border-radius: 0 6px 6px 0;
     }
     .article-body {
-      font-size: 9.5pt;
+      font-size: 10pt;
       text-align: justify;
-      padding: 0 4px;
+      padding: 0 6px;
       color: #222;
+      line-height: 1.9;
     }
-    .article-body p { margin-bottom: 7px; }
+    .article-body p { margin-bottom: 12px; text-indent: 0; }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
-      background: #f9f9f9;
-      border-left: 3px solid ${accent};
-      padding: 8px 12px;
-      margin-top: 8px;
-      font-size: 9pt;
+      background: linear-gradient(135deg, #f9f9f9, #f5f5f5);
+      border-left: 4px solid ${accent};
+      padding: 14px 18px;
+      margin-top: 14px;
+      font-size: 9.5pt;
       color: #333;
+      border-radius: 0 6px 6px 0;
     }
     .highlight-box strong { color: #111; }
     .legal-note {
-      font-size: 8.2pt;
+      font-size: 8.5pt;
       color: #777;
       font-style: italic;
-      margin-top: 4px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #fafafa;
+      border-radius: 4px;
     }
 
     /* ── AVANTAGES ── */
     .benefits-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 10px;
+      margin-top: 12px;
     }
     .benefit-badge {
-      background: #f0f0f0;
+      background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
       border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 3px 10px;
-      font-size: 8.5pt;
+      border-radius: 16px;
+      padding: 6px 14px;
+      font-size: 9pt;
       font-family: 'Arial', sans-serif;
       color: #333;
+      font-weight: 500;
     }
 
     /* ── SIGNATURES ── */
     .signatures-section {
-      margin-top: 50px;
+      margin-top: 80px;
       page-break-inside: avoid;
+      padding-top: 40px;
+      border-top: 2px solid ${accent}30;
     }
     .fait-a {
       text-align: right;
-      font-size: 9.5pt;
+      font-size: 10pt;
       font-style: italic;
       color: #444;
-      margin-bottom: 36px;
+      margin-bottom: 50px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 6px;
     }
     .sig-grid {
       display: flex;
-      gap: 40px;
+      gap: 60px;
     }
     .sig-block {
       flex: 1;
-      border: 1px solid #ddd;
-      border-top: 2px solid ${accent};
-      padding: 14px 16px;
+      border: 1px solid #d0d0d0;
+      border-top: 3px solid ${accent};
+      padding: 24px 20px;
+      border-radius: 8px;
+      background: #fafafa;
     }
     .sig-block-title {
       font-family: 'Arial', sans-serif;
       font-weight: bold;
-      font-size: 8.5pt;
+      font-size: 9pt;
       text-transform: uppercase;
       color: ${accent};
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      letter-spacing: 0.8px;
     }
     .sig-block-name {
-      font-size: 9.5pt;
+      font-size: 10pt;
       font-weight: bold;
       color: #111;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
     }
     .sig-block-sub {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #666;
       font-style: italic;
-      margin-bottom: 10px;
+      margin-bottom: 18px;
     }
     .sig-area {
-      height: 75px;
-      border-bottom: 1px dashed #bbb;
-      margin-bottom: 6px;
+      height: 90px;
+      border-bottom: 2px dashed #bbb;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #fff;
+      border-radius: 4px;
     }
     .sig-area img {
-      max-height: 70px;
+      max-height: 80px;
       max-width: 100%;
       object-fit: contain;
     }
     .sig-area-label {
-      font-size: 7.5pt;
+      font-size: 8pt;
       color: #aaa;
       font-family: 'Arial', sans-serif;
     }
     .sig-mention {
-      font-size: 7.8pt;
+      font-size: 8pt;
       color: #888;
       font-style: italic;
+      line-height: 1.5;
     }
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
-      margin-top: 30px;
-      padding-top: 8px;
-      border-top: 1px solid #e0e0e0;
+      margin-top: 40px;
+      padding-top: 12px;
+      border-top: 2px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-family: 'Arial', sans-serif;
-      font-size: 7.5pt;
+      font-size: 8pt;
       color: #aaa;
     }
     .doc-footer strong { color: #888; }
@@ -562,13 +599,13 @@ function getStyles(accent: string): string {
     .divider {
       border: none;
       border-top: 1px solid #eee;
-      margin: 20px 0;
+      margin: 28px 0;
     }
   `;
 }
 
 // ─────────────────────────────────────────────
-// ARTICLES DYNAMIQUES
+// ARTICLES DYNAMIQUES (même logique, plus aéré)
 // ─────────────────────────────────────────────
 
 function generateArticles(data: ContractTemplateData, accent: string): string {
@@ -589,37 +626,37 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Objet / Engagement ──────────────────────────
   if (type === 'stage') {
     A("Objet de la convention", `
-      <p>La présente convention a pour objet de définir les conditions dans lesquelles ${fullName}, 
-      étudiant(e) en <strong>${esc(data.speciality) || '___________'}</strong> 
-      au sein de l'établissement <strong>${esc(data.schoolName) || '___________'}</strong>, 
+      <p>La présente convention a pour objet de définir les conditions dans lesquelles ${fullName},
+      étudiant(e) en <strong>${esc(data.speciality) || '___________'}</strong>
+      au sein de l'établissement <strong>${esc(data.schoolName) || '___________'}</strong>,
       effectuera un stage au sein de ${company}, conformément aux articles L.&nbsp;124-1 et suivants du Code de l'éducation.</p>
-      <p>Ce stage s'inscrit dans le cadre d'une formation diplômante et constitue une séquence pédagogique 
+      <p>Ce stage s'inscrit dans le cadre d'une formation diplômante et constitue une séquence pédagogique
       intégrée au cursus de l'étudiant(e).</p>
     `);
   } else if (type === 'freelance') {
     A("Objet du contrat", `
-      <p>Le Client confie au Prestataire, qui accepte, la réalisation de la prestation suivante : 
+      <p>Le Client confie au Prestataire, qui accepte, la réalisation de la prestation suivante :
       <strong>${esc(data.jobTitle)}</strong>.</p>
-      <p>Le Prestataire agit en qualité de prestataire indépendant, sans lien de subordination avec le Client, 
+      <p>Le Prestataire agit en qualité de prestataire indépendant, sans lien de subordination avec le Client,
       conservant la totale liberté dans les moyens mis en œuvre pour l'exécution de la prestation.</p>
     `);
   } else {
     const trialText = data.trialPeriodDays && !['stage', 'freelance'].includes(type)
-      ? ` Le présent contrat est subordonné au résultat concluant d'une période d'essai de 
+      ? ` Le présent contrat est subordonné au résultat concluant d'une période d'essai de
          <strong>${esc(data.trialPeriodDays)}&nbsp;jours</strong>
          (soit jusqu'au ${calcTrialEnd(data.contractStartDate, data.trialPeriodDays)})
          ${data.probationClause ? ', renouvelable une fois avec l\'accord exprès des deux parties,' : ''}
-         durant laquelle chaque partie pourra rompre le contrat sans indemnité, sous réserve du délai de 
+         durant laquelle chaque partie pourra rompre le contrat sans indemnité, sous réserve du délai de
          prévenance légal.`
       : '';
 
     A("Engagement et prise de fonctions", `
-      <p>${company} engage ${fullName} à compter du <strong>${fmtDate(data.contractStartDate)}</strong>, 
+      <p>${company} engage ${fullName} à compter du <strong>${fmtDate(data.contractStartDate)}</strong>,
       en qualité de <strong>${esc(data.jobTitle)}</strong>
       ${data.contractClassification ? `, classification <strong>${esc(data.contractClassification)}</strong>${data.contractCoefficient ? ` (coefficient&nbsp;${esc(data.contractCoefficient)})` : ''}` : ''}.
       ${data.collectiveAgreement ? `Cet emploi relève de la convention collective <em>${esc(data.collectiveAgreement)}</em>${data.collectiveAgreementIdcc ? ` (IDCC&nbsp;${esc(data.collectiveAgreementIdcc)})` : ''}.` : ''}
       ${trialText}</p>
-      <p>La présente embauche est subordonnée à la production des pièces justificatives 
+      <p>La présente embauche est subordonnée à la production des pièces justificatives
       requises par la réglementation en vigueur (titre de séjour, autorisation de travail le cas échéant).</p>
     `);
   }
@@ -627,37 +664,37 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Durée ──────────────────────────────────────
   if (type === 'cdi') {
     A("Durée du contrat", `
-      <p>Le présent contrat est conclu pour une durée <strong>indéterminée</strong>, 
+      <p>Le présent contrat est conclu pour une durée <strong>indéterminée</strong>,
       conformément aux articles L.&nbsp;1221-1 et suivants du Code du travail.</p>
     `);
   } else if (type === 'cdd') {
     A("Durée et terme du contrat", `
-      <p>Conformément à l'article L.&nbsp;1242-1 du Code du travail, le présent contrat est conclu 
-      pour une durée déterminée courant du <strong>${fmtDate(data.contractStartDate)}</strong> 
+      <p>Conformément à l'article L.&nbsp;1242-1 du Code du travail, le présent contrat est conclu
+      pour une durée déterminée courant du <strong>${fmtDate(data.contractStartDate)}</strong>
       au <strong>${fmtDate(data.contractEndDate)}</strong>.</p>
       <p><strong>Motif de recours&nbsp;:</strong> ${esc(data.contractReason) || '___________'}
       ${data.replacedEmployeeName ? ` — en remplacement de <strong>${esc(data.replacedEmployeeName)}</strong>` : ''}.</p>
-      <p>À l'échéance du terme et sauf renouvellement ou transformation en CDI, une <strong>indemnité de fin 
-      de contrat égale à 10&nbsp;% de la rémunération brute totale</strong> sera versée à ${fullName}, 
+      <p>À l'échéance du terme et sauf renouvellement ou transformation en CDI, une <strong>indemnité de fin
+      de contrat égale à 10&nbsp;% de la rémunération brute totale</strong> sera versée à ${fullName},
       conformément à l'article L.&nbsp;1243-8 du Code du travail.</p>
     `);
   } else if (type === 'stage') {
     A("Durée et calendrier du stage", `
-      <p>Le stage débute le <strong>${fmtDate(data.contractStartDate)}</strong> et se termine 
-      le <strong>${fmtDate(data.contractEndDate)}</strong>, 
+      <p>Le stage débute le <strong>${fmtDate(data.contractStartDate)}</strong> et se termine
+      le <strong>${fmtDate(data.contractEndDate)}</strong>,
       soit une durée de <strong>${esc(data.durationWeeks) || '___________'}&nbsp;semaines</strong>.</p>
-      <p>Conformément à l'article L.&nbsp;124-5 du Code de l'éducation, la durée totale du stage 
+      <p>Conformément à l'article L.&nbsp;124-5 du Code de l'éducation, la durée totale du stage
       ne peut excéder <strong>six mois</strong> par année d'enseignement.</p>
-      <p>En cas d'absence du ou de la stagiaire excédant <strong>sept&nbsp;jours</strong> consécutifs, 
+      <p>En cas d'absence du ou de la stagiaire excédant <strong>sept&nbsp;jours</strong> consécutifs,
       la durée du stage pourra être prolongée d'autant, dans la limite des dispositions légales.</p>
     `);
   } else if (type === 'apprentissage') {
     A("Durée du contrat d'apprentissage", `
-      <p>Le contrat est conclu pour la durée du cycle de formation menant au diplôme 
-      <strong>${esc(data.diplomaTitle) || '___________'}</strong> (niveau&nbsp;${esc(data.diplomaLevel) || '___________'}), 
-      du <strong>${fmtDate(data.contractStartDate)}</strong> 
+      <p>Le contrat est conclu pour la durée du cycle de formation menant au diplôme
+      <strong>${esc(data.diplomaTitle) || '___________'}</strong> (niveau&nbsp;${esc(data.diplomaLevel) || '___________'}),
+      du <strong>${fmtDate(data.contractStartDate)}</strong>
       au <strong>${fmtDate(data.contractEndDate)}</strong>.</p>
-      <p>En application de l'article L.&nbsp;6222-7 du Code du travail, une période d'essai 
+      <p>En application de l'article L.&nbsp;6222-7 du Code du travail, une période d'essai
       de <strong>45&nbsp;jours</strong> de formation pratique est applicable.</p>
       ${data.cfaName ? `<p>La formation théorique est dispensée par : <strong>${esc(data.cfaName)}</strong>.</p>` : ''}
     `);
@@ -665,7 +702,7 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
     A("Durée et exécution de la prestation", `
       <p>La prestation débute le <strong>${fmtDate(data.contractStartDate)}</strong>
       ${data.contractEndDate ? ` et prend fin le <strong>${fmtDate(data.contractEndDate)}</strong>` : ' et se poursuit jusqu\'à achèvement'}.</p>
-      <p>Le Prestataire est libre de s'organiser comme il l'entend pour réaliser la mission, 
+      <p>Le Prestataire est libre de s'organiser comme il l'entend pour réaliser la mission,
       dans les délais convenus.</p>
     `);
   }
@@ -676,18 +713,18 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
       : "Fonctions et attributions";
 
   A(missionTitle, `
-    <p>${fullName} exercera les fonctions de <strong>${esc(data.jobTitle)}</strong> 
-    et accomplira l'ensemble des tâches inhérentes à ce poste, 
+    <p>${fullName} exercera les fonctions de <strong>${esc(data.jobTitle)}</strong>
+    et accomplira l'ensemble des tâches inhérentes à ce poste,
     dans le respect des instructions, règlements intérieurs et procédures de ${company}.</p>
     ${data.objectives ? `
     <div class="highlight-box">
       <strong>Objectifs assignés&nbsp;:</strong><br>${esc(data.objectives)}
     </div>` : ''}
     ${data.tasks ? `
-    <div class="highlight-box" style="margin-top: 8px;">
+    <div class="highlight-box" style="margin-top: 12px;">
       <strong>Missions détaillées&nbsp;:</strong><br>${esc(data.tasks)}
     </div>` : ''}
-    <p class="legal-note">Cette liste est indicative et non limitative. ${fullName} pourra être amené(e) 
+    <p class="legal-note">Cette liste est indicative et non limitative. ${fullName} pourra être amené(e)
     à réaliser toute tâche relevant de sa qualification.</p>
   `);
 
@@ -697,9 +734,9 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   `;
   if (data.mobilityClause) {
     lieuBody += `
-    <p>En application d'une <strong>clause de mobilité</strong>, ${fullName} pourra être amené(e) à exercer 
-    ses fonctions dans tout établissement de ${company} situé 
-    ${data.mobilityArea ? `dans la zone géographique suivante&nbsp;: <strong>${esc(data.mobilityArea)}</strong>` : 'sur le territoire national'}, 
+    <p>En application d'une <strong>clause de mobilité</strong>, ${fullName} pourra être amené(e) à exercer
+    ses fonctions dans tout établissement de ${company} situé
+    ${data.mobilityArea ? `dans la zone géographique suivante&nbsp;: <strong>${esc(data.mobilityArea)}</strong>` : 'sur le territoire national'},
     sous réserve d'un délai de prévenance suffisant.</p>
     `;
   }
@@ -708,13 +745,13 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Durée du travail ───────────────────────────
   if (!['freelance'].includes(type)) {
     A("Durée du travail et organisation", `
-      <p>La durée hebdomadaire de travail est fixée à <strong>${esc(data.workingHours) || '35'}&nbsp;heures</strong>, 
+      <p>La durée hebdomadaire de travail est fixée à <strong>${esc(data.workingHours) || '35'}&nbsp;heures</strong>,
       réparties selon l'horaire suivant&nbsp;: <strong>${esc(data.workSchedule) || 'selon planning communiqué par l\'employeur'}</strong>.</p>
-      <p>Des heures supplémentaires ou complémentaires pourront être effectuées à la demande de la hiérarchie, 
-      dans le respect des dispositions légales et conventionnelles applicables 
+      <p>Des heures supplémentaires ou complémentaires pourront être effectuées à la demande de la hiérarchie,
+      dans le respect des dispositions légales et conventionnelles applicables
       (article L.&nbsp;3121-28 et suivants du Code du travail).</p>
       ${type === 'stage' ? `
-      <p>Le ou la stagiaire bénéficie des dispositions relatives aux durées maximales de travail 
+      <p>Le ou la stagiaire bénéficie des dispositions relatives aux durées maximales de travail
       et aux repos quotidiens et hebdomadaires prévus par le Code du travail.</p>
       ` : ''}
     `);
@@ -723,30 +760,30 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Rémunération ───────────────────────────────
   if (type === 'freelance') {
     A("Rémunération et modalités de facturation", `
-      <p>En contrepartie de la prestation, le Client versera au Prestataire la somme de 
+      <p>En contrepartie de la prestation, le Client versera au Prestataire la somme de
       <strong>${fmtMoney(data.salaryAmount)}</strong> ${getSalaryLabel(data.salaryFrequency)}.</p>
-      <p>Le Prestataire établira une facture conforme aux obligations légales (numéro SIRET, TVA le cas échéant). 
-      Le paiement interviendra dans un délai de <strong>30&nbsp;jours</strong> à compter de la réception 
+      <p>Le Prestataire établira une facture conforme aux obligations légales (numéro SIRET, TVA le cas échéant).
+      Le paiement interviendra dans un délai de <strong>30&nbsp;jours</strong> à compter de la réception
       de la facture, par virement bancaire.</p>
-      <p>Tout retard de paiement donnera lieu à des pénalités de retard calculées au taux 
-      légal majoré de 10&nbsp;points, ainsi qu'à une indemnité forfaitaire de 
+      <p>Tout retard de paiement donnera lieu à des pénalités de retard calculées au taux
+      légal majoré de 10&nbsp;points, ainsi qu'à une indemnité forfaitaire de
       recouvrement de <strong>40&nbsp;€</strong> (article L.&nbsp;441-10 du Code de commerce).</p>
     `);
   } else if (type === 'stage') {
     const gratif = data.internshipGratification
-      ? `<p>Lorsque la durée du stage excède deux mois consécutifs, une gratification obligatoire 
-         de <strong>${fmtMoney(data.internshipGratification)}&nbsp;/ heure</strong> est versée mensuellement, 
+      ? `<p>Lorsque la durée du stage excède deux mois consécutifs, une gratification obligatoire
+         de <strong>${fmtMoney(data.internshipGratification)}&nbsp;/ heure</strong> est versée mensuellement,
          conformément à l'article L.&nbsp;124-6 du Code de l'éducation.</p>`
-      : `<p>La durée du stage étant inférieure à deux mois consécutifs, aucune gratification obligatoire 
+      : `<p>La durée du stage étant inférieure à deux mois consécutifs, aucune gratification obligatoire
          n'est due. Toutefois, si une gratification est accordée, elle sera précisée par avenant.</p>`;
     A("Gratification et remboursement de frais", gratif + `
-      <p>Les frais de transport engagés pour se rendre au lieu de stage sont pris en charge à hauteur de 
+      <p>Les frais de transport engagés pour se rendre au lieu de stage sont pris en charge à hauteur de
       <strong>50&nbsp;%</strong> du titre de transport en commun, conformément à l'usage.</p>
     `);
   } else {
     let remuBody = `
-      <p>${fullName} percevra un salaire de <strong>${fmtMoney(data.salaryAmount)} ${getSalaryLabel(data.salaryFrequency)}</strong>, 
-      versé mensuellement le dernier jour ouvré du mois, par virement bancaire, 
+      <p>${fullName} percevra un salaire de <strong>${fmtMoney(data.salaryAmount)} ${getSalaryLabel(data.salaryFrequency)}</strong>,
+      versé mensuellement le dernier jour ouvré du mois, par virement bancaire,
       déduction faite des cotisations sociales légales et conventionnelles en vigueur.</p>
     `;
 
@@ -770,10 +807,10 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Congés payés ───────────────────────────────
   if (['cdi', 'cdd', 'apprentissage', 'professionnalisation', 'portage'].includes(type)) {
     A("Congés payés", `
-      <p>Conformément aux articles L.&nbsp;3141-1 et suivants du Code du travail, 
-      ${fullName} acquiert des droits à congés payés à raison de <strong>2,5&nbsp;jours ouvrables par mois 
+      <p>Conformément aux articles L.&nbsp;3141-1 et suivants du Code du travail,
+      ${fullName} acquiert des droits à congés payés à raison de <strong>2,5&nbsp;jours ouvrables par mois
       de travail effectif</strong>, soit 30&nbsp;jours ouvrables (5&nbsp;semaines) par an.</p>
-      <p>Les dates de congés sont fixées d'un commun accord entre les parties, en tenant compte 
+      <p>Les dates de congés sont fixées d'un commun accord entre les parties, en tenant compte
       des nécessités du service.</p>
     `);
   }
@@ -781,77 +818,77 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
   // ── ARTICLE : Maladie / Absences ─────────────────────────
   if (!['freelance', 'stage'].includes(type)) {
     A("Maladie et absences", `
-      <p>En cas d'absence pour maladie ou accident, ${fullName} s'engage à informer 
-      ${company} <strong>le jour même</strong> de son absence et à faire parvenir 
+      <p>En cas d'absence pour maladie ou accident, ${fullName} s'engage à informer
+      ${company} <strong>le jour même</strong> de son absence et à faire parvenir
       un <strong>certificat médical d'arrêt de travail dans un délai de 48&nbsp;heures</strong>.</p>
-      <p>Le versement d'indemnités complémentaires par l'employeur est conditionné à la production 
-      de l'arrêt de travail dans les délais prévus et sous réserve des conditions d'ancienneté 
+      <p>Le versement d'indemnités complémentaires par l'employeur est conditionné à la production
+      de l'arrêt de travail dans les délais prévus et sous réserve des conditions d'ancienneté
       définies par la convention collective applicable.</p>
     `);
   }
 
   // ── ARTICLE : Confidentialité ────────────────────────────
   A("Obligation de discrétion et de confidentialité", `
-    <p>${fullName} s'engage, pendant toute la durée du ${type === 'stage' ? 'stage' : 'contrat'} 
-    et après sa cessation, à conserver la plus stricte confidentialité concernant 
-    toute information relative à ${company}, ses clients, fournisseurs, procédés, 
+    <p>${fullName} s'engage, pendant toute la durée du ${type === 'stage' ? 'stage' : 'contrat'}
+    et après sa cessation, à conserver la plus stricte confidentialité concernant
+    toute information relative à ${company}, ses clients, fournisseurs, procédés,
     données financières ou tout autre élément dont il (elle) aurait connaissance dans le cadre de ses fonctions.</p>
-    <p>Toute violation de cette obligation engage la responsabilité civile et pénale de son auteur 
+    <p>Toute violation de cette obligation engage la responsabilité civile et pénale de son auteur
     (articles L.&nbsp;1227-1 du Code du travail et 226-13 du Code pénal).</p>
   `);
 
   // ── ARTICLE : Non-concurrence (si activée) ───────────────
   if (data.nonCompeteClause && !['stage', 'freelance'].includes(type)) {
     A("Clause de non-concurrence", `
-      <p>En contrepartie du paiement d'une indemnité compensatrice mensuelle égale à 
-      <strong>${data.nonCompeteCompensation ? fmtMoney(data.nonCompeteCompensation) : '___________'} brut</strong> 
-      versée pendant la durée d'application de la clause, ${fullName} s'interdit, 
-      après la rupture du présent contrat, d'exercer toute activité concurrente 
-      ${data.nonCompeteArea ? `dans la zone géographique suivante&nbsp;: <strong>${esc(data.nonCompeteArea)}</strong>` : 'dans le secteur d\'activité de l\'entreprise'}, 
+      <p>En contrepartie du paiement d'une indemnité compensatrice mensuelle égale à
+      <strong>${data.nonCompeteCompensation ? fmtMoney(data.nonCompeteCompensation) : '___________'} brut</strong>
+      versée pendant la durée d'application de la clause, ${fullName} s'interdit,
+      après la rupture du présent contrat, d'exercer toute activité concurrente
+      ${data.nonCompeteArea ? `dans la zone géographique suivante&nbsp;: <strong>${esc(data.nonCompeteArea)}</strong>` : 'dans le secteur d\'activité de l\'entreprise'},
       pendant une durée de <strong>${data.nonCompeteDuration ? esc(data.nonCompeteDuration) : '___________'}</strong>.</p>
-      <p class="legal-note">Cette clause est valable conformément à la jurisprudence de la Cour de cassation 
-      (Soc. 10&nbsp;juill. 2002)&nbsp;: elle est limitée dans le temps, l'espace et l'activité, 
+      <p class="legal-note">Cette clause est valable conformément à la jurisprudence de la Cour de cassation
+      (Soc. 10&nbsp;juill. 2002)&nbsp;: elle est limitée dans le temps, l'espace et l'activité,
       et prévoit une contrepartie financière.</p>
     `);
   }
 
   // ── ARTICLE : Protection des données (RGPD) ──────────────
   A("Protection des données personnelles", `
-    <p>Dans le cadre de la relation contractuelle, ${company} collecte et traite des données 
-    personnelles concernant ${fullName} aux seules fins de gestion administrative et sociale, 
-    conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés 
+    <p>Dans le cadre de la relation contractuelle, ${company} collecte et traite des données
+    personnelles concernant ${fullName} aux seules fins de gestion administrative et sociale,
+    conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés
     (modifiée par la loi n°&nbsp;2018-493 du 20&nbsp;juin 2018).</p>
-    <p>${fullName} dispose d'un droit d'accès, de rectification, d'effacement et de portabilité 
-    de ses données, ainsi que du droit de s'opposer à leur traitement, 
+    <p>${fullName} dispose d'un droit d'accès, de rectification, d'effacement et de portabilité
+    de ses données, ainsi que du droit de s'opposer à leur traitement,
     exercice par courrier adressé au responsable du traitement.</p>
   `);
 
   // ── ARTICLE : Rupture ────────────────────────────────────
   if (type === 'freelance') {
     A("Résiliation", `
-      <p>Chaque partie peut résilier le présent contrat avec un préavis de <strong>30&nbsp;jours</strong> 
-      adressé par lettre recommandée avec accusé de réception, sans qu'il soit nécessaire 
+      <p>Chaque partie peut résilier le présent contrat avec un préavis de <strong>30&nbsp;jours</strong>
+      adressé par lettre recommandée avec accusé de réception, sans qu'il soit nécessaire
       d'en justifier le motif.</p>
-      <p>En cas de <strong>manquement grave</strong> à ses obligations par l'une des parties, 
-      l'autre partie pourra résilier le contrat sans préavis, après mise en demeure restée sans effet 
+      <p>En cas de <strong>manquement grave</strong> à ses obligations par l'une des parties,
+      l'autre partie pourra résilier le contrat sans préavis, après mise en demeure restée sans effet
       sous 15&nbsp;jours.</p>
     `);
   } else if (type !== 'stage') {
     A("Rupture du contrat", `
-      <p>Le présent contrat pourra être rompu dans les conditions prévues par le Code du travail&nbsp;: 
+      <p>Le présent contrat pourra être rompu dans les conditions prévues par le Code du travail&nbsp;:
       démission, licenciement, rupture conventionnelle homologuée, retraite ou faute grave / lourde.</p>
-      <p>Les préavis applicables sont ceux définis par la <em>${esc(data.collectiveAgreement) || 'convention collective applicable'}</em> 
+      <p>Les préavis applicables sont ceux définis par la <em>${esc(data.collectiveAgreement) || 'convention collective applicable'}</em>
       et, à défaut, par les dispositions légales en vigueur.</p>
     `);
   }
 
   // ── ARTICLE : Droit applicable ───────────────────────────
   A("Droit applicable et attribution de juridiction", `
-    <p>Le présent contrat est régi par le <strong>droit français</strong>. 
-    En cas de litige relatif à son interprétation, son exécution ou sa rupture, 
+    <p>Le présent contrat est régi par le <strong>droit français</strong>.
+    En cas de litige relatif à son interprétation, son exécution ou sa rupture,
     les parties s'engagent à rechercher une solution amiable avant toute action judiciaire.</p>
-    <p>À défaut, le litige sera porté devant le <strong>Conseil de Prud'hommes 
-    du ressort du siège social de ${company}</strong>, 
+    <p>À défaut, le litige sera porté devant le <strong>Conseil de Prud'hommes
+    du ressort du siège social de ${company}</strong>,
     ou devant le Tribunal de commerce compétent pour les contrats de prestation.</p>
   `);
 
@@ -937,8 +974,8 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   ${data.contractType === 'stage' && data.schoolName ? `
   <!-- ÉTABLISSEMENT D'ENSEIGNEMENT (stage tripartite) -->
-  <div class="parties-wrapper" style="margin-bottom: 24px;">
-    <div class="party-col" style="flex: 1; border-right: none;">
+  <div class="parties-wrapper" style="margin-bottom: 32px;">
+    <div class="party-col" style="flex: 1; border-right: none; background: #fff;">
       <div class="party-col-title">L'Établissement d'enseignement</div>
       <div class="name-main">${esc(data.schoolName)}</div>
       ${data.schoolAddress ? `<div class="info-row">${esc(data.schoolAddress)}</div>` : ''}
@@ -948,7 +985,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
   ` : ''}
 
-  <p style="text-align: center; font-style: italic; font-size: 9.5pt; color: #444; margin-bottom: 6px;">
+  <p style="text-align: center; font-style: italic; font-size: 10pt; color: #444; margin-bottom: 8px;">
     Il a été librement convenu et arrêté ce qui suit :
   </p>
 
@@ -1006,7 +1043,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
 
   ${data.contractType === 'stage' ? `
-  <div style="margin-top: 24px; page-break-inside: avoid;">
+  <div style="margin-top: 32px; page-break-inside: avoid;">
     <div class="sig-grid">
       <div class="sig-block">
         <div class="sig-block-title">L'Établissement d'enseignement</div>

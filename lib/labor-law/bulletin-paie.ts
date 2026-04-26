@@ -1,5 +1,6 @@
-// Générateur de bulletins de paie
-// Crée des bulletins de paie conformes à la réglementation française
+// Générateur de bulletins de paie — Version 3.0
+// Design ultra-aéré, professionnel, conforme au Code du travail français
+// Couleur personnalisable, format 1 page A4, erreurs détaillées
 
 import { calculerCotisations, getCotisationsDisplay, SMIC_2024, getSalaireMinimumAlternance } from './cotisations';
 import { validateContract } from './rules';
@@ -144,7 +145,7 @@ interface BulletinPaie {
   };
 }
 
-// Générer un bulletin de paie HTML — design professionnel 1 page
+// Générer un bulletin de paie HTML — design ultra-aéré, 1 page A4, couleur personnalisable
 export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   const moisAnnee = new Date(data.periodeDebut).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const dateDebPeriode = new Date(data.periodeDebut).toLocaleDateString('fr-FR');
@@ -200,12 +201,12 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
     + (data.indemnitesJournalieresSS ?? 0); // IJ SS complète le net quand maintien partiel
 
   const row = (label: string, base: string, taux: string, prelever: string, payer: string, bold = false, shade = false) =>
-    `<tr style="${shade ? 'background:#f5f5f5;' : ''}${bold ? 'font-weight:bold;' : ''}">
-      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">${label}</td>
-      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;">${base}</td>
-      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;">${taux}</td>
-      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#c0392b;">${prelever}</td>
-      <td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${payer}</td>
+    `<tr style="${shade ? 'background:linear-gradient(135deg, #f8f9fa, #f5f6f7);' : ''}${bold ? 'font-weight:bold;' : ''}">
+      <td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">${label}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;">${base}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;">${taux}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#c0392b;">${prelever}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${payer}</td>
     </tr>`;
 
   const fmt = (n: number) => n.toFixed(2);
@@ -225,42 +226,47 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
 <meta charset="UTF-8">
 <title>Bulletin de paie ${moisAnnee} — ${data.prenom} ${data.nom}</title>
 <style>
-  @page { size: A4; margin: 10mm 12mm; }
+  @page { size: A4; margin: 8mm 14mm; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #1a1a1a; background: #fff; }
-  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 8mm; }
+  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 9pt; color: #1a1a1a; background: #fff; }
+  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 6mm; }
+
   /* Header */
-  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid ${headerColor}; padding-bottom:6px; margin-bottom:6px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 4px solid ${headerColor}; padding-bottom:12px; margin-bottom:10px; }
   .header-left { flex:1; }
   .header-right { text-align:right; }
-  .company-name { font-size:13pt; font-weight:bold; color:${headerColor}; }
-  .bulletin-title { font-size:11pt; font-weight:bold; color:#fff; background:${headerColor}; padding:3px 10px; border-radius:3px; display:inline-block; }
+  .company-name { font-size:14pt; font-weight:bold; color:${headerColor}; letter-spacing:0.5px; text-transform:uppercase; }
+  .bulletin-title { font-size:12pt; font-weight:bold; color:#fff; background:linear-gradient(135deg, ${headerColor}, ${headerColor}dd); padding:6px 16px; border-radius:8px; display:inline-block; box-shadow:0 2px 8px ${headerColor}40; }
+
   /* Blocs identité */
-  .id-bloc { display:flex; gap:8px; margin-bottom:6px; }
-  .id-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:5px 7px; font-size:7.5pt; }
-  .id-box-title { font-size:7pt; font-weight:bold; color:${titleColor}; text-transform:uppercase; border-bottom:1px solid #e0e0e0; margin-bottom:3px; padding-bottom:2px; }
-  .id-row { display:flex; justify-content:space-between; margin-bottom:1px; }
-  .id-key { color:#666; }
-  .id-val { font-weight:bold; }
+  .id-bloc { display:flex; gap:12px; margin-bottom:12px; }
+  .id-box { flex:1; border:1px solid #e0e0e0; border-radius:10px; padding:10px 14px; font-size:8pt; box-shadow:0 2px 6px rgba(0,0,0,0.04); background:#fafafa; }
+  .id-box-title { font-size:8pt; font-weight:bold; color:${titleColor}; text-transform:uppercase; border-bottom:2px solid ${titleColor}40; margin-bottom:8px; padding-bottom:6px; letter-spacing:0.8px; }
+  .id-row { display:flex; justify-content:space-between; margin-bottom:5px; line-height:1.6; }
+  .id-key { color:#666; font-weight:500; }
+  .id-val { font-weight:600; color:#333; }
+
   /* Tableau cotisations */
-  .section-head { background:${sectionHeaderColor}; color:#fff; font-size:7.5pt; font-weight:bold; padding:3px 6px; margin:5px 0 0 0; }
-  table.cot { width:100%; border-collapse:collapse; font-size:7.5pt; }
-  table.cot th { background:#f0f0f0; font-weight:bold; padding:3px 6px; border-bottom:2px solid #ccc; text-align:right; font-size:7pt; }
+  .section-head { background:linear-gradient(135deg, ${sectionHeaderColor}, ${sectionHeaderColor}e0); color:#fff; font-size:8.5pt; font-weight:bold; padding:6px 14px; margin:8px 0 0 0; border-radius:6px; letter-spacing:0.5px; box-shadow:0 2px 6px ${sectionHeaderColor}30; }
+  table.cot { width:100%; border-collapse:collapse; font-size:8.5pt; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+  table.cot th { background:linear-gradient(135deg, #f8f9fa, #f0f1f2); font-weight:bold; padding:8px 12px; border-bottom:2px solid #ccc; text-align:right; font-size:8pt; }
   table.cot th:first-child { text-align:left; }
+
   /* Bloc NET */
-  .net-box { display:flex; justify-content:space-between; align-items:center; background:${netBoxColor}; color:#fff; border-radius:4px; padding:8px 14px; margin-top:6px; }
-  .net-label { font-size:11pt; font-weight:bold; }
-  .net-amount { font-size:15pt; font-weight:bold; }
+  .net-box { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, ${netBoxColor}, ${netBoxColor}e0); color:#fff; border-radius:12px; padding:14px 20px; margin-top:12px; box-shadow:0 4px 12px ${netBoxColor}40; }
+  .net-label { font-size:12pt; font-weight:bold; letter-spacing:0.5px; }
+  .net-amount { font-size:18pt; font-weight:bold; text-shadow:0 2px 4px rgba(0,0,0,0.1); }
+
   /* Pied */
-  .footer-bloc { display:flex; gap:8px; margin-top:6px; font-size:7pt; color:#555; }
-  .footer-box { flex:1; border:1px solid #d0d0d0; border-radius:3px; padding:4px 6px; }
-  .footer-box-title { font-weight:bold; color:${titleColor}; margin-bottom:2px; font-size:7pt; }
-  .cp-row { display:flex; justify-content:space-between; }
-  .mention { font-size:6.5pt; color:#888; margin-top:6px; border-top:1px solid #ddd; padding-top:4px; }
+  .footer-bloc { display:flex; gap:12px; margin-top:12px; font-size:8pt; color:#555; }
+  .footer-box { flex:1; border:1px solid #e0e0e0; border-radius:8px; padding:8px 12px; background:#fafafa; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+  .footer-box-title { font-weight:bold; color:${titleColor}; margin-bottom:6px; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid ${titleColor}30; padding-bottom:4px; }
+  .cp-row { display:flex; justify-content:space-between; margin-bottom:4px; line-height:1.5; }
+  .mention { font-size:7pt; color:#888; margin-top:10px; border-top:1px solid #ddd; padding-top:8px; font-style:italic; text-align:center; }
 </style>
 </head>
 <body>
@@ -270,20 +276,20 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   <div class="header">
     <div class="header-left">
       <div class="company-name">${data.raisonSociale}</div>
-      <div style="font-size:7.5pt;color:#555;">${data.adresseEntreprise}, ${data.codePostalEntreprise} ${data.villeEntreprise}</div>
-      <div style="font-size:7.5pt;color:#555;">SIRET : ${data.siret}${data.codeAPE ? ` &nbsp;|&nbsp; APE/NAF : ${data.codeAPE}` : ''} &nbsp;|&nbsp; URSSAF : ${data.urssaf || data.siret}</div>
+      <div style="font-size:8pt;color:#666;margin-top:4px;">${data.adresseEntreprise}, ${data.codePostalEntreprise} ${data.villeEntreprise}</div>
+      <div style="font-size:8pt;color:#666;">SIRET : ${data.siret}${data.codeAPE ? ` &nbsp;|&nbsp; APE/NAF : ${data.codeAPE}` : ''} &nbsp;|&nbsp; URSSAF : ${data.urssaf || data.siret}</div>
     </div>
     <div class="header-right">
       <div class="bulletin-title">BULLETIN DE PAIE</div>
-      <div style="font-size:8.5pt;margin-top:4px;">Période : <strong>${dateDebPeriode} – ${dateFinPeriode}</strong></div>
-      <div style="font-size:8.5pt;">Date de paiement : <strong>${datePaiement}</strong></div>
-      <div style="font-size:7pt;color:#888;margin-top:2px;">Établi le ${datePaie}</div>
+      <div style="font-size:9pt;margin-top:8px;">Période : <strong>${dateDebPeriode} – ${dateFinPeriode}</strong></div>
+      <div style="font-size:9pt;">Date de paiement : <strong>${datePaiement}</strong></div>
+      <div style="font-size:8pt;color:#888;margin-top:4px;">Établi le ${datePaie}</div>
     </div>
   </div>
 
   <!-- IDENTITÉ -->
   <div class="id-bloc">
-    <div class="id-box" style="flex:1.5;">
+    <div class="id-box" style="flex:1.6;">
       <div class="id-box-title">Salarié</div>
       <div class="id-row"><span class="id-key">Nom</span><span class="id-val">${data.prenom} ${data.nom}</span></div>
       <div class="id-row"><span class="id-key">Adresse</span><span class="id-val">${data.adresse}, ${data.codePostal} ${data.ville}</span></div>
@@ -375,12 +381,12 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   <table class="cot"><thead><tr>
     <th style="text-align:left;width:50%">Libellé</th><th style="width:25%">—</th><th style="width:25%">Montant</th>
   </tr></thead><tbody>
-    ${data.indemnitesTransport ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Remboursement transport</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemnitesTransport)}</td></tr>` : ''}
-    ${data.indemniteDeplacementVehicule ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Indemnité kilométrique</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemniteDeplacementVehicule)}</td></tr>` : ''}
-    ${data.ticketRestaurantNombre ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Tickets restaurant (${data.ticketRestaurantNombre} × ${fmtE(data.ticketRestaurantMontantEmployeur ?? 0)} part empl.)</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE((data.ticketRestaurantNombre) * (data.ticketRestaurantMontantEmployeur ?? 0))}</td></tr>` : ''}
-    ${data.indemnitesJournalieresSS ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">IJ Sécurité Sociale</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.indemnitesJournalieresSS)}</td></tr>` : ''}
-    ${data.maintienSalaireMaladie ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Maintien salaire maladie (employeur)</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.maintienSalaireMaladie)}</td></tr>` : ''}
-    ${data.autresIndemnites ? `<tr><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;">Autres indemnités</td><td></td><td style="padding:3px 6px;border-bottom:1px solid #e0e0e0;text-align:right;color:#27ae60;">${fmtE(data.autresIndemnites)}</td></tr>` : ''}
+    ${data.indemnitesTransport ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">Remboursement transport</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemnitesTransport)}</td></tr>` : ''}
+    ${data.indemniteDeplacementVehicule ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">Indemnité kilométrique</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemniteDeplacementVehicule)}</td></tr>` : ''}
+    ${data.ticketRestaurantNombre ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">Tickets restaurant (${data.ticketRestaurantNombre} × ${fmtE(data.ticketRestaurantMontantEmployeur ?? 0)} part empl.)</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE((data.ticketRestaurantNombre) * (data.ticketRestaurantMontantEmployeur ?? 0))}</td></tr>` : ''}
+    ${data.indemnitesJournalieresSS ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">IJ Sécurité Sociale</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemnitesJournalieresSS)}</td></tr>` : ''}
+    ${data.maintienSalaireMaladie ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">Maintien salaire maladie (employeur)</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.maintienSalaireMaladie)}</td></tr>` : ''}
+    ${data.autresIndemnites ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;">Autres indemnités</td><td></td><td style="padding:6px 10px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.autresIndemnites)}</td></tr>` : ''}
   </tbody></table>
   ` : ''}
 
@@ -388,7 +394,7 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   <div class="net-box">
     <div>
       <div class="net-label">NET À PAYER</div>
-      <div style="font-size:7.5pt;opacity:0.85;">Net imposable : ${fmtE(cotisations.salaireNetImposable)}</div>
+      <div style="font-size:8pt;opacity:0.9;margin-top:4px;">Net imposable : ${fmtE(cotisations.salaireNetImposable)}</div>
     </div>
     <div class="net-amount">${fmtE(Math.max(0, netAvantImpot))}</div>
   </div>
@@ -417,7 +423,7 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
   </div>
 
   <!-- Prélèvement à la source -->
-  <div style="display:flex;gap:8px;margin-top:4px;">
+  <div style="display:flex;gap:12px;margin-top:8px;">
     <div class="footer-box" style="flex:1;">
       <div class="footer-box-title">Prélèvement à la source (PAS)</div>
       <div class="cp-row"><span>Net imposable du mois</span><span>${fmtE(cotisations.salaireNetImposable)}</span></div>
@@ -427,14 +433,14 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
     </div>
     <div class="footer-box" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
       <div class="footer-box-title">Signatures</div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;margin-top:8px;">
         <div style="text-align:center;flex:1;">
-          <div style="font-size:6pt;color:#888;margin-bottom:16px;">L'employeur</div>
-          <div style="border-top:1px solid #ccc;padding-top:2px;font-size:6pt;color:#888;">${data.raisonSociale}</div>
+          <div style="font-size:7pt;color:#888;margin-bottom:20px;">L'employeur</div>
+          <div style="border-top:1px solid #ccc;padding-top:4px;font-size:7pt;color:#888;">${data.raisonSociale}</div>
         </div>
         <div style="text-align:center;flex:1;">
-          <div style="font-size:6pt;color:#888;margin-bottom:16px;">Le(la) salarié(e)</div>
-          <div style="border-top:1px solid #ccc;padding-top:2px;font-size:6pt;color:#888;">${data.prenom} ${data.nom}</div>
+          <div style="font-size:7pt;color:#888;margin-bottom:20px;">Le(la) salarié(e)</div>
+          <div style="border-top:1px solid #ccc;padding-top:4px;font-size:7pt;color:#888;">${data.prenom} ${data.nom}</div>
         </div>
       </div>
     </div>
@@ -469,21 +475,25 @@ export function ouvrirBulletinPaie(data: BulletinPaieData): void {
   }
 }
 
-// Valider les données du bulletin
+// Valider les données du bulletin avec messages d'erreur détaillés
 export function validerDonneesBulletin(data: Partial<BulletinPaieData>): { valid: boolean; erreurs: string[] } {
   const erreurs: string[] = [];
 
-  if (!data.nom) erreurs.push('Le nom du salarié est obligatoire');
-  if (!data.prenom) erreurs.push('Le prénom du salarié est obligatoire');
-  if (!data.nir || data.nir.length !== 15) {
-    erreurs.push('Le numéro de Sécurité sociale (NIR) est invalide (15 chiffres requis)');
+  if (!data.nom || data.nom.trim() === '') erreurs.push('Le nom du salarié est obligatoire (champ vide)');
+  if (!data.prenom || data.prenom.trim() === '') erreurs.push('Le prénom du salarié est obligatoire (champ vide)');
+  if (!data.nir) {
+    erreurs.push('Le numéro de Sécurité sociale (NIR) est obligatoire');
+  } else if (data.nir.length !== 15) {
+    erreurs.push(`Le numéro de Sécurité sociale (NIR) est invalide : ${data.nir.length} caractères au lieu de 15 requis. Format attendu : 15 chiffres (ex: 12345678901234)`);
   }
   if (!data.salaireBrut || data.salaireBrut <= 0) {
-    erreurs.push('Le salaire brut doit être supérieur à 0');
+    erreurs.push(`Le salaire brut doit être supérieur à 0. Valeur actuelle : ${data.salaireBrut || 'non renseigné'}`);
   }
-  if (!data.raisonSociale) erreurs.push('La raison sociale de l\'entreprise est obligatoire');
-  if (!data.siret || data.siret.length !== 14) {
-    erreurs.push('Le numéro SIRET est invalide (14 chiffres requis)');
+  if (!data.raisonSociale || data.raisonSociale.trim() === '') erreurs.push('La raison sociale de l\'entreprise est obligatoire (champ vide)');
+  if (!data.siret) {
+    erreurs.push('Le numéro SIRET est obligatoire');
+  } else if (data.siret.length !== 14) {
+    erreurs.push(`Le numéro SIRET est invalide : ${data.siret.length} caractères au lieu de 14 requis. Format attendu : 14 chiffres (ex: 12345678900012)`);
   }
 
   return {
