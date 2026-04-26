@@ -1,8 +1,8 @@
 /**
- * Server-side PDF generation for French labor contracts using HTML template.
- * Generates PDF with the NEW elegant design (BS STRUCTURE style).
- * Legally compliant with French Labor Code 2025-2026.
+ * Server-side PDF generation for French labor contracts using pdf-lib.
+ * Multi-page, colored sections, page numbers in footer.
  */
+import { PDFDocument, StandardFonts, rgb, RGB } from 'pdf-lib';
 
 export interface ContractTemplateData {
   accentColor?: string;
@@ -72,10 +72,24 @@ export interface ContractTemplateData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function safe(str: unknown): string {
+  return String(str ?? '')
+    .replace(/\u2013/g, '-').replace(/\u2014/g, '--')
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D\u201E]/g, '"')
+    .replace(/\u2026/g, '...').replace(/\n/g, ' ')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+}
+
+function hexToRgb(hex: string): RGB {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!r) return rgb(0.549, 0.102, 0.102);
+  return rgb(parseInt(r[1], 16) / 255, parseInt(r[2], 16) / 255, parseInt(r[3], 16) / 255);
+}
+
 function formatDate(dateStr: string): string {
   try {
     const d = new Date(dateStr + (dateStr.length === 10 ? 'T12:00:00' : ''));
-    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const months = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch {
     return String(dateStr);
@@ -84,382 +98,327 @@ function formatDate(dateStr: string): string {
 
 function formatSalary(amount: string, frequency: string): string {
   const num = parseFloat(amount);
-  if (isNaN(num)) return amount;
+  if (isNaN(num)) return safe(amount);
   const formatted = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
-  const freqLabels = { monthly: 'par mois', hourly: 'par heure', weekly: 'par semaine', flat_rate: 'forfait' };
-  return `${formatted} € (${freqLabels[frequency as keyof typeof freqLabels] || 'par mois'})`;
+  const freqLabels: Record<string, string> = { monthly: 'par mois', hourly: 'par heure', weekly: 'par semaine', flat_rate: 'forfait' };
+  return `${formatted} EUR (${freqLabels[frequency] || 'par mois'})`;
 }
 
 const CONTRACT_LABELS: Record<string, string> = {
-  cdd: 'CONTRAT DE TRAVAIL À DURÉE DÉTERMINÉE',
-  cdi: 'CONTRAT DE TRAVAIL À DURÉE INDÉTERMINÉE',
+  cdd: 'CONTRAT DE TRAVAIL A DUREE DETERMINEE',
+  cdi: 'CONTRAT DE TRAVAIL A DUREE INDETERMINEE',
   stage: 'CONVENTION DE STAGE',
-  apprentissage: 'CONTRAT D\'APPRENTISSAGE',
+  apprentissage: "CONTRAT D'APPRENTISSAGE",
   professionnalisation: 'CONTRAT DE PROFESSIONNALISATION',
-  interim: 'CONTRAT DE TRAVAIL TEMPORAIRE (INTÉRIM)',
+  interim: 'CONTRAT DE TRAVAIL TEMPORAIRE (INTERIM)',
   portage: 'CONTRAT DE PORTAGE SALARIAL',
   freelance: 'CONTRAT DE PRESTATION DE SERVICES',
 };
 
 const CDD_REASONS: Record<string, string> = {
-  remplacement: 'remplacement d\'un salarié absent (art. L.1242-2, 1° du Code du travail)',
-  accroissement: 'accroissement temporaire de l\'activité de l\'entreprise (art. L.1242-2, 2° du Code du travail)',
-  saisonnier: 'emploi saisonnier dont les tâches se répètent chaque année (art. L.1242-2, 3° du Code du travail)',
-  usage: 'secteur d\'activité pour lequel il est d\'usage de ne pas recourir au CDI (art. L.1242-2, 3° du Code du travail)',
+  remplacement: "remplacement d'un salarie absent (art. L.1242-2, 1 du Code du travail)",
+  accroissement: "accroissement temporaire de l'activite de l'entreprise (art. L.1242-2, 2 du Code du travail)",
+  saisonnier: "emploi saisonnier dont les taches se repetent chaque annee (art. L.1242-2, 3 du Code du travail)",
+  usage: "secteur d'activite pour lequel il est d'usage de ne pas recourir au CDI (art. L.1242-2, 3 du Code du travail)",
 };
 
-// ── HTML Template Generator ──────────────────────────────────────────────────────
-
-function generateContractHTML(data: ContractTemplateData): string {
-  const contractTitle = CONTRACT_LABELS[data.contractType] || 'CONTRAT DE TRAVAIL';
-  const today = new Date().toISOString().split('T')[0];
-
-  // Calculate trial period end date
-  let trialEndDate = '';
-  if (data.trialPeriodDays) {
-    const trialDate = new Date(data.contractStartDate);
-    trialDate.setDate(trialDate.getDate() + parseInt(data.trialPeriodDays));
-    trialEndDate = formatDate(trialDate.toISOString().split('T')[0]);
-  }
-
-  return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${data.companyName} — ${contractTitle} — ${data.employeeFirstName} ${data.employeeLastName}</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-        :root {
-            --bg: #f5f1eb;
-            --paper: #fffef9;
-            --ink: #1a1a18;
-            --ink-light: #4a4a44;
-            --ink-muted: #7a7a70;
-            --accent: #8b1a1a;
-            --accent-light: #a52a2a;
-            --rule: #c8c3b8;
-            --rule-light: #e0dcd4;
-            --confidential-bg: rgba(139, 26, 26, 0.06);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-            color: var(--ink);
-            background: var(--bg);
-            line-height: 1.65;
-            -webkit-font-smoothing: antialiased;
-        }
-        .document {
-            max-width: 820px;
-            margin: 0 auto;
-            background: var(--paper);
-            padding: 0;
-        }
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 48px;
-            border-bottom: 1px solid var(--rule);
-            background: var(--confidential-bg);
-        }
-        .company-name { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.08em; color: var(--ink); }
-        .doc-type { font-size: 0.78rem; color: var(--ink-muted); font-weight: 400; }
-        .confidential { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px; border-radius: 2px; }
-        .page-body { padding: 44px 56px 36px; }
-        .page-footer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px 48px;
-            border-top: 1px solid var(--rule-light);
-            font-size: 0.72rem;
-            color: var(--ink-muted);
-            letter-spacing: 0.02em;
-        }
-        .separator { margin: 0 12px; color: var(--rule); }
-        .contract-title { text-align: center; margin-bottom: 6px; }
-        .contract-title h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.55rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
-        .contract-subtitle { text-align: center; font-size: 0.82rem; font-weight: 500; color: var(--ink-muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 32px; }
-        .parties-intro { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.05rem; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 28px; color: var(--ink); }
-        .parties-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 28px; }
-        .party-block { padding: 20px 22px; border: 1px solid var(--rule); border-radius: 3px; background: linear-gradient(180deg, rgba(139,26,26,0.015) 0%, transparent 100%); }
-        .party-label { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule-light); }
-        .party-name { font-weight: 700; font-size: 1rem; margin-bottom: 10px; color: var(--ink); }
-        .party-details { list-style: none; font-size: 0.85rem; color: var(--ink-light); line-height: 1.8; }
-        .party-details li { display: flex; gap: 6px; }
-        .party-details li .label { font-weight: 600; color: var(--ink); min-width: fit-content; }
-        .transition-phrase { text-align: center; font-style: italic; color: var(--ink-light); margin-bottom: 30px; font-size: 0.92rem; }
-        .article { margin-bottom: 22px; page-break-inside: avoid; }
-        .article-title { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule-light); }
-        .article p { font-size: 0.88rem; color: var(--ink-light); text-align: justify; margin-bottom: 8px; }
-        .recap-table { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 0.86rem; }
-        .recap-table tr { border-bottom: 1px solid var(--rule-light); }
-        .recap-table tr:last-child { border-bottom: none; }
-        .recap-table td { padding: 9px 12px; vertical-align: top; }
-        .recap-label { font-weight: 600; color: var(--ink); white-space: nowrap; width: 170px; }
-        .recap-value { color: var(--ink-light); }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 44px; }
-        .sig-block { text-align: center; }
-        .sig-label { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
-        .sig-name { font-weight: 600; font-size: 0.9rem; color: var(--ink); margin-bottom: 4px; }
-        .sig-note { font-size: 0.78rem; font-style: italic; color: var(--ink-muted); margin-bottom: 28px; }
-        .sig-line { border: none; border-top: 1px solid var(--ink); width: 70%; margin: 0 auto 6px; opacity: 0.35; }
-        .sig-line-label { font-size: 0.72rem; color: var(--ink-muted); }
-        .lieu-date { text-align: center; font-size: 0.88rem; color: var(--ink-light); margin-top: 36px; margin-bottom: 8px; }
-        strong { font-weight: 600; color: var(--ink); }
-        @media print {
-            body { background: white; }
-            .document { margin: 0; }
-            .article { page-break-inside: avoid; }
-        }
-    </style>
-</head>
-<body>
-    <div class="document">
-        <header class="page-header">
-            <div>
-                <span class="company-name">${data.companyName}</span>
-                <span class="doc-type"> | ${contractTitle}</span>
-            </div>
-            <span class="confidential">Confidentiel</span>
-        </header>
-        <main class="page-body">
-            <div class="contract-title">
-                <h1>${contractTitle}</h1>
-            </div>
-            <p class="contract-subtitle">Temps plein — SMIC 2026</p>
-            <p class="parties-intro">Entre les soussignés</p>
-            <div class="parties-grid">
-                <div class="party-block">
-                    <p class="party-label">L'Employeur</p>
-                    <p class="party-name">${data.companyName}</p>
-                    <ul class="party-details">
-                        <li><span class="label">Adresse :</span> ${data.companyAddress}</li>
-                        <li><span class="label">Code postal :</span> ${data.companyPostalCode}</li>
-                        <li><span class="label">Ville :</span> ${data.companyCity}</li>
-                        <li><span class="label">SIRET :</span> ${data.companySiret}</li>
-                        <li><span class="label">Représentant :</span> ${data.employerName}, ${data.employerTitle}</li>
-                    </ul>
-                </div>
-                <div class="party-block">
-                    <p class="party-label">Le Salarié</p>
-                    <p class="party-name">${data.employeeFirstName} ${data.employeeLastName}</p>
-                    <ul class="party-details">
-                        <li><span class="label">Né le :</span> ${formatDate(data.employeeBirthDate)}</li>
-                        <li><span class="label">Nationalité :</span> ${data.employeeNationality}</li>
-                        <li><span class="label">Demeurant :</span> ${data.employeeAddress}, ${data.employeePostalCode} ${data.employeeCity}</li>
-                        ${data.employeeEmail ? `<li><span class="label">Email :</span> ${data.employeeEmail}</li>` : ''}
-                        ${data.employeePhone ? `<li><span class="label">Téléphone :</span> ${data.employeePhone}</li>` : ''}
-                        ${data.employeeSocialSecurity ? `<li><span class="label">N° SS :</span> ${data.employeeSocialSecurity}</li>` : ''}
-                    </ul>
-                </div>
-            </div>
-            <p class="transition-phrase">Il a été convenu et arrêté ce qui suit :</p>
-
-            <section class="article">
-                <h2 class="article-title">Article Préambule — Récapitulatif des conditions</h2>
-                <table class="recap-table">
-                    <tr><td class="recap-label">Poste</td><td class="recap-value">${data.jobTitle}</td></tr>
-                    ${data.contractClassification ? `<tr><td class="recap-label">Convention collective</td><td class="recap-value">${data.contractClassification}</td></tr>` : ''}
-                    <tr><td class="recap-label">Date d'embauche</td><td class="recap-value">${formatDate(data.contractStartDate)}</td></tr>
-                    ${data.trialPeriodDays ? `<tr><td class="recap-label">Fin période d'essai</td><td class="recap-value">${trialEndDate} (${data.trialPeriodDays} jours renouvelable une fois)</td></tr>` : ''}
-                    <tr><td class="recap-label">Durée du travail</td><td class="recap-value">${data.workSchedule}</td></tr>
-                    <tr><td class="recap-label">Salaire brut</td><td class="recap-value">${formatSalary(data.salaryAmount, data.salaryFrequency)}</td></tr>
-                    <tr><td class="recap-label">Lieu de travail</td><td class="recap-value">${data.workLocation}</td></tr>
-                </table>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article I — Engagement</h2>
-                <p>Sous réserve des résultats de la visite médicale d'embauche, <strong>${data.employeeFirstName} ${data.employeeLastName}</strong> est engagé${data.employeeFirstName.endsWith('e') ? 'e' : ''} à temps plein à compter du ${formatDate(data.contractStartDate)} par la société <strong>${data.companyName}</strong>, en qualité de ${data.jobTitle}.</p>
-                ${data.contractClassification ? `<p>Cette qualification correspond au coefficient prévu par la convention collective : ${data.contractClassification}.</p>` : ''}
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article II — Durée du contrat</h2>
-                ${data.contractType === 'cdi' ? `
-                <p>Le présent contrat est conclu pour une durée indéterminée${data.trialPeriodDays ? `. Il ne prendra effet définitivement qu'à l'issue de la période d'essai de ${data.trialPeriodDays} jours` : ''}.</p>
-                <p>Durant la période d'essai, chacune des parties pourra mettre fin au contrat sans indemnité, sous réserve du respect du délai de prévenance prévu par la loi et la convention collective applicable.</p>
-                ` : data.contractType === 'cdd' ? `
-                <p>Le présent contrat est conclu pour une durée déterminée du ${formatDate(data.contractStartDate)} au ${formatDate(data.contractEndDate || '')}.</p>
-                <p>Conformément à l'article L. 1242-1 du Code du travail, ce CDD est conclu pour le motif suivant : ${CDD_REASONS[data.contractReason || ''] || data.contractReason || 'à préciser'}.</p>
-                ${data.replacedEmployeeName ? `<p>Nom du salarié remplacé : ${data.replacedEmployeeName}.</p>` : ''}
-                ` : `
-                <p>Le présent contrat est conclu pour une durée déterminée du ${formatDate(data.contractStartDate)} au ${formatDate(data.contractEndDate || '')}.</p>
-                `}
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article III — Fonctions</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> exercera au sein de <strong>${data.companyName}</strong> les fonctions de ${data.jobTitle}. Il effectuera toutes les tâches inhérentes à ce poste, dans le respect des instructions et procédures de l'entreprise.</p>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article IV — Rémunération</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> percevra une rémunération brute mensuelle de <strong>${formatSalary(data.salaryAmount, data.salaryFrequency)}</strong>.</p>
-                <p>Cette rémunération sera versée mensuellement, déduction faite des cotisations sociales légales en vigueur.</p>
-                ${data.hasTransport || data.hasMeal || data.hasHealth || data.hasOther ? `
-                <p>Le salarié bénéficiera également des avantages suivants :</p>
-                <ul style="margin-left: 20px;">
-                    ${data.hasTransport ? '<li>Prise en charge à 50% des frais de transports en commun</li>' : ''}
-                    ${data.hasMeal ? '<li>Titres-restaurant ou indemnité de repas</li>' : ''}
-                    ${data.hasHealth ? '<li>Complémentaire santé collective</li>' : ''}
-                    ${data.hasOther && data.otherBenefits ? `<li>${data.otherBenefits}</li>` : ''}
-                </ul>
-                ` : ''}
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article V — Durée du travail</h2>
-                <p>La durée mensuelle de travail est fixée à ${data.workSchedule}. Les horaires de travail seront ceux en vigueur dans l'entreprise.</p>
-                <p>Des heures supplémentaires pourront être demandées en fonction des nécessités du service, dans le strict respect des dispositions légales et conventionnelles.</p>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article VI — Absences — Maladie</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> s'engage à informer immédiatement <strong>${data.companyName}</strong> de toute absence, en précisant le motif. Un certificat médical devra être transmis dans un délai de 48 heures à compter du premier jour d'arrêt.</p>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article VII — Congés payés</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> bénéficiera des congés payés conformément aux articles L. 3141-1 et suivants du Code du travail.</p>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article VIII — Discrétion — Non-concurrence</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> s'engage à observer la plus stricte confidentialité concernant les informations, procédés et données dont il aura connaissance dans le cadre de ses fonctions.</p>
-                ${data.nonCompeteClause ? `<p>Il s'engage également à n'exercer, pendant la durée du contrat, aucune activité concurrente à celle de ${data.companyName}.</p>` : ''}
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article IX — Rupture du contrat</h2>
-                <p>Chacune des parties pourra rompre le présent contrat en respectant les dispositions légales et conventionnelles en vigueur.</p>
-            </section>
-
-            <section class="article">
-                <h2 class="article-title">Article X — Dispositions diverses</h2>
-                <p><strong>${data.employeeFirstName} ${data.employeeLastName}</strong> déclare avoir pris connaissance du règlement intérieur de <strong>${data.companyName}</strong>.</p>
-                <p>Le présent contrat est régi par le droit français. Tout litige relatif à son exécution sera soumis à la juridiction compétente du ressort du siège social de la société.</p>
-            </section>
-
-            <p class="lieu-date">
-                Fait à ${data.companyCity}, le ${formatDate(today)}, en deux exemplaires originaux.
-            </p>
-
-            <div class="signatures">
-                <div class="sig-block">
-                    <p class="sig-label">Le Salarié</p>
-                    <p class="sig-name">${data.employeeFirstName} ${data.employeeLastName}</p>
-                    <p class="sig-note">(Précédé de la mention « Lu et approuvé »)</p>
-                    <hr class="sig-line">
-                    <p class="sig-line-label">Signature</p>
-                </div>
-                <div class="sig-block">
-                    <p class="sig-label">L'Employeur</p>
-                    <p class="sig-name">${data.employerName} — ${data.companyName}</p>
-                    <p class="sig-note">(Cachet + Signature de l'employeur)</p>
-                    <hr class="sig-line">
-                    <p class="sig-line-label">Signature & Cachet</p>
-                </div>
-            </div>
-        </main>
-        <footer class="page-footer">
-            <span>${data.companyName}</span>
-            <span class="separator">—</span>
-            <span>SIREN ${data.companySiret.replace(/\s/g, '').substring(0, 9)}</span>
-            <span class="separator">—</span>
-            <span>${data.companyAddress}, ${data.companyPostalCode} ${data.companyCity}</span>
-            <span class="separator">—</span>
-            <span>Page 1</span>
-        </footer>
-    </div>
-</body>
-</html>`;
-}
-
-// ── Main PDF Generator ───────────────────────────────────────────────────────────
+// ── Main PDF Generator ────────────────────────────────────────────────────────
 
 export async function generateContractPdfBuffer(data: ContractTemplateData): Promise<Uint8Array> {
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
-
-  // Create a new PDF document
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const regFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const timesBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const timesFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 
-  let yPosition = 800;
-  const fontSize = 11;
-  const lineHeight = fontSize * 1.5;
-  const margin = 50;
+  const accent = data.accentColor ? hexToRgb(data.accentColor) : rgb(0.549, 0.102, 0.102);
+  const ink = rgb(0.10, 0.10, 0.09);
+  const muted = rgb(0.42, 0.45, 0.50);
+  const white = rgb(1, 1, 1);
+  const bgLight = rgb(0.98, 0.97, 0.95);
+  const ruleLine = rgb(0.85, 0.82, 0.78);
 
-  // Helper function to add text
-  function addText(text: string, options?: { size?: number; font?: any; bold?: boolean; color?: any }) {
-    const usedFont = options?.bold ? fontBold : (options?.font || font);
-    const usedFontSize = options?.size || fontSize;
-    const usedColor = options?.color || rgb(0, 0, 0);
+  const W = 595.28, H = 841.89;
+  const ML = 48, MR = 48;
+  const contentW = W - ML - MR;
+  const pageBottomY = 55;
 
-    page.drawText(text, {
-      x: margin,
-      y: yPosition,
-      size: usedFontSize,
-      font: usedFont,
-      color: usedColor,
-    });
-    yPosition -= lineHeight;
+  // eslint-disable-next-line prefer-const
+  let page!: ReturnType<typeof pdfDoc.addPage>;
+  let y = 0;
+  let pageCount = 0;
+
+  const contractTitle = CONTRACT_LABELS[data.contractType] || 'CONTRAT DE TRAVAIL';
+
+  function dt(text: string, x: number, yy: number, size: number, font: typeof boldFont, color: RGB) {
+    const t = safe(text);
+    if (!t) return;
+    page.drawText(t, { x, y: yy, size, font, color });
   }
 
-  // Header
-  addText(`${data.companyName} — CONTRAT DE TRAVAIL`, { bold: true, size: 14 });
-  yPosition -= 20;
-
-  // Employee section
-  addText('SALARIÉ', { bold: true, size: 12 });
-  addText(`Nom: ${data.employeeFirstName} ${data.employeeLastName}`);
-  addText(`Adresse: ${data.employeeAddress}, ${data.employeePostalCode} ${data.employeeCity}`);
-  addText(`Né le: ${formatDate(data.employeeBirthDate)}`);
-  addText(`Nationalité: ${data.employeeNationality}`);
-  yPosition -= 10;
-
-  // Company section
-  addText('EMPLOYEUR', { bold: true, size: 12 });
-  addText(`${data.companyName}`);
-  addText(`SIRET: ${data.companySiret}`);
-  addText(`Adresse: ${data.companyAddress}, ${data.companyPostalCode} ${data.companyCity}`);
-  addText(`Représentant: ${data.employerName}, ${data.employerTitle}`);
-  yPosition -= 10;
-
-  // Contract details
-  addText('DÉTAILS DU CONTRAT', { bold: true, size: 12 });
-  addText(`Type: ${CONTRACT_LABELS[data.contractType] || 'Contrat de travail'}`);
-  addText(`Poste: ${data.jobTitle}`);
-  addText(`Date de début: ${formatDate(data.contractStartDate)}`);
-  if (data.contractEndDate) {
-    addText(`Date de fin: ${formatDate(data.contractEndDate)}`);
-  }
-  addText(`Lieu de travail: ${data.workLocation}`);
-  addText(`Durée du travail: ${data.workSchedule}`);
-  addText(`Salaire: ${formatSalary(data.salaryAmount, data.salaryFrequency)}`);
-  yPosition -= 10;
-
-  // Benefits
-  if (data.hasTransport || data.hasMeal || data.hasHealth || data.hasOther) {
-    addText('AVANTAGES', { bold: true, size: 12 });
-    if (data.hasTransport) addText('• Prise en charge des transports en commun');
-    if (data.hasMeal) addText('• Titres-restaurant');
-    if (data.hasHealth) addText('• Complémentaire santé collective');
-    if (data.hasOther && data.otherBenefits) addText(`• ${data.otherBenefits}`);
-    yPosition -= 10;
+  function ct(text: string, yy: number, size: number, font: typeof boldFont, color: RGB) {
+    const t = safe(text);
+    const w = font.widthOfTextAtSize(t, size);
+    page.drawText(t, { x: (W - w) / 2, y: yy, size, font, color });
   }
 
-  // Legal notice
-  yPosition = 150;
-  addText('Ce contrat est régi par le droit français.', { size: 9 });
-  addText(`Fait à ${data.companyCity}, le ${formatDate(new Date().toISOString().split('T')[0])}`, { size: 9 });
+  function wrapLines(text: string, maxW: number, font: typeof boldFont, size: number): string[] {
+    const lines: string[] = [];
+    const words = safe(text).split(' ');
+    let line = '';
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (font.widthOfTextAtSize(test, size) > maxW && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
 
-  // Serialize the PDFDocument to bytes
-  const pdfBytes = await pdfDoc.save();
-  return new Uint8Array(pdfBytes);
+  function addNewPage() {
+    pageCount++;
+    page = pdfDoc.addPage([W, H]);
+    y = H - 70;
+
+    // Top accent bar
+    page.drawRectangle({ x: 0, y: H - 7, width: W, height: 7, color: accent });
+
+    // Header strip
+    page.drawRectangle({ x: 0, y: H - 40, width: W, height: 33, color: bgLight });
+    const cnW = boldFont.widthOfTextAtSize(safe(data.companyName).toUpperCase(), 8);
+    dt(safe(data.companyName).toUpperCase(), ML, H - 26, 8, boldFont, accent);
+    dt(' | ' + contractTitle, ML + cnW, H - 26, 8, regFont, muted);
+
+    // CONFIDENTIEL badge
+    const confLabel = 'CONFIDENTIEL';
+    const confW = boldFont.widthOfTextAtSize(confLabel, 7);
+    page.drawRectangle({ x: W - MR - confW - 14, y: H - 34, width: confW + 14, height: 14, borderColor: accent, borderWidth: 0.5, color: white });
+    dt(confLabel, W - MR - confW - 7, H - 28, 7, boldFont, accent);
+
+    // Footer
+    const footerText = `${safe(data.companyName)} — SIRET ${safe(data.companySiret).replace(/\s/g, '').substring(0, 9)} — Page ${pageCount}`;
+    const ftW = timesFont.widthOfTextAtSize(footerText, 6.5);
+    page.drawLine({ start: { x: ML, y: pageBottomY + 16 }, end: { x: W - MR, y: pageBottomY + 16 }, thickness: 0.5, color: ruleLine });
+    page.drawText(footerText, { x: (W - ftW) / 2, y: pageBottomY, size: 6.5, font: timesFont, color: muted });
+  }
+
+  function checkY(needed: number) {
+    if (y - needed < pageBottomY + 20) addNewPage();
+  }
+
+  function drawSectionTitle(title: string) {
+    checkY(24);
+    page.drawRectangle({ x: ML, y: y - 16, width: contentW, height: 18, color: bgLight, borderColor: ruleLine, borderWidth: 0.5 });
+    page.drawRectangle({ x: ML, y: y - 16, width: 3, height: 18, color: accent });
+    dt(title, ML + 8, y - 11, 8.5, boldFont, accent);
+    y -= 24;
+  }
+
+  function drawBodyText(text: string, indent = 0) {
+    const lines = wrapLines(text, contentW - 10 - indent, timesFont, 8.5);
+    for (const line of lines) {
+      checkY(13);
+      dt(line, ML + 5 + indent, y, 8.5, timesFont, ink);
+      y -= 13;
+    }
+  }
+
+  // ── Build contract ──────────────────────────────────────────────────────────
+
+  addNewPage();
+  y -= 8;
+
+  // Title
+  ct(contractTitle, y, 15, timesBoldFont, ink);
+  y -= 22;
+  ct('Document confidentiel — ' + new Date().toLocaleDateString('fr-FR'), y, 7.5, regFont, muted);
+  y -= 28;
+
+  page.drawLine({ start: { x: ML, y }, end: { x: W - MR, y }, thickness: 1, color: accent });
+  y -= 20;
+
+  ct('ENTRE LES SOUSSIGNES', y, 9.5, boldFont, ink);
+  y -= 22;
+
+  // Parties grid
+  const halfW = (contentW - 16) / 2;
+  const rightBlockX = ML + halfW + 16;
+  const blockH = 82;
+
+  checkY(blockH + 16);
+
+  // Employer block
+  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: blockH, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
+  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: 15, color: accent });
+  dt("L'EMPLOYEUR", ML + 5, y - blockH + 4, 7.5, boldFont, white);
+  dt(safe(data.companyName), ML + 5, y - 18, 9, boldFont, ink);
+  dt(`${safe(data.companyAddress)}, ${safe(data.companyPostalCode)} ${safe(data.companyCity)}`, ML + 5, y - 30, 7.5, regFont, muted);
+  dt(`SIRET : ${safe(data.companySiret)}`, ML + 5, y - 42, 7.5, regFont, muted);
+  dt(`Representant : ${safe(data.employerName)}`, ML + 5, y - 54, 7.5, regFont, muted);
+  dt(safe(data.employerTitle), ML + 5, y - 66, 7.5, regFont, muted);
+
+  // Employee block
+  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: blockH, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
+  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: 15, color: accent });
+  dt('LE SALARIE', rightBlockX + 5, y - blockH + 4, 7.5, boldFont, white);
+  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, rightBlockX + 5, y - 18, 9, boldFont, ink);
+  dt(`Ne le : ${formatDate(data.employeeBirthDate)}`, rightBlockX + 5, y - 30, 7.5, regFont, muted);
+  dt(`Nationalite : ${safe(data.employeeNationality)}`, rightBlockX + 5, y - 42, 7.5, regFont, muted);
+  dt(`${safe(data.employeeAddress)}, ${safe(data.employeePostalCode)} ${safe(data.employeeCity)}`, rightBlockX + 5, y - 54, 7.5, regFont, muted);
+  if (data.employeeEmail) dt(`Email : ${safe(data.employeeEmail)}`, rightBlockX + 5, y - 66, 7.5, regFont, muted);
+
+  y -= blockH + 18;
+
+  ct("Il a ete convenu et arrete ce qui suit :", y, 8.5, timesFont, muted);
+  y -= 22;
+
+  // Summary table
+  drawSectionTitle('Article Prealable - Recapitulatif des conditions');
+
+  const recap: Array<[string, string]> = [
+    ['Poste', data.jobTitle],
+    ...(data.contractClassification ? [['Convention collective', data.contractClassification] as [string, string]] : []),
+    ['Date d\'embauche', formatDate(data.contractStartDate)],
+    ...(data.contractEndDate ? [['Date de fin', formatDate(data.contractEndDate)] as [string, string]] : []),
+    ...(data.trialPeriodDays ? [['Periode d\'essai', `${data.trialPeriodDays} jours renouvelable`] as [string, string]] : []),
+    ['Duree du travail', data.workSchedule],
+    ['Salaire brut', formatSalary(data.salaryAmount, data.salaryFrequency)],
+    ['Lieu de travail', data.workLocation],
+  ];
+
+  for (const [label, value] of recap) {
+    checkY(14);
+    dt(`${safe(label)} :`, ML + 5, y, 8.5, boldFont, ink);
+    const lines = wrapLines(safe(value), contentW - 175, timesFont, 8.5);
+    dt(lines[0] || '', ML + 165, y, 8.5, timesFont, ink);
+    y -= 13;
+    for (let i = 1; i < lines.length; i++) {
+      checkY(13);
+      dt(lines[i], ML + 165, y, 8.5, timesFont, ink);
+      y -= 13;
+    }
+    page.drawLine({ start: { x: ML + 5, y: y + 2 }, end: { x: W - MR - 5, y: y + 2 }, thickness: 0.3, color: rgb(0.92, 0.90, 0.87) });
+  }
+  y -= 6;
+
+  // Articles I–V
+  drawSectionTitle('Article I - Engagement');
+  drawBodyText(`Sous reserve des resultats de la visite medicale d'embauche, ${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} est engage a temps plein a compter du ${formatDate(data.contractStartDate)} par la societe ${safe(data.companyName)}, en qualite de ${safe(data.jobTitle)}.`);
+  if (data.contractClassification) drawBodyText(`Cette qualification correspond au coefficient prevu par la convention collective : ${safe(data.contractClassification)}.`);
+  y -= 4;
+
+  drawSectionTitle('Article II - Duree du contrat');
+  if (data.contractType === 'cdi') {
+    drawBodyText(`Le present contrat est conclu pour une duree indeterminee${data.trialPeriodDays ? `. Il ne prendra effet definitivement qu'a l'issue de la periode d'essai de ${data.trialPeriodDays} jours` : ''}.`);
+    drawBodyText(`Durant la periode d'essai, chacune des parties pourra mettre fin au contrat sans indemnite, sous reserve du respect du delai de prevenance prevu par la loi.`);
+  } else if (data.contractType === 'cdd') {
+    drawBodyText(`Le present contrat est conclu pour une duree determinee du ${formatDate(data.contractStartDate)} au ${formatDate(data.contractEndDate || '')}.`);
+    drawBodyText(`Conformement a l'article L. 1242-1 du Code du travail, ce CDD est conclu pour le motif suivant : ${safe(CDD_REASONS[data.contractReason || ''] || data.contractReason || 'a preciser')}.`);
+    if (data.replacedEmployeeName) drawBodyText(`Nom du salarie remplace : ${safe(data.replacedEmployeeName)}.`);
+  } else {
+    drawBodyText(`Le present contrat est conclu du ${formatDate(data.contractStartDate)} au ${formatDate(data.contractEndDate || '')}.`);
+  }
+  y -= 4;
+
+  drawSectionTitle('Article III - Fonctions');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} exercera au sein de ${safe(data.companyName)} les fonctions de ${safe(data.jobTitle)}. Il effectuera toutes les taches inherentes a ce poste, dans le respect des instructions et procedures de l'entreprise.`);
+  y -= 4;
+
+  drawSectionTitle('Article IV - Remuneration');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} percevra une remuneration brute mensuelle de ${formatSalary(data.salaryAmount, data.salaryFrequency)}.`);
+  drawBodyText(`Cette remuneration sera versee mensuellement, deduction faite des cotisations sociales legales en vigueur.`);
+
+  const benefits = [
+    data.hasTransport ? 'Prise en charge a 50% des frais de transports en commun' : null,
+    data.hasMeal ? 'Titres-restaurant ou indemnite de repas' : null,
+    data.hasHealth ? 'Complementaire sante collective' : null,
+    data.hasOther && data.otherBenefits ? safe(data.otherBenefits) : null,
+  ].filter(Boolean) as string[];
+
+  if (benefits.length > 0) {
+    drawBodyText("Le salarie beneficiera egalement des avantages suivants :");
+    for (const b of benefits) drawBodyText(`- ${b}`, 12);
+  }
+  y -= 4;
+
+  drawSectionTitle('Article V - Duree du travail');
+  drawBodyText(`La duree mensuelle de travail est fixee a ${safe(data.workSchedule)}. Les horaires de travail seront ceux en vigueur dans l'entreprise.`);
+  drawBodyText(`Des heures supplementaires pourront etre demandees en fonction des necessites du service, dans le strict respect des dispositions legales et conventionnelles.`);
+  y -= 4;
+
+  drawSectionTitle('Article VI - Absences - Maladie');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} s'engage a informer immediatement ${safe(data.companyName)} de toute absence, en precisisant le motif. Un certificat medical devra etre transmis dans un delai de 48 heures a compter du premier jour d'arret.`);
+  y -= 4;
+
+  drawSectionTitle('Article VII - Conges payes');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} beneficiera des conges payes conformement aux articles L. 3141-1 et suivants du Code du travail.`);
+  y -= 4;
+
+  drawSectionTitle('Article VIII - Discretion - Non-concurrence');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} s'engage a observer la plus stricte confidentialite concernant les informations, procedes et donnees dont il aura connaissance dans le cadre de ses fonctions.`);
+  if (data.nonCompeteClause) drawBodyText(`Il s'engage egalement a n'exercer, pendant la duree du contrat, aucune activite concurrente a celle de ${safe(data.companyName)}.`);
+  y -= 4;
+
+  drawSectionTitle('Article IX - Rupture du contrat');
+  drawBodyText(`Chacune des parties pourra rompre le present contrat en respectant les dispositions legales et conventionnelles en vigueur.`);
+  y -= 4;
+
+  drawSectionTitle('Article X - Dispositions diverses');
+  drawBodyText(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)} declare avoir pris connaissance du reglement interieur de ${safe(data.companyName)}.`);
+  drawBodyText(`Le present contrat est regi par le droit francais. Tout litige relatif a son execution sera soumis a la juridiction competente du ressort du siege social de la societe.`);
+  y -= 14;
+
+  // "Fait à..."
+  checkY(20);
+  ct(`Fait a ${safe(data.companyCity)}, le ${formatDate(new Date().toISOString().split('T')[0])}, en deux exemplaires originaux.`, y, 8.5, timesFont, muted);
+  y -= 30;
+
+  // Signatures
+  checkY(80);
+  const sigHalfW = (contentW - 40) / 2;
+  const sigRightX = ML + sigHalfW + 40;
+
+  dt('LE SALARIE', ML + 5, y, 9, boldFont, accent);
+  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, ML + 5, y - 14, 8, regFont, ink);
+  dt('(Precede de la mention "Lu et approuve")', ML + 5, y - 26, 7.5, timesFont, muted);
+
+  if (data.employeeSignature) {
+    try {
+      const matches = /^data:image\/(png|jpeg|jpg);base64,(.+)$/.exec(data.employeeSignature);
+      if (matches) {
+        const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
+        const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+        const dims = img.scaleToFit(sigHalfW - 10, 45);
+        page.drawImage(img, { x: ML + 5, y: y - 74, width: dims.width, height: dims.height });
+      }
+    } catch { /* ignore */ }
+  }
+
+  page.drawLine({ start: { x: ML, y: y - 42 }, end: { x: ML + sigHalfW, y: y - 42 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
+  dt('Signature', ML + 5, y - 54, 7.5, timesFont, muted);
+
+  dt("L'EMPLOYEUR", sigRightX, y, 9, boldFont, accent);
+  dt(`${safe(data.employerName)} — ${safe(data.companyName)}`, sigRightX, y - 14, 8, regFont, ink);
+  dt("(Cachet + Signature de l'employeur)", sigRightX, y - 26, 7.5, timesFont, muted);
+
+  if (data.employerSignature) {
+    try {
+      const matches = /^data:image\/(png|jpeg|jpg);base64,(.+)$/.exec(data.employerSignature);
+      if (matches) {
+        const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
+        const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+        const dims = img.scaleToFit(sigHalfW - 10, 45);
+        page.drawImage(img, { x: sigRightX, y: y - 74, width: dims.width, height: dims.height });
+      }
+    } catch { /* ignore */ }
+  }
+
+  page.drawLine({ start: { x: sigRightX, y: y - 42 }, end: { x: sigRightX + sigHalfW, y: y - 42 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
+  dt('Signature & Cachet', sigRightX, y - 54, 7.5, timesFont, muted);
+
+  return new Uint8Array(await pdfDoc.save());
 }

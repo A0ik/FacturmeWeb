@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { generateContractHTML, ContractHtmlData } from '@/lib/contract-html-generator';
-import { ContractTemplateData } from '@/lib/contract-pdf-server';
-import htmlPdf from 'html-pdf-node';
+import { generateContractPdfBuffer, ContractTemplateData } from '@/lib/contract-pdf-server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,10 +22,10 @@ export async function POST(req: NextRequest) {
       'employeeFirstName', 'employeeLastName', 'employeeAddress', 'employeePostalCode', 'employeeCity',
       'employeeBirthDate', 'employeeNationality',
       'contractType', 'contractStartDate', 'jobTitle', 'workLocation', 'workSchedule', 'salaryAmount', 'salaryFrequency',
-      'companyName', 'companyAddress', 'companyPostalCode', 'companyCity', 'companySiret', 'employerName', 'employerTitle'
+      'companyName', 'companyAddress', 'companyPostalCode', 'companyCity', 'companySiret', 'employerName', 'employerTitle',
     ];
 
-    const missingFields = requiredFields.filter(field => !(contractData as any)[field]);
+    const missingFields = requiredFields.filter(field => !(contractData as unknown as Record<string, unknown>)[field]);
     if (missingFields.length > 0) {
       return NextResponse.json(
         { error: 'Champs obligatoires manquants', fields: missingFields },
@@ -40,80 +38,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Type de contrat invalide' }, { status: 400 });
     }
 
-    const htmlData: ContractHtmlData = {
-      employeeFirstName: contractData.employeeFirstName,
-      employeeLastName: contractData.employeeLastName,
-      employeeAddress: contractData.employeeAddress,
-      employeePostalCode: contractData.employeePostalCode,
-      employeeCity: contractData.employeeCity,
-      employeeEmail: contractData.employeeEmail,
-      employeePhone: contractData.employeePhone,
-      employeeBirthDate: contractData.employeeBirthDate,
-      employeeSocialSecurity: contractData.employeeSocialSecurity,
-      employeeNationality: contractData.employeeNationality,
-      contractType: contractData.contractType,
-      contractStartDate: contractData.contractStartDate,
-      contractEndDate: contractData.contractEndDate,
-      trialPeriodDays: contractData.trialPeriodDays,
-      jobTitle: contractData.jobTitle,
-      workLocation: contractData.workLocation,
-      workSchedule: contractData.workSchedule,
-      salaryAmount: contractData.salaryAmount,
-      salaryFrequency: contractData.salaryFrequency,
-      contractClassification: contractData.contractClassification,
-      contractReason: contractData.contractReason,
-      replacedEmployeeName: contractData.replacedEmployeeName,
-      companyName: contractData.companyName,
-      companyAddress: contractData.companyAddress,
-      companyPostalCode: contractData.companyPostalCode,
-      companyCity: contractData.companyCity,
-      companySiret: contractData.companySiret,
-      employerName: contractData.employerName,
-      employerTitle: contractData.employerTitle,
-      hasTransport: contractData.hasTransport,
-      hasMeal: contractData.hasMeal,
-      hasHealth: contractData.hasHealth,
-      hasOther: contractData.hasOther,
-      otherBenefits: contractData.otherBenefits,
-      collectiveAgreement: contractData.collectiveAgreement,
-      probationClause: contractData.probationClause,
-      nonCompeteClause: contractData.nonCompeteClause,
-      mobilityClause: contractData.mobilityClause,
-      tutorName: contractData.tutorName,
-      schoolName: contractData.schoolName,
-      speciality: contractData.speciality,
-      objectives: contractData.objectives,
-      tasks: contractData.tasks,
-      durationWeeks: contractData.durationWeeks,
-      employerSignature: contractData.employerSignature,
-      employeeSignature: contractData.employeeSignature,
-    };
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('accent_color')
+      .eq('id', user.id)
+      .single();
 
-    const htmlContent = generateContractHTML(htmlData);
+    if (profile?.accent_color) {
+      contractData.accentColor = profile.accent_color;
+    }
 
-    const pdfBuffer = await htmlPdf.generatePdf(
-      { content: htmlContent },
-      {
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' },
-        displayHeaderFooter: true,
-        headerTemplate: '<div></div>',
-        footerTemplate: `<div style="font-size:8px;width:100%;text-align:center;color:#888;padding:0 10mm;font-family:Arial,sans-serif;">
-          ${contractData.companyName} — Page <span class="pageNumber"></span> / <span class="totalPages"></span>
-        </div>`,
-      } as any
-    );
+    const pdfBuffer = await generateContractPdfBuffer(contractData);
 
     const contractLabels: Record<string, string> = {
       cdd: 'CDD', cdi: 'CDI', stage: 'Stage', apprentissage: 'Apprentissage',
-      professionnalisation: 'Professionnalisation', interim: 'Interim', portage: 'Portage', freelance: 'Freelance'
+      professionnalisation: 'Professionnalisation', interim: 'Interim', portage: 'Portage', freelance: 'Freelance',
     };
     const contractLabel = contractLabels[contractData.contractType] || 'Contrat';
     const employeeName = `${contractData.employeeLastName}-${contractData.employeeFirstName}`;
     const filename = `${contractLabel}_${employeeName}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

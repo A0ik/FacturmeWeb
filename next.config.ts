@@ -1,8 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Keep pdf-parse out of the webpack bundle (it uses native bindings + CommonJS)
-  serverExternalPackages: ['pdf-parse', 'canvas', 'pdf-lib'],
+  // Keep pdf-parse and html-pdf-node (puppeteer/chrome) out of the webpack bundle
+  serverExternalPackages: ['pdf-parse', 'canvas', 'pdf-lib', 'html-pdf-node', 'puppeteer', 'puppeteer-core'],
 
   images: {
     remotePatterns: [
@@ -30,6 +30,13 @@ const nextConfig: NextConfig = {
         ...(Array.isArray(config.externals) ? config.externals : []),
         'pdf-parse',
         'canvas',
+        'html-pdf-node',
+        'puppeteer',
+        'puppeteer-core',
+        'emitter',
+        'inline-css',
+        'extract-css',
+        'batch',
       ];
     }
     return config;
