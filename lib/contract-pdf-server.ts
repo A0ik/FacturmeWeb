@@ -3,7 +3,6 @@
  * Generates PDF with the NEW elegant design (BS STRUCTURE style).
  * Legally compliant with French Labor Code 2025-2026.
  */
-import * as htmlPdf from 'html-pdf-node';
 
 export interface ContractTemplateData {
   accentColor?: string;
@@ -383,25 +382,84 @@ function generateContractHTML(data: ContractTemplateData): string {
 // ── Main PDF Generator ───────────────────────────────────────────────────────────
 
 export async function generateContractPdfBuffer(data: ContractTemplateData): Promise<Uint8Array> {
-  // Generate HTML with the NEW elegant design
-  const htmlContent = generateContractHTML(data);
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
 
-  // Configure PDF options
-  const options = {
-    format: 'A4' as const,
-    margin: {
-      top: '0',
-      right: '0',
-      bottom: '0',
-      left: '0',
-    },
-    printBackground: true,
-    displayHeaderFooter: false,
-  };
+  // Create a new PDF document
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // Create PDF from HTML
-  const file = { content: htmlContent };
-  const pdfBuffer = await htmlPdf.generatePdf(file, options);
+  let yPosition = 800;
+  const fontSize = 11;
+  const lineHeight = fontSize * 1.5;
+  const margin = 50;
 
-  return new Uint8Array(pdfBuffer);
+  // Helper function to add text
+  function addText(text: string, options?: { size?: number; font?: any; bold?: boolean; color?: any }) {
+    const usedFont = options?.bold ? fontBold : (options?.font || font);
+    const usedFontSize = options?.size || fontSize;
+    const usedColor = options?.color || rgb(0, 0, 0);
+
+    page.drawText(text, {
+      x: margin,
+      y: yPosition,
+      size: usedFontSize,
+      font: usedFont,
+      color: usedColor,
+    });
+    yPosition -= lineHeight;
+  }
+
+  // Header
+  addText(`${data.companyName} — CONTRAT DE TRAVAIL`, { bold: true, size: 14 });
+  yPosition -= 20;
+
+  // Employee section
+  addText('SALARIÉ', { bold: true, size: 12 });
+  addText(`Nom: ${data.employeeFirstName} ${data.employeeLastName}`);
+  addText(`Adresse: ${data.employeeAddress}, ${data.employeePostalCode} ${data.employeeCity}`);
+  addText(`Né le: ${formatDate(data.employeeBirthDate)}`);
+  addText(`Nationalité: ${data.employeeNationality}`);
+  yPosition -= 10;
+
+  // Company section
+  addText('EMPLOYEUR', { bold: true, size: 12 });
+  addText(`${data.companyName}`);
+  addText(`SIRET: ${data.companySiret}`);
+  addText(`Adresse: ${data.companyAddress}, ${data.companyPostalCode} ${data.companyCity}`);
+  addText(`Représentant: ${data.employerName}, ${data.employerTitle}`);
+  yPosition -= 10;
+
+  // Contract details
+  addText('DÉTAILS DU CONTRAT', { bold: true, size: 12 });
+  addText(`Type: ${CONTRACT_LABELS[data.contractType] || 'Contrat de travail'}`);
+  addText(`Poste: ${data.jobTitle}`);
+  addText(`Date de début: ${formatDate(data.contractStartDate)}`);
+  if (data.contractEndDate) {
+    addText(`Date de fin: ${formatDate(data.contractEndDate)}`);
+  }
+  addText(`Lieu de travail: ${data.workLocation}`);
+  addText(`Durée du travail: ${data.workSchedule}`);
+  addText(`Salaire: ${formatSalary(data.salaryAmount, data.salaryFrequency)}`);
+  yPosition -= 10;
+
+  // Benefits
+  if (data.hasTransport || data.hasMeal || data.hasHealth || data.hasOther) {
+    addText('AVANTAGES', { bold: true, size: 12 });
+    if (data.hasTransport) addText('• Prise en charge des transports en commun');
+    if (data.hasMeal) addText('• Titres-restaurant');
+    if (data.hasHealth) addText('• Complémentaire santé collective');
+    if (data.hasOther && data.otherBenefits) addText(`• ${data.otherBenefits}`);
+    yPosition -= 10;
+  }
+
+  // Legal notice
+  yPosition = 150;
+  addText('Ce contrat est régi par le droit français.', { size: 9 });
+  addText(`Fait à ${data.companyCity}, le ${formatDate(new Date().toISOString().split('T')[0])}`, { size: 9 });
+
+  // Serialize the PDFDocument to bytes
+  const pdfBytes = await pdfDoc.save();
+  return new Uint8Array(pdfBytes);
 }

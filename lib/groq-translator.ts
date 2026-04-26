@@ -4,8 +4,6 @@
  */
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 /**
  * Detect if text is Arabic (MSA or dialect)
  */
@@ -30,6 +28,7 @@ export async function translateArabicToFrench(text: string): Promise<{ text: str
   }
 
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const translation = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [

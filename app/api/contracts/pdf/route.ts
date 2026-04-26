@@ -100,7 +100,6 @@ export async function POST(req: NextRequest) {
       employeeBirthDate: contractData.employeeBirthDate,
       employeeSocialSecurity: contractData.employeeSocialSecurity,
       employeeNationality: contractData.employeeNationality,
-      employeeQualification: contractData.employeeQualification,
 
       // Contract
       contractType: contractData.contractType,
@@ -110,7 +109,6 @@ export async function POST(req: NextRequest) {
       jobTitle: contractData.jobTitle,
       workLocation: contractData.workLocation,
       workSchedule: contractData.workSchedule,
-      workingHours: contractData.workingHours,
       salaryAmount: contractData.salaryAmount,
       salaryFrequency: contractData.salaryFrequency,
       contractClassification: contractData.contractClassification,
