@@ -484,8 +484,8 @@ export function calculerSalaireMinimum(
   age: number,
   heuresHebdo: number = 35
 ): { montant: number; source: string } {
-  const smicHoraire = SMIC_2024.horaire;
-  const smicMensuel = SMIC_2024.mensuel_35h * (heuresHebdo / 35);
+  const smicHoraire = SMIC_2026.horaire;
+  const smicMensuel = SMIC_2026.mensuel_35h * (heuresHebdo / 35);
 
   // Map alternance to apprentissage for calculation
   const alternanceType = typeContrat === 'alternance' ? 'apprentissage' : typeContrat;

@@ -198,21 +198,21 @@ export const CDI_RULES: LaborRule[] = [
     isRequired: true,
     validation: (data) => {
       const monthlySalary = parseFloat(data.salaryAmount) || 0;
-      const SMIC_2024_HORAIRE = 11.65; // €/heure au 1er mai 2024
-      const SMIC_2024_MENSUEL = 1766.92; // €/mois pour 35h
+      const SMIC_2026_HORAIRE = 11.65; // €/heure au 1er mai 2026
+      const SMIC_2026_MENSUEL = 1766.92; // €/mois pour 35h
 
       if (data.salaryFrequency === 'hourly') {
-        if (monthlySalary < SMIC_2024_HORAIRE) {
+        if (monthlySalary < SMIC_2026_HORAIRE) {
           return {
             valid: false,
-            error: `Le salaire horaire ne peut être inférieur au SMIC (${SMIC_2024_HORAIRE} €/h)`
+            error: `Le salaire horaire ne peut être inférieur au SMIC (${SMIC_2026_HORAIRE} €/h)`
           };
         }
       } else {
-        if (monthlySalary < SMIC_2024_MENSUEL) {
+        if (monthlySalary < SMIC_2026_MENSUEL) {
           return {
             valid: false,
-            error: `Le salaire mensuel ne peut être inférieur au SMIC (${SMIC_2024_MENSUEL} €/mois pour 35h)`
+            error: `Le salaire mensuel ne peut être inférieur au SMIC (${SMIC_2026_MENSUEL} €/mois pour 35h)`
           };
         }
       }
