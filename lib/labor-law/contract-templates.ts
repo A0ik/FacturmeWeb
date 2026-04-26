@@ -255,7 +255,7 @@ function getStyles(accent: string): string {
       margin: 0 auto;
       padding: 25mm 25mm 30mm;
       font-size: 11pt;
-      line-height: 5;
+      line-height: 1.7;
       color: #1a1a1a;
       background: #fff;
     }
@@ -283,7 +283,7 @@ function getStyles(accent: string): string {
       font-size: 10pt;
       color: #555;
       font-family: 'Arial', sans-serif;
-      line-height: 2.5;
+      line-height: 1.7;
     }
     .doc-header-meta {
       text-align: right;
@@ -307,11 +307,11 @@ function getStyles(accent: string): string {
       color: #666;
       font-style: italic;
       text-align: center;
-      margin-bottom: 100px;
-      padding: 30px;
+      margin-bottom: 60px;
+      padding: 20px;
       background: #f8f9f8;
       border-radius: 8px;
-      line-height: 2.8;
+      line-height: 1.7;
     }
 
     /* ── TITRE PRINCIPAL ── */
@@ -323,8 +323,8 @@ function getStyles(accent: string): string {
       text-transform: uppercase;
       letter-spacing: 3px;
       color: #111;
-      margin: 100px 0 50px;
-      padding: 50px;
+      margin: 50px 0 30px;
+      padding: 30px;
       background: linear-gradient(135deg, ${accent}10, ${accent}20);
       border-radius: 12px;
       border-left: 5px solid ${accent};
@@ -335,26 +335,26 @@ function getStyles(accent: string): string {
       font-family: 'Arial', sans-serif;
       font-size: 12pt;
       color: #555;
-      margin-bottom: 50px;
-      line-height: 2.5;
+      margin-bottom: 30px;
+      line-height: 1.7;
     }
     .between-parties {
       text-align: center;
       font-style: italic;
       font-size: 12pt;
       color: #444;
-      margin-bottom: 80px;
-      padding: 40px;
+      margin-bottom: 50px;
+      padding: 30px;
       background: #f9f9f9;
       border-radius: 10px;
-      line-height: 3;
+      line-height: 1.8;
     }
 
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
       border: 1px solid #d0d0d0;
       border-top: 5px solid ${accent};
-      margin-bottom: 120px;
+      margin-bottom: 60px;
       display: flex;
       border-radius: 12px;
       overflow: hidden;
@@ -362,7 +362,7 @@ function getStyles(accent: string): string {
     }
     .party-col {
       flex: 1;
-      padding: 60px 50px;
+      padding: 30px 25px;
     }
     .party-col:first-child {
       border-right: 1px solid #e8e8e8;
@@ -389,8 +389,8 @@ function getStyles(accent: string): string {
     .info-row {
       font-size: 11pt;
       color: #333;
-      margin-bottom: 35px;
-      line-height: 3;
+      margin-bottom: 12px;
+      line-height: 1.6;
     }
     .info-row .lbl {
       font-weight: 700;
@@ -405,16 +405,16 @@ function getStyles(accent: string): string {
       text-transform: uppercase;
       letter-spacing: 2px;
       color: ${accent};
-      margin-bottom: 40px;
-      margin-top: 120px;
+      margin-bottom: 20px;
+      margin-top: 60px;
       padding-left: 8px;
-      padding-bottom: 20px;
+      padding-bottom: 10px;
       border-bottom: 3px solid ${accent}40;
     }
     .recap-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 120px;
+      margin-bottom: 60px;
       font-size: 11pt;
       border-radius: 10px;
       overflow: hidden;
@@ -430,7 +430,7 @@ function getStyles(accent: string): string {
       font-family: 'Arial', sans-serif;
       font-weight: 700;
       color: #333;
-      padding: 40px 35px;
+      padding: 16px 20px;
       border: 1px solid #e5e5e5;
       width: 42%;
       text-align: left;
@@ -438,15 +438,15 @@ function getStyles(accent: string): string {
     }
     .recap-table td {
       background: #fff;
-      padding: 40px 40px;
+      padding: 16px 20px;
       border: 1px solid #e5e5e5;
       color: #1a1a1a;
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 100px; }
+    .articles-section { margin-top: 50px; }
     .article-block {
-      margin-bottom: 150px;
+      margin-bottom: 50px;
       page-break-inside: avoid;
     }
     .article-title {
@@ -458,8 +458,8 @@ function getStyles(accent: string): string {
       color: #111;
       background: linear-gradient(135deg, ${accent}15, ${accent}25);
       border-left: 5px solid ${accent};
-      padding: 35px 40px;
-      margin-bottom: 60px;
+      padding: 20px 25px;
+      margin-bottom: 30px;
       border-radius: 0 8px 8px 0;
     }
     .article-body {
@@ -467,19 +467,19 @@ function getStyles(accent: string): string {
       text-align: justify;
       padding: 0 10px;
       color: #222;
-      line-height: 5;
+      line-height: 1.7;
     }
-    .article-body p { margin-bottom: 70px; text-indent: 0; }
+    .article-body p { margin-bottom: 20px; text-indent: 0; }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
       background: linear-gradient(135deg, #f9f9f9, #f3f3f3);
       border-left: 5px solid ${accent};
-      padding: 50px 55px;
-      margin-top: 70px;
+      padding: 25px 30px;
+      margin-top: 30px;
       font-size: 11pt;
       color: #333;
       border-radius: 0 8px 8px 0;
-      line-height: 4.5;
+      line-height: 1.7;
     }
     .highlight-box strong { color: #111; }
     .legal-note {
@@ -514,27 +514,19 @@ function getStyles(accent: string): string {
     /* ── SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE ── */
     .signature-page-break {
       page-break-before: always;
-      page-break-after: always;
       clear: both;
       width: 100%;
-      height: 1200px;
-      border-bottom: 8px solid ${accent}30;
-      margin-bottom: 100px;
     }
     @media print {
       .signature-page-break {
-        height: 0;
-        border-bottom: none;
-        margin-bottom: 0;
         page-break-before: always;
-        page-break-after: always;
       }
     }
     .signatures-section {
       page-break-inside: avoid;
-      padding-top: 80px;
+      padding-top: 40px;
       border-top: 8px solid ${accent}50;
-      margin-top: 50px;
+      margin-top: 30px;
       background: linear-gradient(180deg, #fafafa 0%, #fff 50px);
     }
     .signatures-intro {
@@ -542,23 +534,23 @@ function getStyles(accent: string): string {
       font-size: 13pt;
       font-style: italic;
       color: #666;
-      margin-bottom: 100px;
-      padding: 40px;
+      margin-bottom: 50px;
+      padding: 20px;
       background: #f9f9f9;
       border-radius: 10px;
-      line-height: 3;
+      line-height: 1.7;
     }
     .fait-a {
       text-align: right;
       font-size: 12pt;
       font-style: italic;
       color: #444;
-      margin-bottom: 150px;
-      padding: 35px;
+      margin-bottom: 60px;
+      padding: 20px;
       background: #fafafa;
       border-radius: 8px;
       border-right: 4px solid ${accent}30;
-      line-height: 2.5;
+      line-height: 1.7;
     }
     .sig-grid {
       display: flex;
@@ -1052,10 +1044,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   <!-- PAGE BREAK AVANT SIGNATURES -->
   <div class="signature-page-break"></div>
 
-  <!-- SAUT DE PAGE HTML EXPLICITE -->
-  <div style="page-break-before: always; break-after: always; min-height: 800px; border-top: 3px solid ${accent}40; margin-top: 100px; padding-top: 50px;"></div>
-
-  <!-- SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE -->
+  <!-- SIGNATURES -->
   <div class="signatures-section">
     <div class="signatures-intro">
       Pour valider ce contrat, les deux parties apposent leurs signatures ci-dessous :
@@ -1068,6 +1057,17 @@ function buildContractHTML(data: ContractTemplateData): string {
 
     <div class="sig-grid">
       <div class="sig-block">
+        <div class="sig-block-title">${role1}</div>
+        <div class="sig-block-name">${esc(data.employerName)}</div>
+        <div class="sig-block-sub">${esc(data.employerTitle)} — ${esc(data.companyName)}</div>
+        <div class="sig-area">
+          ${data.employerSignature
+      ? `<img src="${data.employerSignature}" alt="Signature employeur">`
+      : `<span class="sig-area-label">Cachet + Signature</span>`}
+        </div>
+        <div class="sig-mention">Signature avec cachet de la société</div>
+      </div>
+      <div class="sig-block">
         <div class="sig-block-title">${role2}</div>
         <div class="sig-block-name">${esc(data.employeeFirstName)} ${esc(data.employeeLastName)}</div>
         <div class="sig-block-sub">${esc(data.jobTitle)}</div>
@@ -1079,17 +1079,6 @@ function buildContractHTML(data: ContractTemplateData): string {
         ${data.contractType !== 'freelance' && data.contractType !== 'stage'
       ? `<div class="sig-mention">Précédée de la mention manuscrite « Lu et approuvé »</div>`
       : ''}
-      </div>
-      <div class="sig-block">
-        <div class="sig-block-title">${role1}</div>
-        <div class="sig-block-name">${esc(data.employerName)}</div>
-        <div class="sig-block-sub">${esc(data.employerTitle)} — ${esc(data.companyName)}</div>
-        <div class="sig-area">
-          ${data.employerSignature
-      ? `<img src="${data.employerSignature}" alt="Signature employeur">`
-      : `<span class="sig-area-label">Cachet + Signature</span>`}
-        </div>
-        <div class="sig-mention">Signature avec cachet de la société</div>
       </div>
     </div>
   </div>

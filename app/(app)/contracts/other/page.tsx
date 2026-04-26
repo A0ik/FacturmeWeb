@@ -341,34 +341,39 @@ export default function OtherContractPage() {
         throw new Error(`Champs obligatoires manquants : ${missingLabels}. Veuillez remplir tous les champs requis avant de sauvegarder.`);
       }
 
+      // Retirer les signatures base64 du HTML pour réduire la taille du payload
+      const cleanHtml = contractHtml
+        .replace(/<img src="data:image\/[^"]+" alt="Signature [^"]+">/g, '<span class="sig-area-label">Signature manuscrite</span>')
+        .replace(/<img src="data:image\/[^"]+" alt="Cachet \+ Signature">/g, '<span class="sig-area-label">Cachet + Signature</span>');
+
       const { error } = await supabase
         .from('contracts_other')
         .insert({
           user_id: user.id,
           contract_category: formData.contractCategory,
-          contract_title: formData.contractTitle,
+          contract_title: formData.contractTitle || null,
           duration_weeks: parseInt(formData.durationWeeks) || null,
-          start_date: formData.startDate,
+          start_date: formData.startDate || null,
           end_date: formData.endDate || null,
           employee_first_name: formData.employeeFirstName,
           employee_last_name: formData.employeeLastName,
           employee_address: formData.employeeAddress,
           employee_postal_code: formData.employeePostalCode,
           employee_city: formData.employeeCity,
-          employee_email: formData.employeeEmail,
-          employee_phone: formData.employeePhone,
-          employee_birth_date: formData.employeeBirthDate,
-          employee_social_security: formData.employeeSocialSecurity,
-          employee_nationality: formData.employeeNationality,
+          employee_email: formData.employeeEmail || null,
+          employee_phone: formData.employeePhone || null,
+          employee_birth_date: formData.employeeBirthDate || null,
+          employee_social_security: formData.employeeSocialSecurity || null,
+          employee_nationality: formData.employeeNationality || 'Française',
           company_name: formData.companyName,
-          company_address: formData.companyAddress,
-          company_postal_code: formData.companyPostalCode,
-          company_city: formData.companyCity,
+          company_address: formData.companyAddress || '',
+          company_postal_code: formData.companyPostalCode || '',
+          company_city: formData.companyCity || '',
           company_siret: formData.companySiret,
           employer_name: formData.employerName,
-          employer_title: formData.employerTitle,
-          salary_amount: parseFloat(formData.salaryAmount) || null,
-          salary_frequency: formData.salaryFrequency,
+          employer_title: formData.employerTitle || 'Gérant',
+          salary_amount: parseFloat(formData.salaryAmount) || 0,
+          salary_frequency: formData.salaryFrequency || 'monthly',
           tutor_name: formData.tutorName || null,
           school_name: formData.schoolName || null,
           speciality: formData.speciality || null,
@@ -376,28 +381,30 @@ export default function OtherContractPage() {
           tasks: formData.tasks || null,
           job_title: formData.jobTitle,
           work_location: formData.workLocation,
-          work_schedule: formData.workSchedule,
-          working_hours: formData.workingHours,
-          collective_agreement: formData.collectiveAgreement,
-          statut: formData.statut,
+          work_schedule: formData.workSchedule || '35h hebdomadaires',
+          working_hours: formData.workingHours || '35',
+          collective_agreement: formData.collectiveAgreement || null,
+          statut: formData.statut || 'non_cadre',
           employer_signature: formData.employerSignature || null,
           employee_signature: formData.employeeSignature || null,
           employer_signature_date: formData.employerSignatureDate || null,
           employee_signature_date: formData.employeeSignatureDate || null,
-          contract_html: contractHtml,
+          contract_html: cleanHtml || null,
           document_status: 'draft',
         });
 
       if (error) {
         console.error('Erreur Supabase:', error);
-        throw new Error(`Erreur lors de l'enregistrement dans la base de données : ${error.message || error.code || 'Erreur inconnue'}`);
+        throw new Error(`Erreur BDD : ${error.message || error.code || 'Erreur inconnue'}`);
       }
+
+      toast.success('Contrat sauvegardé avec succès !');
       setStep('success');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
       setError(errorMsg);
       toast.error(errorMsg);
-      console.error(err);
+      console.error('Erreur saveContract:', err);
     } finally {
       setLoading(false);
     }

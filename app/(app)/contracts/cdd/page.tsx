@@ -364,6 +364,12 @@ export default function CDDContractPage() {
         throw new Error(`Champs obligatoires manquants : ${missingLabels}. Veuillez remplir tous les champs requis avant de sauvegarder.`);
       }
 
+      // Retirer les signatures base64 du HTML pour réduire la taille du payload
+      // (les signatures sont déjà stockées dans les colonnes dédiées)
+      const cleanHtml = contractHtml
+        .replace(/<img src="data:image\/[^"]+" alt="Signature [^"]+">/g, '<span class="sig-area-label">Signature manuscrite</span>')
+        .replace(/<img src="data:image\/[^"]+" alt="Cachet \+ Signature">/g, '<span class="sig-area-label">Cachet + Signature</span>');
+
       const { error } = await supabase
         .from('contracts_cdd')
         .insert({
@@ -373,28 +379,28 @@ export default function CDDContractPage() {
           employee_address: formData.employeeAddress,
           employee_postal_code: formData.employeePostalCode,
           employee_city: formData.employeeCity,
-          employee_email: formData.employeeEmail,
-          employee_phone: formData.employeePhone,
-          employee_birth_date: formData.employeeBirthDate,
-          employee_social_security: formData.employeeSocialSecurity,
-          employee_nationality: formData.employeeNationality,
-          contract_start_date: formData.contractStartDate,
-          contract_end_date: formData.contractEndDate,
+          employee_email: formData.employeeEmail || null,
+          employee_phone: formData.employeePhone || null,
+          employee_birth_date: formData.employeeBirthDate || null,
+          employee_social_security: formData.employeeSocialSecurity || null,
+          employee_nationality: formData.employeeNationality || 'Française',
+          contract_start_date: formData.contractStartDate || null,
+          contract_end_date: formData.contractEndDate || null,
           trial_period_days: parseInt(formData.trialPeriodDays) || null,
           job_title: formData.jobTitle,
           work_location: formData.workLocation,
-          work_schedule: formData.workSchedule,
-          salary_amount: parseFloat(formData.salaryAmount) || null,
-          salary_frequency: formData.salaryFrequency,
+          work_schedule: formData.workSchedule || '35h hebdomadaires',
+          salary_amount: parseFloat(formData.salaryAmount) || 0,
+          salary_frequency: formData.salaryFrequency || 'monthly',
           contract_reason: formData.contractReason,
           replaced_employee_name: formData.replacedEmployeeName || null,
           company_name: formData.companyName,
-          company_address: formData.companyAddress,
-          company_postal_code: formData.companyPostalCode,
-          company_city: formData.companyCity,
+          company_address: formData.companyAddress || '',
+          company_postal_code: formData.companyPostalCode || '',
+          company_city: formData.companyCity || '',
           company_siret: formData.companySiret,
           employer_name: formData.employerName,
-          employer_title: formData.employerTitle,
+          employer_title: formData.employerTitle || 'Gérant',
           has_transport: formData.hasTransport,
           has_meal: formData.hasMeal,
           has_health: formData.hasHealth,
@@ -404,20 +410,22 @@ export default function CDDContractPage() {
           employee_signature: formData.employeeSignature || null,
           employer_signature_date: formData.employerSignatureDate || null,
           employee_signature_date: formData.employeeSignatureDate || null,
-          contract_html: contractHtml,
+          contract_html: cleanHtml || null,
           document_status: 'draft',
         });
 
       if (error) {
         console.error('Erreur Supabase:', error);
-        throw new Error(`Erreur lors de l'enregistrement dans la base de données : ${error.message || error.code || 'Erreur inconnue'}`);
+        throw new Error(`Erreur BDD : ${error.message || error.code || 'Erreur inconnue'}`);
       }
+
+      toast.success('Contrat sauvegardé avec succès !');
       setStep('success');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
       setError(errorMsg);
       toast.error(errorMsg);
-      console.error(err);
+      console.error('Erreur saveContract:', err);
     } finally {
       setLoading(false);
     }
