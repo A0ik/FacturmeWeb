@@ -240,26 +240,44 @@ function getStyles(accent: string): string {
 
     @page {
       size: A4;
-      margin: 20mm 20mm 25mm 20mm;
+      margin: 15mm;
     }
     @media print {
-      html, body { height: auto; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body {
+        height: auto;
+        width: 210mm;
+      }
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        margin: 0;
+        padding: 0;
+      }
       .page-break { page-break-before: always; }
       .no-print { display: none !important; }
       .signature-page-break { page-break-before: always; }
+      body * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      font-size: 10pt;
+    }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      max-width: 210mm;
+      max-width: 180mm;
       margin: 0 auto;
-      padding: 10mm 15mm 15mm;
+      padding: 8mm 12mm 12mm 12mm;
       font-size: 10pt;
-      line-height: 1.5;
-      color: #2D3748;
+      line-height: 1.6;
+      color: #1a1a1a;
       background: #fff;
+      min-height: 297mm;
     }
 
     /* ── EN-TÊTE ── */
@@ -267,233 +285,241 @@ function getStyles(accent: string): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 30px;
-      margin-bottom: 30px;
-      border-bottom: 2px solid #E2E8F0;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #000;
     }
-    .doc-header-company { flex: 1; }
+    .doc-header-company { flex: 1; min-width: 0; }
     .doc-header-company .company-name {
-      font-size: 16pt;
+      font-size: 14pt;
       font-weight: 700;
-      color: #1A202C;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
+      color: #000;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
     }
     .doc-header-company .company-details {
-      font-size: 9pt;
-      color: #718096;
-      line-height: 1.5;
+      font-size: 8pt;
+      color: #444;
+      line-height: 1.4;
     }
     .doc-header-meta {
       text-align: right;
-      font-size: 9pt;
-      color: #A0AEC0;
+      font-size: 8pt;
+      color: #555;
+      flex-shrink: 0;
+      margin-left: 15px;
     }
     .doc-header-meta .doc-ref {
       display: inline-block;
-      background: #F7FAFC;
-      border: 1px solid #E2E8F0;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 9pt;
-      margin-bottom: 10px;
-      color: #4A5568;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 8pt;
+      margin-bottom: 6px;
+      color: #333;
       font-weight: 600;
     }
     .legal-ref {
-      font-size: 9pt;
-      color: #718096;
+      font-size: 8pt;
+      color: #555;
       font-style: normal;
       text-align: center;
-      margin-bottom: 30px;
-      padding: 15px;
-      background: #F7FAFC;
-      border-radius: 8px;
-      line-height: 1.5;
-      border: 1px dashed #E2E8F0;
+      margin: 0 auto 20px auto;
+      max-width: 80%;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 4px;
+      line-height: 1.4;
+      border: 1px dashed #999;
     }
 
     /* ── TITRE PRINCIPAL ── */
     .main-title {
       text-align: center;
       font-family: 'Playfair Display', serif;
-      font-size: 20pt;
+      font-size: 18pt;
       font-weight: 600;
-      color: #1A202C;
-      margin: 30px 0 15px;
-      padding: 20px 15px;
-      background: #F7FAFC;
-      border-radius: 10px;
+      color: #000;
+      margin: 20px 0 12px 0;
+      padding: 12px 10px;
+      background: #fafafa;
+      border-radius: 4px;
       border-top: 3px solid \${accent};
-      line-height: 1.4;
+      line-height: 1.3;
     }
     .sub-title {
       text-align: center;
-      font-size: 11pt;
+      font-size: 9pt;
       font-weight: 500;
-      color: #4A5568;
-      margin-bottom: 20px;
-      line-height: 1.5;
+      color: #444;
+      margin-bottom: 15px;
+      line-height: 1.4;
     }
     .between-parties {
       text-align: center;
-      font-size: 10pt;
-      font-weight: 500;
-      color: #718096;
-      margin-bottom: 30px;
-      padding: 15px;
-      border-radius: 8px;
-      letter-spacing: 0.5px;
+      font-size: 9pt;
+      font-weight: 600;
+      color: #333;
+      margin: 0 auto 20px auto;
+      padding: 10px;
+      border-radius: 4px;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
     }
 
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
-      border: 1px solid #E2E8F0;
-      margin-bottom: 30px;
+      border: 1px solid #ccc;
+      margin: 0 0 20px 0;
       display: flex;
-      border-radius: 10px;
+      border-radius: 4px;
       overflow: hidden;
       background: #fff;
     }
     .party-col {
       flex: 1;
-      padding: 20px;
+      padding: 15px;
+      min-width: 0;
     }
     .party-col:first-child {
-      border-right: 1px solid #E2E8F0;
-      background: #F7FAFC;
+      border-right: 1px solid #ccc;
+      background: #fafafa;
     }
     .party-col-title {
-      font-size: 9pt;
+      font-size: 7.5pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #A0AEC0;
-      margin-bottom: 15px;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 10px;
     }
     .party-col .name-main {
-      font-size: 12pt;
+      font-size: 10pt;
       font-weight: 700;
-      color: #1A202C;
-      margin-bottom: 12px;
-      line-height: 1.4;
+      color: #000;
+      margin-bottom: 8px;
+      line-height: 1.3;
+      word-wrap: break-word;
     }
     .info-row {
-      font-size: 9pt;
-      color: #4A5568;
-      margin-bottom: 8px;
-      line-height: 1.4;
+      font-size: 8pt;
+      color: #333;
+      margin-bottom: 4px;
+      line-height: 1.3;
+      word-wrap: break-word;
     }
     .info-row .lbl {
       font-weight: 600;
-      color: #2D3748;
-      margin-right: 6px;
+      color: #000;
+      margin-right: 4px;
     }
 
     /* ── TABLEAU RÉCAPITULATIF ── */
     .section-label {
-      font-size: 10pt;
+      font-size: 9pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       color: \${accent};
-      margin-bottom: 15px;
-      margin-top: 25px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #E2E8F0;
+      margin: 20px 0 10px 0;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #000;
     }
     .recap-table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      margin-bottom: 30px;
-      font-size: 9pt;
-      border-radius: 8px;
+      margin: 0 0 20px 0;
+      font-size: 8pt;
+      border-radius: 4px;
       overflow: hidden;
-      border: 1px solid #E2E8F0;
+      border: 1px solid #ccc;
     }
     .recap-table th, .recap-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #E2E8F0;
-      line-height: 1.4;
+      padding: 8px 12px;
+      border-bottom: 1px solid #ddd;
+      line-height: 1.3;
     }
     .recap-table tr:last-child th, .recap-table tr:last-child td {
       border-bottom: none;
     }
     .recap-table th {
-      background: #F7FAFC;
+      background: #f5f5f5;
       font-weight: 600;
-      color: #4A5568;
+      color: #333;
       width: 40%;
       text-align: left;
-      border-right: 1px solid #E2E8F0;
+      border-right: 1px solid #ccc;
     }
     .recap-table td {
       background: #fff;
-      color: #1A202C;
-      font-weight: 500;
+      color: #000;
+      font-weight: 400;
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 25px; }
+    .articles-section { margin-top: 15px; }
     .article-block {
-      margin-bottom: 25px;
+      margin: 0 0 15px 0;
       page-break-inside: avoid;
     }
     .article-title {
       font-family: 'Playfair Display', serif;
-      font-size: 12pt;
+      font-size: 10pt;
       font-weight: 600;
-      color: #1A202C;
-      margin-bottom: 10px;
+      color: #000;
+      margin: 0 0 8px 0;
     }
     .article-body {
-      font-size: 9pt;
+      font-size: 8pt;
       text-align: justify;
-      color: #4A5568;
-      line-height: 1.6;
+      color: #333;
+      line-height: 1.5;
     }
-    .article-body p { margin-bottom: 10px; text-indent: 0; }
+    .article-body p {
+      margin: 0 0 8px 0;
+      text-indent: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
-      background: #F7FAFC;
-      border-left: 3px solid \${accent};
-      padding: 12px 15px;
-      margin: 12px 0;
-      border-radius: 0 6px 6px 0;
-      line-height: 1.5;
-    }
-    .highlight-box strong { color: #1A202C; }
-    .legal-note {
-      font-size: 8pt;
-      color: #718096;
-      font-style: normal;
-      margin-top: 12px;
+      background: #fafafa;
+      border-left: 2px solid \${accent};
       padding: 10px 12px;
-      background: #FAFDFF;
-      border-radius: 6px;
-      line-height: 1.5;
-      border: 1px solid #EDF2F7;
+      margin: 8px 0;
+      border-radius: 0 4px 4px 0;
+      line-height: 1.4;
+    }
+    .highlight-box strong { color: #000; }
+    .legal-note {
+      font-size: 7pt;
+      color: #555;
+      font-style: normal;
+      margin: 10px 0 0 0;
+      padding: 8px 10px;
+      background: #fafafa;
+      border-radius: 4px;
+      line-height: 1.4;
+      border: 1px solid #ddd;
     }
 
     /* ── AVANTAGES ── */
     .benefits-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-      margin-bottom: 10px;
+      gap: 8px;
+      margin: 8px 0 8px 0;
     }
     .benefit-badge {
       background: #fff;
-      border: 1px solid #E2E8F0;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 9pt;
-      color: #4A5568;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 8pt;
+      color: #333;
       font-weight: 500;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
 
     /* ── SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE ── */
@@ -509,109 +535,111 @@ function getStyles(accent: string): string {
     }
     .signatures-section {
       page-break-inside: avoid;
-      padding-top: 30px;
-      margin-top: 25px;
+      padding-top: 20px;
+      margin-top: 20px;
     }
     .signatures-intro {
       text-align: center;
-      font-size: 10pt;
-      color: #4A5568;
-      margin-bottom: 25px;
-      line-height: 1.5;
+      font-size: 9pt;
+      color: #444;
+      margin: 0 0 15px 0;
+      line-height: 1.4;
     }
     .fait-a {
       text-align: right;
-      font-size: 10pt;
-      color: #4A5568;
-      margin-bottom: 30px;
-      line-height: 1.5;
-      padding: 10px 0;
-      border-bottom: 1px solid #E2E8F0;
+      font-size: 9pt;
+      color: #333;
+      margin: 0 0 20px 0;
+      line-height: 1.4;
+      padding: 6px 0;
+      border-bottom: 1px solid #000;
     }
     .sig-grid {
       display: flex;
-      gap: 50px;
-      margin-top: 20px;
+      gap: 30px;
+      margin: 15px 0 0 0;
     }
     .sig-block {
       flex: 1;
-      padding: 20px;
-      border-radius: 10px;
-      background: #F7FAFC;
-      border: 1px solid #E2E8F0;
+      padding: 15px;
+      border-radius: 4px;
+      background: #fafafa;
+      border: 1px solid #ccc;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
     .sig-block-title {
-      font-size: 9pt;
+      font-size: 7.5pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #A0AEC0;
-      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin: 0 0 8px 0;
     }
     .sig-block-name {
-      font-size: 11pt;
+      font-size: 9pt;
       font-weight: 700;
-      color: #1A202C;
-      margin-bottom: 8px;
-      line-height: 1.4;
+      color: #000;
+      margin: 0 0 6px 0;
+      line-height: 1.3;
+      word-wrap: break-word;
     }
     .sig-block-sub {
-      font-size: 9pt;
-      color: #718096;
-      margin-bottom: 25px;
-      line-height: 1.4;
+      font-size: 8pt;
+      color: #555;
+      margin: 0 0 15px 0;
+      line-height: 1.3;
     }
     .sig-area {
-      height: 120px;
-      margin-bottom: 15px;
+      height: 80px;
+      margin: 0 0 10px 0;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #fff;
-      border-radius: 8px;
-      border: 2px dashed #CBD5E0;
-      padding: 10px;
+      border-radius: 4px;
+      border: 1px dashed #999;
+      padding: 8px;
     }
     .sig-area img {
-      max-height: 100px;
+      max-height: 70px;
       max-width: 100%;
       object-fit: contain;
     }
     .sig-area-label {
-      font-size: 9pt;
-      color: #A0AEC0;
+      font-size: 8pt;
+      color: #777;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
     .sig-mention {
-      font-size: 8pt;
-      color: #A0AEC0;
+      font-size: 7pt;
+      color: #666;
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.3;
       margin-top: auto;
     }
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
-      margin-top: 40px;
-      padding-top: 15px;
-      border-top: 1px solid #E2E8F0;
+      margin: 30px 0 0 0;
+      padding: 12px 0 0 0;
+      border-top: 1px solid #000;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 8pt;
-      color: #A0AEC0;
-      line-height: 1.4;
+      font-size: 7pt;
+      color: #555;
+      line-height: 1.3;
     }
-    .doc-footer strong { color: #718096; }
+    .doc-footer strong { color: #000; }
 
     /* ── SÉPARATEUR ── */
     .divider {
       border: none;
-      border-top: 1px solid #E2E8F0;
-      margin: 30px 0;
+      border-top: 1px solid #ddd;
+      margin: 20px 0;
     }
   `;
 }
@@ -914,7 +942,7 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
 // ─────────────────────────────────────────────
 
 function buildContractHTML(data: ContractTemplateData): string {
-  const accent = data.accentColor || '#1a1a2e';
+  const accent = data.accentColor || '#2563eb'; // Bleu professionnel par défaut au lieu du noir
   const [role1, role2] = getRoleNames(data.contractType);
   const title = getContractTitle(data.contractType);
   const summaryRows = getSummaryRows(data);
@@ -988,8 +1016,8 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   ${data.contractType === 'stage' && data.schoolName ? `
   <!-- ÉTABLISSEMENT D'ENSEIGNEMENT (stage tripartite) -->
-  <div class="parties-wrapper" style="margin-bottom: 40px;">
-    <div class="party-col" style="flex: 1; border-right: none; background: #fff;">
+  <div class="parties-wrapper" style="margin-bottom: 30px;">
+    <div class="party-col" style="flex: 1; border-right: none; background: #F9FAFB;">
       <div class="party-col-title">L'Établissement d'enseignement</div>
       <div class="name-main">${esc(data.schoolName)}</div>
       ${data.schoolAddress ? `<div class="info-row">${esc(data.schoolAddress)}</div>` : ''}
@@ -1064,7 +1092,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
 
   ${data.contractType === 'stage' ? `
-  <div style="margin-top: 40px; page-break-inside: avoid;">
+  <div style="margin-top: 30px; page-break-inside: avoid;">
     <div class="sig-grid">
       <div class="sig-block">
         <div class="sig-block-title">L'Établissement d'enseignement</div>

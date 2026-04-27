@@ -17,6 +17,7 @@ export interface ContractData {
   employeeEmail?: string;
   employeePhone?: string;
   employeeBirthDate: string;
+  employeeBirthPlace?: string;
   employeeSocialSecurity?: string;
   employeeNationality: string;
   employeeQualification?: string;
@@ -26,13 +27,17 @@ export interface ContractData {
   contractStartDate: string;
   contractEndDate?: string;
   trialPeriodDays?: string;
+  trialPeriodRenewable?: boolean;
   jobTitle: string;
+  jobDescription?: string;
   workLocation: string;
   workSchedule: string;
   workingHours?: string;
   salaryAmount: string;
   salaryFrequency: 'monthly' | 'hourly' | 'weekly' | 'flat_rate';
   contractClassification?: string;
+  contractCoefficient?: string;
+  contractClassificationCode?: string;
   contractReason?: string;
   replacedEmployeeName?: string;
 
@@ -42,6 +47,8 @@ export interface ContractData {
   companyPostalCode: string;
   companyCity: string;
   companySiret: string;
+  companyAPE?: string;
+  companyRCS?: string;
   employerName: string;
   employerTitle: string;
 
@@ -51,27 +58,51 @@ export interface ContractData {
   hasHealth?: boolean;
   hasOther?: boolean;
   otherBenefits?: string;
+  transportPercentage?: number;
+  mealTicketAmount?: number;
+  healthInsuranceAmount?: number;
 
   // Clauses
   collectiveAgreement?: string;
+  collectiveAgreementIdcc?: string;
   probationClause?: boolean;
   nonCompeteClause?: boolean;
+  nonCompeteDuration?: string;
+  nonCompeteArea?: string;
   nonCompeteCompensation?: string;
   mobilityClause?: boolean;
+  mobilityArea?: string;
+  confidentialityClause?: boolean;
 
   // Stage / Alternance
   tutorName?: string;
+  tutorJob?: string;
   schoolName?: string;
+  schoolAddress?: string;
+  schoolContact?: string;
   speciality?: string;
   objectives?: string;
   tasks?: string;
   durationWeeks?: string;
+  internshipGratification?: string;
+  opcoName?: string;
+  cfaName?: string;
+  diplomaTitle?: string;
+  diplomaLevel?: string;
+
+  // Congés et absences
+  vacationDays?: number;
+  probationNoticeDays?: number;
+  noticePeriodEmployer?: string;
+  noticePeriodEmployee?: string;
 
   // Signatures
   employerSignature?: string;
   employeeSignature?: string;
   employerSignatureDate?: string;
   employeeSignatureDate?: string;
+  signatureCity?: string;
+  signatureDate?: string;
 }
 
 /**

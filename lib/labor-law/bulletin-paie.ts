@@ -400,7 +400,7 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       ${data.statut === 'cadre' ? row('Prévoyance cadres', fmtE(totalBrut), '1,50%', '', fmtE(cotisations.patronales.prevoyance)) : ''}
       ${row('Complémentaire santé', fmtE(totalBrut), '0,60%', '', fmtE(cotisations.patronales.supplementaire_sante))}
       ${row('Transport', fmtE(totalBrut), '0,50%', '', fmtE(cotisations.patronales.transport))}
-      ${cotisations.patronales.reduction_fillon > 0 ? row('Réduction Fillon (ex-Réduction générale)', fmtE(totalBrut), 'Variable', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon) + '</span>') : ''}
+      ${cotisations.patronales.reduction_fillon > 0 ? row('Réduction Fillon 2026', fmtE(totalBrut), (cotisations.patronales.reduction_fillon_taux * 100).toFixed(2) + '%', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon) + '</span>') : ''}
       ${data.mutuellePartEmployeur ? row('Mutuelle — part employeur', '', '', '', fmtE(data.mutuellePartEmployeur)) : ''}
       ${data.prevoyancePartEmployeur ? row('Prévoyance — part employeur', '', '', '', fmtE(data.prevoyancePartEmployeur)) : ''}
       ${row('COÛT TOTAL EMPLOYEUR', '', '', '', fmtE(cotisations.coutEmployer + (data.mutuellePartEmployeur ?? 0) + (data.prevoyancePartEmployeur ?? 0)), true, true)}

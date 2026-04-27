@@ -119,7 +119,8 @@
       "Bash(npx eslint *)",
       "Bash(echo \"Lint check completed with status: $?\")",
       "Bash(node -e \"require\\('./lib/labor-law/contract-templates.ts'\\)\")",
-      "Bash(pkill -f \"next lint\")"
+      "Bash(pkill -f \"next lint\")",
+      "Bash(curl -s https://jsonplaceholder.typicode.com/posts/1)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -28,6 +28,7 @@ export interface CotisationResult {
     transport: number;
     total: number;
     reduction_fillon: number; // Réduction générale des cotisations (ex-Fillon)
+    reduction_fillon_taux: number; // Taux appliqué (coefficient)
   };
   salariales: {
     maladie: number;
@@ -192,24 +193,27 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
 
   // === RÉDUCTION FILLON 2026 (RGDU - Réduction Générale Dégressive Unique) ===
   // Réforme 2026 : Extension à 3 SMIC (contre 1.6 auparavant)
-  const calculerReductionFillon = (salaireBrut: number, nombreSalaries: number = 1): number => {
-    if (salaireBrut >= SMIC_MENSUEL_2026 * 3.0) return 0; // Pas de réduction au-dessus de 3 SMIC (nouveau plafond 2026)
+  const calculerReductionFillon = (salaireBrut: number, nombreSalaries: number = 1): { montant: number; coefficient: number } => {
+    if (salaireBrut >= SMIC_MENSUEL_2026 * 3.0) return { montant: 0, coefficient: 0 }; // Pas de réduction au-dessus de 3 SMIC (nouveau plafond 2026)
 
     const smicMensuel = SMIC_MENSUEL_2026;
 
     // Formule 2026 : Coefficient = (T/0,6) × [(1,6 × SMIC / salaire brut) - 1]
-    const coefficient = Math.max(0, (0.6 / 0.6) * ((1.6 * smicMensuel / salaireBrut) - 1));
+    const coefficientCalc = Math.max(0, (0.6 / 0.6) * ((1.6 * smicMensuel / salaireBrut) - 1));
 
     // Taux maximum de réduction 2026
     const tauxMax = nombreSalaries < 50 ? 0.3956 : 0.3996; // 39,56% ou 39,96% selon effectif
 
     // La réduction est plafonnée au taux max
-    const reduction = salaireBrut * Math.min(coefficient, tauxMax);
+    const coefficient = Math.min(coefficientCalc, tauxMax);
+    const reduction = salaireBrut * coefficient;
 
-    return reduction;
+    return { montant: reduction, coefficient };
   };
 
-  const reductionFillon = calculerReductionFillon(salaireBrut);
+  const fillonResult = calculerReductionFillon(salaireBrut);
+  const reductionFillon = fillonResult.montant;
+  const reductionFillonTaux = fillonResult.coefficient;
 
   // Coût employeur final (avec réduction Fillon)
   const coutEmployer = coutEmployerAvantReduction - reductionFillon;
@@ -232,6 +236,7 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
       transport,
       total: totalPatronal,
       reduction_fillon: reductionFillon,
+      reduction_fillon_taux: reductionFillonTaux,
     },
     salariales: {
       maladie: maladieSalariale,
@@ -274,6 +279,7 @@ export function calculerCotisationsAlternance(salaireBrut: number, type: 'appren
         transport: 0,
         total: salaireBrut * 0.0166,
         reduction_fillon: 0,
+        reduction_fillon_taux: 0,
       },
       salariales: {
         maladie: 0,
@@ -378,18 +384,29 @@ export function getSalaireMinimumAlternance(
 
 // Export des données pour affichage
 export function getCotisationsDisplay(result: CotisationResult) {
+  const patronales = [
+    { label: 'Maladie', value: result.patronales.maladie, taux: TAUX_2026.patronales.maladie },
+    { label: 'Vieillesse', value: result.patronales.vieillesse, taux: TAUX_2026.patronales.vieillesse },
+    { label: 'Allocations familiales', value: result.patronales.allocations_familiales, taux: TAUX_2026.patronales.allocations_familiales },
+    { label: 'Accident du travail', value: result.patronales.accident_du_travail, taux: TAUX_2026.patronales.accident_du_travail },
+    { label: 'Chômage', value: result.patronales.chomage, taux: TAUX_2026.patronales.chomage },
+    { label: 'Retraite cadres', value: result.patronales.retraite_cadres, taux: 'Variable' },
+    { label: 'Formation', value: result.patronales.formation, taux: TAUX_2026.patronales.formation },
+    { label: 'Prévoyance', value: result.patronales.prevoyance, taux: TAUX_2026.patronales.prevoyance },
+    { label: 'Complémentaire santé', value: result.patronales.supplementaire_sante, taux: TAUX_2026.patronales.supplementaire_sante },
+  ];
+
+  // Ajouter la réduction Fillon si applicable
+  if (result.patronales.reduction_fillon > 0) {
+    patronales.push({
+      label: 'Réduction Fillon 2026',
+      value: result.patronales.reduction_fillon,
+      taux: (result.patronales.reduction_fillon_taux * 100).toFixed(2) + '%'
+    });
+  }
+
   return {
-    patronales: [
-      { label: 'Maladie', value: result.patronales.maladie, taux: TAUX_2026.patronales.maladie },
-      { label: 'Vieillesse', value: result.patronales.vieillesse, taux: TAUX_2026.patronales.vieillesse },
-      { label: 'Allocations familiales', value: result.patronales.allocations_familiales, taux: TAUX_2026.patronales.allocations_familiales },
-      { label: 'Accident du travail', value: result.patronales.accident_du_travail, taux: TAUX_2026.patronales.accident_du_travail },
-      { label: 'Chômage', value: result.patronales.chomage, taux: TAUX_2026.patronales.chomage },
-      { label: 'Retraite cadres', value: result.patronales.retraite_cadres, taux: 'Variable' },
-      { label: 'Formation', value: result.patronales.formation, taux: TAUX_2026.patronales.formation },
-      { label: 'Prévoyance', value: result.patronales.prevoyance, taux: TAUX_2026.patronales.prevoyance },
-      { label: 'Complémentaire santé', value: result.patronales.supplementaire_sante, taux: TAUX_2026.patronales.supplementaire_sante },
-    ],
+    patronales,
     salariales: [
       { label: 'Maladie', value: result.salariales.maladie, taux: TAUX_2026.salariales.maladie },
       { label: 'Vieillesse', value: result.salariales.vieillesse, taux: TAUX_2026.salariales.vieillesse },
