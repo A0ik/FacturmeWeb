@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Download, Sparkles, Loader2, AlertCircle,
   User, Building2, Euro, Calendar, FileText, ChevronDown, ChevronUp,
-  Heart, Gift, Plane, Activity, Clock, Truck, Utensils, Settings
+  Heart, Gift, Plane, Activity, Clock, Truck, Utensils, Settings, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BulletinPaieData } from '@/lib/labor-law/bulletin-paie';
@@ -325,14 +325,16 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
                       Valeur actuelle: <strong>{((data as any).tauxAccidentTravail ?? 0.70).toFixed(2)}%</strong>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    💡 Taux moyen: 0.70% | Restaurants: 1.20% | BTP: 2.50%
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    <span>Taux moyen: 0.70% | Restaurants: 1.20% | BTP: 2.50%</span>
                   </div>
                 </div>
                 <div className="col-span-2 mt-2">
                   <details className="text-xs">
-                    <summary className="cursor-pointer text-primary hover:text-primary/80 font-medium mb-2">
-                      📖 Voir tous les taux AT par secteur
+                    <summary className="cursor-pointer text-primary hover:text-primary/80 font-medium mb-2 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Voir tous les taux AT par secteur
                     </summary>
                     <div className="grid grid-cols-2 gap-2 mt-2 p-2 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                       {getTauxATOptions().map((option) => (

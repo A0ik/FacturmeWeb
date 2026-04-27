@@ -46,10 +46,14 @@ export class LiaService {
   private model: string;
 
   constructor(config: LiaConfig = {}) {
-    this.model = config.model || 'anthropic/claude-3.5-sonnet';
+    this.model = config.model || 'anthropic/claude-3.5-sonnet:beta';
     this.client = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: config.apiKey || process.env.OPENROUTER_API_KEY || '',
+      defaultHeaders: {
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'X-Title': 'FACTU.ME',
+      },
     });
   }
 
@@ -150,6 +154,12 @@ Analyse la conformité et identifie les mentions manquantes ou incorrectes.`;
    */
   async modifyPayslip(request: PayslipModificationRequest): Promise<PayslipModificationResponse> {
     try {
+      console.log('[LIA] Début modification bulletin:', {
+        hasCurrentPayslip: !!request.currentPayslip,
+        hasRequestedChanges: !!request.requestedChanges,
+        model: this.model,
+      });
+
       const systemPrompt = `Tu es Lia, expert en paie française.
 Tu aides à modifier des bulletins de paie tout en respectant:
 - Le Code du travail français
@@ -188,6 +198,11 @@ Propose les modifications en respectant la législation française.`;
         temperature: 0.2,
       });
 
+      console.log('[LIA] Réponse API reçue:', {
+        hasContent: !!completion.choices[0]?.message?.content,
+        usage: completion.usage,
+      });
+
       const response = JSON.parse(completion.choices[0].message.content || '{}');
 
       return {
@@ -197,11 +212,16 @@ Propose les modifications en respectant la législation française.`;
         legalCompliance: response.legalCompliance || [],
       };
     } catch (error) {
-      console.error('Erreur modification bulletin:', error);
+      console.error('[LIA] Erreur modification bulletin:', {
+        error: error instanceof Error ? error.message : error,
+        model: this.model,
+        hasApiKey: !!process.env.OPENROUTER_API_KEY,
+      });
+
       return {
         modifiedPayslip: request.currentPayslip,
-        explanation: 'Erreur lors de la modification',
-        warnings: ['Service temporairement indisponible'],
+        explanation: `Erreur lors de la modification: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        warnings: ['Service temporairement indisponible. Vérifiez la configuration OpenRouter.'],
         legalCompliance: [],
       };
     }

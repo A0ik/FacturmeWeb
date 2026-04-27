@@ -78,7 +78,7 @@ export function ContractPreviewNewDesign({ contractData, onClose }: ContractPrev
 
         {/* Footer */}
         <div className="p-3 border-t bg-gray-50 text-center text-sm text-gray-500">
-          💡 Astuce : Dans la fenêtre d'impression, choisissez "Enregistrer au format PDF" comme destination
+          Astuce : Dans la fenêtre d'impression, choisissez "Enregistrer au format PDF" comme destination
         </div>
       </div>
     </div>
