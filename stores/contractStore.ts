@@ -168,6 +168,7 @@ export const useContractStore = create<ContractState>((set, get) => ({
 
     // Type-specific fields
     if (formData.contract_type === 'cdi') {
+      // CDI uses contract_start_date (already in row)
       row.contract_classification = formData.contract_classification || null;
       row.working_hours = formData.working_hours || null;
       row.collective_agreement = formData.collective_agreement || null;
@@ -187,6 +188,9 @@ export const useContractStore = create<ContractState>((set, get) => ({
       row.non_compete_clause = formData.non_compete_clause || false;
       row.mobility_clause = formData.mobility_clause || false;
     } else {
+      // 'other' table uses start_date, not contract_start_date
+      delete row.contract_start_date;
+      row.start_date = formData.contract_start_date || null;
       row.contract_category = formData.contract_category || 'stage';
       row.contract_title = formData.contract_title || null;
       row.duration_weeks = formData.duration_weeks || null;
@@ -297,6 +301,43 @@ export const useContractStore = create<ContractState>((set, get) => ({
       contract_start_date: detail.contract_start_date,
       trial_period_days: detail.trial_period_days ? String(detail.trial_period_days) : undefined,
     };
+
+    // Type-specific fields
+    const d = detail as any;
+    if (contractType === 'cdi') {
+      formData.contract_classification = d.contract_classification || '';
+      formData.working_hours = d.working_hours || '';
+      formData.collective_agreement = d.collective_agreement || '';
+      formData.probation_clause = d.probation_clause || false;
+      formData.non_compete_clause = d.non_compete_clause || false;
+      formData.non_compete_duration = d.non_compete_duration || '';
+      formData.non_compete_compensation = d.non_compete_compensation || '';
+      formData.non_compete_area = d.non_compete_area || '';
+      formData.mobility_clause = d.mobility_clause || false;
+      formData.mobility_area = d.mobility_area || '';
+    } else if (contractType === 'cdd') {
+      formData.contract_end_date = d.contract_end_date || '';
+      formData.contract_reason = d.contract_reason || '';
+      formData.replaced_employee_name = d.replaced_employee_name || '';
+      formData.collective_agreement = d.collective_agreement || '';
+      formData.probation_clause = d.probation_clause || false;
+      formData.non_compete_clause = d.non_compete_clause || false;
+      formData.mobility_clause = d.mobility_clause || false;
+    } else {
+      formData.contract_category = d.contract_category || 'stage';
+      formData.contract_title = d.contract_title || '';
+      formData.duration_weeks = d.duration_weeks || '';
+      formData.contract_end_date = d.end_date || '';
+      formData.tutor_name = d.tutor_name || '';
+      formData.school_name = d.school_name || '';
+      formData.speciality = d.speciality || '';
+      formData.objectives = d.objectives || '';
+      formData.tasks = d.tasks || '';
+      formData.working_hours = d.working_hours || '';
+      formData.collective_agreement = d.collective_agreement || '';
+      formData.statut = d.statut || '';
+    }
+
     return get().createContract(formData, profile);
   },
 

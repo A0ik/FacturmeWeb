@@ -234,8 +234,25 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
             {'contract_end_date' in contract && contract.contract_end_date && <p><span className="text-gray-500">Fin :</span> {fmtDate(contract.contract_end_date)}</p>}
             {contract.trial_period_days && <p><span className="text-gray-500">Essai :</span> {contract.trial_period_days} jours</p>}
             {'contract_reason' in contract && contract.contract_reason && <p><span className="text-gray-500">Motif :</span> {contract.contract_reason}</p>}
+            {'replaced_employee_name' in contract && (contract as any).replaced_employee_name && <p><span className="text-gray-500">Salarié remplacé :</span> {(contract as any).replaced_employee_name}</p>}
             {'contract_classification' in contract && contract.contract_classification && <p><span className="text-gray-500">Classification :</span> {contract.contract_classification}</p>}
+            {'working_hours' in contract && (contract as any).working_hours && <p><span className="text-gray-500">Heures hebdo :</span> {(contract as any).working_hours}</p>}
             {'collective_agreement' in contract && contract.collective_agreement && <p><span className="text-gray-500">Convention :</span> {contract.collective_agreement}</p>}
+            {/* Other-specific: Stage/Alternance */}
+            {contractType === 'other' && (() => {
+              const c = contract as any;
+              return <>
+                {c.contract_category && <p><span className="text-gray-500">Catégorie :</span> {c.contract_category}</p>}
+                {c.contract_title && <p><span className="text-gray-500">Titre :</span> {c.contract_title}</p>}
+                {c.duration_weeks && <p><span className="text-gray-500">Durée :</span> {c.duration_weeks} semaines</p>}
+                {c.tutor_name && <p><span className="text-gray-500">Tuteur :</span> {c.tutor_name}</p>}
+                {c.school_name && <p><span className="text-gray-500">École/CFA :</span> {c.school_name}</p>}
+                {c.speciality && <p><span className="text-gray-500">Spécialité :</span> {c.speciality}</p>}
+                {c.objectives && <p><span className="text-gray-500">Objectifs :</span> {c.objectives}</p>}
+                {c.tasks && <p><span className="text-gray-500">Tâches :</span> {c.tasks}</p>}
+                {c.statut && <p><span className="text-gray-500">Statut :</span> {c.statut}</p>}
+              </>;
+            })()}
           </div>
         </motion.div>
 

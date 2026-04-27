@@ -26,6 +26,9 @@ export function ContractCard({ contract, onDelete, onDuplicate }: Props) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <ContractTypeBadge type={contract.contract_type} />
+          {contract.contract_type === 'other' && contract.contract_category && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">{contract.contract_category}</span>
+          )}
           <ContractStatusBadge status={contract.status} />
         </div>
         {contract.contract_number && (

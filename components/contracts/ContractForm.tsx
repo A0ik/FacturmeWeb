@@ -239,15 +239,65 @@ export function ContractForm({ contractType, mode, initialData, contractId, onSa
     return (cat === 'apprentissage' ? 'apprentissage' : cat === 'professionnalisation' ? 'professionnalisation' : cat === 'freelance' ? 'freelance' : cat === 'interim' ? 'interim' : cat === 'portage' ? 'portage' : 'stage') as any;
   };
 
+  const toCamelCase = (data: ContractFormData): any => ({
+    contractType: getTemplateType(),
+    employeeFirstName: data.employee_first_name,
+    employeeLastName: data.employee_last_name,
+    employeeAddress: data.employee_address,
+    employeePostalCode: data.employee_postal_code,
+    employeeCity: data.employee_city,
+    employeeEmail: data.employee_email,
+    employeePhone: data.employee_phone,
+    employeeBirthDate: data.employee_birth_date,
+    employeeSocialSecurity: data.employee_social_security,
+    employeeNationality: data.employee_nationality || 'Française',
+    employeeQualification: data.employee_qualification,
+    contractStartDate: data.contract_start_date,
+    contractEndDate: data.contract_end_date,
+    trialPeriodDays: data.trial_period_days,
+    jobTitle: data.job_title,
+    workLocation: data.work_location,
+    workSchedule: data.work_schedule || '35h hebdomadaires',
+    workingHours: data.working_hours,
+    salaryAmount: data.salary_amount,
+    salaryFrequency: data.salary_frequency || 'monthly',
+    contractClassification: data.contract_classification,
+    contractReason: data.contract_reason,
+    replacedEmployeeName: data.replaced_employee_name,
+    companyName: data.company_name,
+    companyAddress: data.company_address,
+    companyPostalCode: data.company_postal_code,
+    companyCity: data.company_city,
+    companySiret: data.company_siret,
+    employerName: data.employer_name,
+    employerTitle: data.employer_title || 'Gérant',
+    collectiveAgreement: data.collective_agreement,
+    hasTransport: data.has_transport,
+    hasMeal: data.has_meal,
+    hasHealth: data.has_health,
+    hasOther: data.has_other,
+    otherBenefits: data.other_benefits,
+    probationClause: data.probation_clause,
+    nonCompeteClause: data.non_compete_clause,
+    nonCompeteArea: data.non_compete_area,
+    nonCompeteDuration: data.non_compete_duration,
+    nonCompeteCompensation: data.non_compete_compensation,
+    mobilityClause: data.mobility_clause,
+    mobilityArea: data.mobility_area,
+    tutorName: data.tutor_name,
+    schoolName: data.school_name,
+    speciality: data.speciality,
+    objectives: data.objectives,
+    tasks: data.tasks,
+    contractTitle: data.contract_title,
+    durationWeeks: data.duration_weeks,
+    statut: data.statut,
+    employerSignature: data.employer_signature,
+    employeeSignature: data.employee_signature,
+  });
+
   const generateContractHTML = () => {
-    const templateData: any = {
-      ...formData,
-      contractType: getTemplateType(),
-      employeeNationality: formData.employee_nationality || 'Française',
-      employerTitle: formData.employer_title || 'Gérant',
-      workSchedule: formData.work_schedule || '35h hebdomadaires',
-      salaryFrequency: formData.salary_frequency || 'monthly',
-    };
+    const templateData = toCamelCase(formData);
     const html = generateTemplate(templateData);
     setContractHtml(html);
     setStep('preview');
@@ -265,7 +315,7 @@ export function ContractForm({ contractType, mode, initialData, contractId, onSa
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contract: { ...formData, contractType: getTemplateType(), employeeNationality: formData.employee_nationality || 'Française', employerTitle: formData.employer_title || 'Gérant', workSchedule: formData.work_schedule || '35h hebdomadaires', salaryFrequency: formData.salary_frequency || 'monthly' },
+          contract: toCamelCase(formData),
         }),
       });
       if (res.ok) setPdfPreviewUrl(URL.createObjectURL(await res.blob()));
@@ -340,7 +390,7 @@ export function ContractForm({ contractType, mode, initialData, contractId, onSa
       const res = await fetch('/api/contracts/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contract: { ...formData, contractType: getTemplateType(), employeeNationality: formData.employee_nationality || 'Française', employerTitle: formData.employer_title || 'Gérant', workSchedule: formData.work_schedule || '35h hebdomadaires', salaryFrequency: formData.salary_frequency || 'monthly' } }),
+        body: JSON.stringify({ contract: toCamelCase(formData) }),
       });
       if (!res.ok) throw new Error('Erreur PDF');
       const blob = await res.blob();
@@ -365,7 +415,7 @@ export function ContractForm({ contractType, mode, initialData, contractId, onSa
       const res = await fetch('/api/contracts/docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contract: { ...formData, contractType: getTemplateType(), employeeNationality: formData.employee_nationality || 'Française', employerTitle: formData.employer_title || 'Gérant', workSchedule: formData.work_schedule || '35h hebdomadaires', salaryFrequency: formData.salary_frequency || 'monthly' } }),
+        body: JSON.stringify({ contract: toCamelCase(formData) }),
       });
       if (!res.ok) throw new Error('Erreur DOCX');
       const blob = await res.blob();
@@ -385,7 +435,7 @@ export function ContractForm({ contractType, mode, initialData, contractId, onSa
 
   const handleGeneratePayslip = () => {
     try {
-      const data = creerBulletinDepuisContrat({ ...formData, contractType: getTemplateType() } as any, '', '');
+      const data = creerBulletinDepuisContrat(toCamelCase(formData), '', '');
       setPayslipData(data);
       setShowPayslipEditor(true);
     } catch {
