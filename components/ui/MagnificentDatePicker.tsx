@@ -27,6 +27,14 @@ const MONTHS = [
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
+// Helper pour formater une date en YYYY-MM-DD LOCAL (pas UTC)
+const formatDateToLocalISO = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export function MagnificentDatePicker({
   value,
   onChange,
@@ -54,8 +62,7 @@ export function MagnificentDatePicker({
   const effectiveMinDate = useMemo(() => {
     if (minDate) return minDate;
     if (disablePastDates) {
-      const today = new Date();
-      return today.toISOString().split('T')[0];
+      return formatDateToLocalISO(new Date());
     }
     return undefined;
   }, [minDate, disablePastDates]);
@@ -124,7 +131,7 @@ export function MagnificentDatePicker({
   };
 
   const isDateEnabled = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateToLocalISO(date);
 
     if (effectiveMinDate && dateStr < effectiveMinDate) return false;
     if (maxDate && dateStr > maxDate) return false;
@@ -186,8 +193,7 @@ export function MagnificentDatePicker({
         }
 
         // Mettre à jour la date sélectionnée
-        const dateStr = parsedDate.toISOString().split('T')[0];
-        onChange(dateStr);
+        onChange(formatDateToLocalISO(parsedDate));
         setTextInput(formatDateForInput(parsedDate));
         setIsOpen(false);
       } else {
@@ -201,8 +207,7 @@ export function MagnificentDatePicker({
     if (e.key === 'Enter') {
       const parsedDate = parseDateInput(textInput);
       if (parsedDate && isDateEnabled(parsedDate)) {
-        const dateStr = parsedDate.toISOString().split('T')[0];
-        onChange(dateStr);
+        onChange(formatDateToLocalISO(parsedDate));
         setIsOpen(false);
       } else if (textInput.length > 0) {
         setInputError('Format invalide (JJ/MM/AAAA)');
@@ -270,8 +275,7 @@ export function MagnificentDatePicker({
   const handleDateClick = (date: Date) => {
     if (!isDateEnabled(date)) return;
 
-    const dateStr = date.toISOString().split('T')[0];
-    onChange(dateStr);
+    onChange(formatDateToLocalISO(date));
     setIsOpen(false);
   };
 

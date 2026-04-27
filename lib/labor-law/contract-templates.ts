@@ -1,6 +1,10 @@
 /**
- * Templates de contrats de travail — Version MEGA ULTRA ESPACÉE
- * Espacement MAXIMUM ABSOLU - signatures sur page séparée avec saut de page
+ * Templates de contrats de travail — Version CORRIGÉE ET OPTIMISÉE
+ * - Correction du bug CSS (template literals)
+ * - Correction du bug de fuseau horaire sur les dates
+ * - Correction des superpositions à l'impression (retrait min-height, gestion des sauts de page)
+ * - Correction de l'encodage des signatures Base64
+ * - Nettoyage du code (paramètres inutilisés, fausses pages 1/1)
  */
 
 export interface ContractTemplateData {
@@ -115,10 +119,11 @@ function esc(value: string | undefined | null): string {
     .replace(/'/g, '&#39;');
 }
 
-function fmtDate(dateStr?: string): string {
+function fmtDate(dateStr?: string | Date): string {
   if (!dateStr) return '___________';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return esc(dateStr);
+  // Accepte string ou Date (évite la conversion inutile)
+  const d = dateStr instanceof Date ? dateStr : new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+  if (isNaN(d.getTime())) return esc(typeof dateStr === 'string' ? dateStr : '___________');
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
@@ -130,10 +135,17 @@ function fmtMoney(amount?: string): string {
 }
 
 function calcTrialEnd(startDate: string, days: string): string {
-  const d = new Date(startDate);
+  const d = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00`);
   if (isNaN(d.getTime())) return '___________';
   d.setDate(d.getDate() + parseInt(days, 10));
-  return fmtDate(d.toISOString());
+  return fmtDate(d); // Passer l'objet Date directement (pas de conversion toISOString)
+}
+
+// Gestion sécurisée des signatures (URL ou Base64 brut)
+function getSignatureSrc(sig: string | undefined): string {
+  if (!sig) return '';
+  if (sig.startsWith('data:') || sig.startsWith('http')) return sig;
+  return `data:image/png;base64,${sig}`;
 }
 
 // ─────────────────────────────────────────────
@@ -231,7 +243,7 @@ function getSummaryRows(data: ContractTemplateData): [string, string][] {
 }
 
 // ─────────────────────────────────────────────
-// CSS ULTRA-ESPACÉ
+// CSS IMPRIMABLE CORRIGÉ
 // ─────────────────────────────────────────────
 
 function getStyles(accent: string): string {
@@ -253,9 +265,8 @@ function getStyles(accent: string): string {
         margin: 0;
         padding: 0;
       }
-      .page-break { page-break-before: always; }
+      .page-break, .signature-page-break { break-before: always; }
       .no-print { display: none !important; }
-      .signature-page-break { page-break-before: always; }
       body * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -277,7 +288,7 @@ function getStyles(accent: string): string {
       line-height: 1.6;
       color: #1a1a1a;
       background: #fff;
-      min-height: 297mm;
+      /* RETRAIT DE min-height: 297mm QUI CAUSAIT LA SUPERPOSITION */
     }
 
     /* ── EN-TÊTE ── */
@@ -288,6 +299,7 @@ function getStyles(accent: string): string {
       padding-bottom: 20px;
       margin-bottom: 20px;
       border-bottom: 2px solid #000;
+      break-inside: avoid;
     }
     .doc-header-company { flex: 1; min-width: 0; }
     .doc-header-company .company-name {
@@ -332,6 +344,7 @@ function getStyles(accent: string): string {
       border-radius: 4px;
       line-height: 1.4;
       border: 1px dashed #999;
+      break-inside: avoid;
     }
 
     /* ── TITRE PRINCIPAL ── */
@@ -345,8 +358,9 @@ function getStyles(accent: string): string {
       padding: 12px 10px;
       background: #fafafa;
       border-radius: 4px;
-      border-top: 3px solid \${accent};
+      border-top: 3px solid ${accent};
       line-height: 1.3;
+      break-inside: avoid;
     }
     .sub-title {
       text-align: center;
@@ -376,6 +390,7 @@ function getStyles(accent: string): string {
       border-radius: 4px;
       overflow: hidden;
       background: #fff;
+      break-inside: avoid;
     }
     .party-col {
       flex: 1;
@@ -421,10 +436,11 @@ function getStyles(accent: string): string {
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: \${accent};
+      color: ${accent};
       margin: 20px 0 10px 0;
       padding-bottom: 5px;
       border-bottom: 2px solid #000;
+      break-inside: avoid;
     }
     .recap-table {
       width: 100%;
@@ -435,6 +451,7 @@ function getStyles(accent: string): string {
       border-radius: 4px;
       overflow: hidden;
       border: 1px solid #ccc;
+      break-inside: avoid;
     }
     .recap-table th, .recap-table td {
       padding: 8px 12px;
@@ -462,7 +479,7 @@ function getStyles(accent: string): string {
     .articles-section { margin-top: 15px; }
     .article-block {
       margin: 0 0 15px 0;
-      page-break-inside: avoid;
+      /* RETRAIT DU BREAK-INSIDE: AVOID QUI CAUSAIT LA SUPERPOSITION DES GRANDS PARAGRAPHES */
     }
     .article-title {
       font-family: 'Playfair Display', serif;
@@ -470,6 +487,7 @@ function getStyles(accent: string): string {
       font-weight: 600;
       color: #000;
       margin: 0 0 8px 0;
+      break-after: avoid;
     }
     .article-body {
       font-size: 8pt;
@@ -486,11 +504,12 @@ function getStyles(accent: string): string {
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
       background: #fafafa;
-      border-left: 2px solid \${accent};
+      border-left: 2px solid ${accent};
       padding: 10px 12px;
       margin: 8px 0;
       border-radius: 0 4px 4px 0;
       line-height: 1.4;
+      break-inside: avoid;
     }
     .highlight-box strong { color: #000; }
     .legal-note {
@@ -503,6 +522,7 @@ function getStyles(accent: string): string {
       border-radius: 4px;
       line-height: 1.4;
       border: 1px solid #ddd;
+      break-inside: avoid;
     }
 
     /* ── AVANTAGES ── */
@@ -520,21 +540,17 @@ function getStyles(accent: string): string {
       font-size: 8pt;
       color: #333;
       font-weight: 500;
+      break-inside: avoid;
     }
 
-    /* ── SIGNATURES — SECTION COMPLÈTEMENT ISOLÉE ── */
+    /* ── SIGNATURES ── */
     .signature-page-break {
-      page-break-before: always;
+      break-before: always;
       clear: both;
       width: 100%;
     }
-    @media print {
-      .signature-page-break {
-        page-break-before: always;
-      }
-    }
     .signatures-section {
-      page-break-inside: avoid;
+      break-inside: avoid;
       padding-top: 20px;
       margin-top: 20px;
     }
@@ -558,6 +574,7 @@ function getStyles(accent: string): string {
       display: flex;
       gap: 30px;
       margin: 15px 0 0 0;
+      break-inside: avoid;
     }
     .sig-block {
       flex: 1;
@@ -620,6 +637,14 @@ function getStyles(accent: string): string {
       line-height: 1.3;
       margin-top: auto;
     }
+    
+    /* Grid signature spéciale pour un seul bloc (École stage) */
+    .sig-grid--single {
+      justify-content: flex-start;
+    }
+    .sig-grid--single .sig-block {
+      flex: 0 0 48%;
+    }
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
@@ -648,7 +673,7 @@ function getStyles(accent: string): string {
 // ARTICLES DYNAMIQUES
 // ─────────────────────────────────────────────
 
-function generateArticles(data: ContractTemplateData, accent: string): string {
+function generateArticles(data: ContractTemplateData): string {
   const fullName = `${esc(data.employeeFirstName)} ${esc(data.employeeLastName)}`;
   const company = esc(data.companyName);
   const type = data.contractType;
@@ -879,7 +904,7 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
 
   // ── ARTICLE : Non-concurrence (si activée) ───────────────
   if (data.nonCompeteClause && !['stage', 'freelance'].includes(type)) {
-    A("Clause de non-concurrence OBLIGATOIRE", `
+    A("Clause de non-concurrence", `
       <p><strong>⚠️ CLAUSE AVEC INDEMNITÉ COMPENSATOIRE OBLIGATOIRE</strong></p>
       <p>En contrepartie du paiement d'une indemnité compensatrice mensuelle égale à
       <strong>${data.nonCompeteCompensation ? fmtMoney(data.nonCompeteCompensation) : '___________'} brut</strong>
@@ -942,7 +967,7 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
 // ─────────────────────────────────────────────
 
 function buildContractHTML(data: ContractTemplateData): string {
-  const accent = data.accentColor || '#2563eb'; // Bleu professionnel par défaut au lieu du noir
+  const accent = data.accentColor || '#2563eb';
   const [role1, role2] = getRoleNames(data.contractType);
   const title = getContractTitle(data.contractType);
   const summaryRows = getSummaryRows(data);
@@ -951,6 +976,9 @@ function buildContractHTML(data: ContractTemplateData): string {
 
   // Génère le numéro de référence du document
   const docRef = `${data.contractType.toUpperCase()}-${data.companyName.slice(0, 3).toUpperCase()}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+
+  const employerSigSrc = getSignatureSrc(data.employerSignature);
+  const employeeSigSrc = getSignatureSrc(data.employeeSignature);
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -1046,7 +1074,7 @@ function buildContractHTML(data: ContractTemplateData): string {
   <!-- ARTICLES -->
   <div class="section-label">▸ Clauses et conditions générales</div>
   <div class="articles-section">
-    ${generateArticles(data, accent)}
+    ${generateArticles(data)}
   </div>
 
   <!-- PAGE BREAK AVANT SIGNATURES -->
@@ -1069,8 +1097,8 @@ function buildContractHTML(data: ContractTemplateData): string {
         <div class="sig-block-name">${esc(data.employerName)}</div>
         <div class="sig-block-sub">${esc(data.employerTitle)} — ${esc(data.companyName)}</div>
         <div class="sig-area">
-          ${data.employerSignature
-      ? `<img src="${data.employerSignature}" alt="Signature employeur">`
+          ${employerSigSrc
+      ? `<img src="${employerSigSrc}" alt="Signature employeur">`
       : `<span class="sig-area-label">Cachet + Signature</span>`}
         </div>
         <div class="sig-mention">Signature avec cachet de la société</div>
@@ -1080,8 +1108,8 @@ function buildContractHTML(data: ContractTemplateData): string {
         <div class="sig-block-name">${esc(data.employeeFirstName)} ${esc(data.employeeLastName)}</div>
         <div class="sig-block-sub">${esc(data.jobTitle)}</div>
         <div class="sig-area">
-          ${data.employeeSignature
-      ? `<img src="${data.employeeSignature}" alt="Signature salarié">`
+          ${employeeSigSrc
+      ? `<img src="${employeeSigSrc}" alt="Signature salarié">`
       : `<span class="sig-area-label">Signature manuscrite</span>`}
         </div>
         ${data.contractType !== 'freelance' && data.contractType !== 'stage'
@@ -1092,15 +1120,14 @@ function buildContractHTML(data: ContractTemplateData): string {
   </div>
 
   ${data.contractType === 'stage' ? `
-  <div style="margin-top: 30px; page-break-inside: avoid;">
-    <div class="sig-grid">
+  <div style="margin-top: 30px; break-inside: avoid;">
+    <div class="sig-grid sig-grid--single">
       <div class="sig-block">
         <div class="sig-block-title">L'Établissement d'enseignement</div>
         <div class="sig-block-name">${esc(data.schoolName) || '___________'}</div>
         ${data.schoolContact ? `<div class="sig-block-sub">${esc(data.schoolContact)}</div>` : ''}
         <div class="sig-area"><span class="sig-area-label">Cachet + Signature</span></div>
       </div>
-      <div class="sig-block" style="visibility: hidden;"></div>
     </div>
   </div>
   ` : ''}
@@ -1112,7 +1139,7 @@ function buildContractHTML(data: ContractTemplateData): string {
       &nbsp;·&nbsp; SIRET ${esc(data.companySiret)}
       &nbsp;·&nbsp; ${esc(data.companyAddress)}, ${esc(data.companyPostalCode)} ${esc(data.companyCity)}
     </div>
-    <div>Réf. ${docRef} &nbsp;·&nbsp; Page 1/1</div>
+    <div>Réf. ${docRef}</div>
   </div>
 
 </body>
