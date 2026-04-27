@@ -35,53 +35,76 @@ export function ContractValidator({
   useEffect(() => {
     if (!contractData) return;
 
-    const result = validateContract(contractType, contractData, selectedSector);
-    const validationErrors: ValidationError[] = [];
+    const validateContractAsync = async () => {
+      const result = validateContract(contractType, contractData, selectedSector);
+      const validationErrors: ValidationError[] = [];
 
-    // Convertir les erreurs de validation
-    result.errors.forEach((error, index) => {
-      validationErrors.push({
-        field: `error_${index}`,
-        message: error,
-        severity: 'error',
-        source: 'Code du travail'
+      // Convertir les erreurs de validation
+      result.errors.forEach((error, index) => {
+        validationErrors.push({
+          field: `error_${index}`,
+          message: error,
+          severity: 'error',
+          source: 'Code du travail'
+        });
       });
-    });
 
-    // Convertir les warnings
-    result.warnings.forEach((warning, index) => {
-      validationErrors.push({
-        field: `warning_${index}`,
-        message: warning,
-        severity: 'warning',
-        source: 'Recommandation légale'
+      // Convertir les warnings
+      result.warnings.forEach((warning, index) => {
+        validationErrors.push({
+          field: `warning_${index}`,
+          message: warning,
+          severity: 'warning',
+          source: 'Recommandation légale'
+        });
       });
-    });
 
-    // Vérifier le salaire minimum
-    const employeeAge = contractData.employeeBirthDate
-      ? new Date().getFullYear() - new Date(contractData.employeeBirthDate).getFullYear()
-      : 26;
+      // Vérifier le salaire minimum avec le service SMIC dynamique
+      const salary = parseFloat(contractData.salaryAmount) || 0;
+      const type = contractData.salaryFrequency === 'hourly' ? 'horaire' : 'mensuel';
+      const hours = contractData.workingHours ? parseFloat(contractData.workingHours) : 35;
 
-    const minimumSalary = calculerSalaireMinimum(
-      contractType,
-      contractData.statut || 'non_cadre',
-      employeeAge,
-      parseFloat(contractData.workingHours) || 35
-    );
+      try {
+        const response = await fetch(`/api/smic?amount=${salary}&type=${type}&hours=${hours}`);
+        if (response.ok) {
+          const smicCheck = await response.json();
+          if (!smicCheck.conforme && contractType !== 'stage') {
+            validationErrors.push({
+              field: 'salary',
+              message: `Le salaire est inférieur au SMIC. ${smicCheck.message}`,
+              severity: 'error',
+              source: `Article L3231-12 du Code du travail - ${smicCheck.actuel?.dateMiseAJour || '2026'}`
+            });
+          }
+        }
+      } catch (smicError) {
+        // En cas d'erreur API, utiliser la vérification de fallback
+        const employeeAge = contractData.employeeBirthDate
+          ? new Date().getFullYear() - new Date(contractData.employeeBirthDate).getFullYear()
+          : 26;
 
-    const currentSalary = parseFloat(contractData.salaryAmount) || 0;
-    if (currentSalary < minimumSalary.montant && contractType !== 'stage') {
-      validationErrors.push({
-        field: 'salary',
-        message: `Le salaire (${currentSalary.toFixed(2)}€) est inférieur au salaire minimum légal (${minimumSalary.montant.toFixed(2)}€). ${minimumSalary.source}`,
-        severity: 'error',
-        source: 'Article L3231-12 du Code du travail'
-      });
-    }
+        const minimumSalary = calculerSalaireMinimum(
+          contractType,
+          contractData.statut || 'non_cadre',
+          employeeAge,
+          parseFloat(contractData.workingHours) || 35
+        );
 
-    setErrors(validationErrors);
-    onValidationChange?.(result.valid, validationErrors);
+        if (salary < minimumSalary.montant && contractType !== 'stage') {
+          validationErrors.push({
+            field: 'salary',
+            message: `Le salaire (${salary.toFixed(2)}€) est inférieur au salaire minimum légal (${minimumSalary.montant.toFixed(2)}€). ${minimumSalary.source}`,
+            severity: 'error',
+            source: 'Article L3231-12 du Code du travail'
+          });
+        }
+      }
+
+      setErrors(validationErrors);
+      onValidationChange?.(result.valid, validationErrors);
+    };
+
+    validateContractAsync();
   }, [contractData, contractType, selectedSector, onValidationChange]);
 
   const errorsBySeverity = {

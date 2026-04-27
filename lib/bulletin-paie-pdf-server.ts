@@ -78,9 +78,14 @@ interface CotisationResult {
     total: number;
     lines: CotisationLine[];
   };
+  reductions: {
+    total: number;
+    lines: CotisationLine[];
+  };
   salaireNet: number;
   salaireNetImposable: number;
   coutEmployer: number;
+  reductionFillon: number;
 }
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
@@ -201,13 +206,47 @@ function formatDate(dateStr: string): string {
   }
 }
 
-// ── Calculate cotisations (French 2024 rates) ─────────────────────────────────────
+// ── Calculate cotisations (French 2026 rates) ─────────────────────────────────────
 
 function calculerCotisations(data: BulletinPaieData): CotisationResult {
   const salaireBrut = Math.max(0, data.salaireBrut) || 0;
-  const plafondSS = 3428; // PLAFOND SS 2024 mensuel
+  const plafondSS = 3665; // PLAFOND SS 2026 mensuel
+  const smicMensuelBrut = 1766.92; // SMIC 2026 mensuel brut (35h)
 
-  // Cotisations salariales 2024
+  // ── RÉDUCTION FILLON 2026 ────────────────────────────────────────────────────────
+  // Réforme 2026 : Calcul mensuel, paramètre T = 0.3194
+  let reductionFillon = 0;
+  const ratioSmic = salaireBrut / smicMensuelBrut;
+
+  if (ratioSmic < 1.6) {
+    // Coefficient = (T / 0.6) × (1.6 × SMIC / salaire brut - 1)
+    const T = 0.3194; // Taux maximum 2026
+    const coefficient = Math.max(0, (T / 0.6) * (1.6 * smicMensuelBrut / salaireBrut - 1));
+
+    // La réduction s'applique sur les cotisations patronales suivantes :
+    // - Maladie (13.15%)
+    // - Vieillesse plafonnée (8.55%)
+    // - Vieillesse déplafonnée (2.09%)
+    // - Allocations familiales (3.45%)
+    // - Accidents du travail (taux moyen 2%)
+    // Total taux concerné : 29.24%
+    const tauxTotauxConernes = 0.1315 + 0.0855 + 0.0209 + 0.0345 + 0.02;
+    reductionFillon = salaireBrut * coefficient * (tauxTotauxConernes / 0.2924);
+  }
+
+  // ── RÉDUCTION COTISATIONS RETRAITE (Bas salaires) ───────────────────────────────
+  // Exonération des cotisations retraite de base pour les salaires ≤ 1.2 SMIC
+  let reductionRetraiteBase = 0;
+  if (ratioSmic <= 1.2) {
+    // Exonération totale de la cotisation vieillesse déplafonnée patronale (2.09%)
+    reductionRetraiteBase = salaireBrut * 0.0209;
+  } else if (ratioSmic <= 1.3) {
+    // Exonération dégressive entre 1.2 et 1.3 SMIC
+    const decrementalRate = (1.3 - ratioSmic) / 0.1;
+    reductionRetraiteBase = salaireBrut * 0.0209 * decrementalRate;
+  }
+
+  // ── COTISATIONS SALARIALES 2026 ─────────────────────────────────────────────────
   const salariales: CotisationLine[] = [
     { label: 'CSG/CRDS imposable', value: salaireBrut * 0.0240, taux: 2.40, base: salaireBrut * 0.9825 },
     { label: 'CSG/CRDS non imposable', value: salaireBrut * 0.0680, taux: 6.80, base: salaireBrut * 0.9825 },
@@ -245,7 +284,7 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
 
   const totalSalariales = salariales.reduce((sum, c) => sum + c.value, 0);
 
-  // Cotisations patronales
+  // ── COTISATIONS PATRONALES 2026 ─────────────────────────────────────────────────
   const patronales: CotisationLine[] = [
     { label: 'Maladie', value: salaireBrut * 0.1315, taux: 13.15, base: salaireBrut },
     { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0209, taux: 2.09, base: salaireBrut },
@@ -254,6 +293,29 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
     { label: 'Accidents du travail', value: salaireBrut * 0.0200, taux: 2.00, base: salaireBrut },
     { label: 'FNAL', value: salaireBrut > plafondSS ? salaireBrut * 0.0010 : Math.min(salaireBrut, plafondSS) * 0.0050, taux: salaireBrut > plafondSS ? 0.10 : 0.50, base: salaireBrut },
   ];
+
+  // ── RÉDUCTIONS PATRONALES (affichées comme lignes négatives) ────────────────────
+  const reductions: CotisationLine[] = [];
+
+  // Réduction Fillon 2026
+  if (reductionFillon > 0) {
+    reductions.push({
+      label: 'Réduction Fillon 2026',
+      value: -reductionFillon,
+      taux: 'Fillon',
+      base: salaireBrut
+    });
+  }
+
+  // Réduction cotisations retraite (bas salaires)
+  if (reductionRetraiteBase > 0) {
+    reductions.push({
+      label: 'Exonération retraite bas salaires',
+      value: -reductionRetraiteBase,
+      taux: 'Retraite',
+      base: salaireBrut
+    });
+  }
 
   // Add supplementary pension for non-cadre
   if (data.statut === 'non_cadre' || data.statut === 'alternance') {
@@ -283,6 +345,7 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
   }
 
   const totalPatronales = patronales.reduce((sum, c) => sum + c.value, 0);
+  const totalReductions = reductions.reduce((sum, c) => sum + c.value, 0);
 
   // Calcul salaire net
   let salaireNet = salaireBrut - totalSalariales;
@@ -293,14 +356,16 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
   }
 
   const salaireNetImposable = salaireNet - (salaireBrut * 0.0240);
-  const coutEmployer = salaireBrut + totalPatronales;
+  const coutEmployer = salaireBrut + totalPatronales + totalReductions; // totalReductions est négatif
 
   return {
     salariales: { total: totalSalariales, lines: salariales },
     patronales: { total: totalPatronales, lines: patronales },
+    reductions: { total: totalReductions, lines: reductions },
     salaireNet: Math.max(0, salaireNet),
     salaireNetImposable: Math.max(0, salaireNetImposable),
-    coutEmployer
+    coutEmployer,
+    reductionFillon
   };
 }
 
@@ -464,6 +529,39 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
     y -= 26;
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // ── SECTION: REDUCTIONS PATRONALES (2026) ────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    if (cotisations.reductions.lines.length > 0) {
+      needPage();
+      page.drawRectangle({ x: margin, y: y - 16, width: contentW, height: 16, color: mixRgb(accent, 0.3) });
+      drawText(page, 'REDUCTIONS PATRONALES (2026)', margin + 6, y - 11, 9, helvBold, rgb(1, 1, 1));
+      y -= 24;
+
+      // Table header
+      drawText(page, 'Libelle', colX.label, y, 8, helvBold, ink);
+      drawText(page, 'Base', colX.base, y, 8, helvBold, ink);
+      rightText(page, 'Taux', colX.taux + 25, y, 8, helvBold, ink);
+      rightText(page, 'Montant', W - margin, y, 8, helvBold, ink);
+      y -= 14;
+
+      for (const reduction of cotisations.reductions.lines) {
+        drawText(page, reduction.label, colX.label, y, 8, helvReg, ink);
+        rightText(page, formatMonnaie(reduction.base), colX.base, y, 8, helvReg, ink);
+        const tauxStr = typeof reduction.taux === 'number' ? `${reduction.taux.toFixed(2)}%` : reduction.taux;
+        rightText(page, tauxStr, colX.taux + 25, y, 8, helvReg, ink);
+        rightText(page, formatMonnaie(Math.abs(reduction.value)), W - margin, y, 8, helvReg, rgb(0.114, 0.62, 0.459));
+        y -= 14;
+      }
+
+      // Total reductions
+      page.drawLine({ start: { x: margin, y: y + 6 }, end: { x: W - margin, y: y + 6 }, thickness: 1.5, color: rgb(0.114, 0.62, 0.459) });
+      drawText(page, 'TOTAL REDUCTIONS', colX.label, y, 10, helvBold, rgb(0.114, 0.62, 0.459));
+      rightText(page, formatMonnaie(Math.abs(cotisations.reductions.total)), W - margin, y, 10, helvBold, rgb(0.114, 0.62, 0.459));
+      y -= 26;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // ── SECTION: NET A PAYER ─────────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -486,6 +584,15 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
     y -= 12;
     drawText(page, `Coût employeur: ${formatMonnaie(cotisations.coutEmployer)}`, margin, y, 8, helvReg, ink);
     y -= 12;
+
+    // Informations sur les réductions 2026
+    if (cotisations.reductionFillon > 0) {
+      drawText(page, `Réduction Fillon 2026: ${formatMonnaie(cotisations.reductionFillon)}`, margin, y, 8, helvReg, rgb(0.114, 0.62, 0.459));
+      y -= 12;
+    }
+
+    drawText(page, 'Taux de cotisation 2026 - SMIC mensuel: 1 766,92 €', margin, y, 7, helvReg, muted);
+    y -= 10;
     drawText(page, 'Article R3243-2 du Code du travail: Ce bulletin est remis en ligne sur support électronique.', margin, y, 7, timesItalic, muted);
     y -= 24;
 

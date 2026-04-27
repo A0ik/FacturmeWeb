@@ -851,16 +851,18 @@ function generateArticles(data: ContractTemplateData, accent: string): string {
 
   // ── ARTICLE : Non-concurrence (si activée) ───────────────
   if (data.nonCompeteClause && !['stage', 'freelance'].includes(type)) {
-    A("Clause de non-concurrence", `
+    A("Clause de non-concurrence OBLIGATOIRE", `
+      <p><strong>⚠️ CLAUSE AVEC INDEMNITÉ COMPENSATOIRE OBLIGATOIRE</strong></p>
       <p>En contrepartie du paiement d'une indemnité compensatrice mensuelle égale à
       <strong>${data.nonCompeteCompensation ? fmtMoney(data.nonCompeteCompensation) : '___________'} brut</strong>
       versée pendant la durée d'application de la clause, ${fullName} s'interdit,
       après la rupture du présent contrat, d'exercer toute activité concurrente
       ${data.nonCompeteArea ? `dans la zone géographique suivante&nbsp;: <strong>${esc(data.nonCompeteArea)}</strong>` : 'dans le secteur d\'activité de l\'entreprise'},
       pendant une durée de <strong>${data.nonCompeteDuration ? esc(data.nonCompeteDuration) : '___________'}</strong>.</p>
-      <p class="legal-note">Cette clause est valable conformément à la jurisprudence de la Cour de cassation
-      (Soc. 10&nbsp;juill. 2002)&nbsp;: elle est limitée dans le temps, l'espace et l'activité,
-      et prévoit une contrepartie financière.</p>
+      <p class="legal-note"><strong>CONDITION DE VALIDITÉ OBLIGATOIRE :</strong> Sans cette indemnité compensatrice, la clause de non-concurrence est <strong>NULLE</strong> et inapplicable (Cass. Soc. 10&nbsp;juill. 2002). L'indemnité doit être versée mensuellement et son non-paiement libère le salarié de son obligation de non-concurrence.</p>
+      <p class="legal-note">Cette clause est conforme aux articles L1227-1 et suivants du Code du travail
+      et à la jurisprudence de la Cour de cassation : elle est limitée dans le temps (max 24 mois pour les cadres),
+      l'espace et l'activité, et prévoit une contrepartie financière obligatoire.</p>
     `);
   }
 

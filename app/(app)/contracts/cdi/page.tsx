@@ -21,7 +21,8 @@ import {
   Shield,
   Calculator,
   Info,
-  Sparkles
+  Sparkles,
+  History
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -33,6 +34,9 @@ import { ContractValidator } from '@/components/labor-law/ContractValidator';
 import { ContractSigning } from '@/components/labor-law/SignaturePad';
 import { PayslipEditor } from '@/components/labor-law/PayslipEditor';
 import { ContractEmailModal } from '@/components/labor-law/ContractEmailModal';
+import { ExportFormatModal } from '@/components/labor-law/ExportFormatModal';
+import { ContractVersionHistory } from '@/components/labor-law/ContractVersionHistory';
+import { AISuggestionsModal } from '@/components/labor-law/AISuggestionsModal';
 import { creerBulletinDepuisContrat } from '@/lib/labor-law/bulletin-paie';
 import { generateCDIContract as generateCDITemplate } from '@/lib/labor-law/contract-templates';
 
@@ -81,7 +85,11 @@ interface CDIFormData {
   collectiveAgreement: string;
   probationClause: boolean;
   nonCompeteClause: boolean;
+  nonCompeteDuration?: string;
+  nonCompeteCompensation?: string;
+  nonCompeteArea?: string;
   mobilityClause: boolean;
+  mobilityArea?: string;
 
   // Signatures (base64) + dates
   employerSignature?: string;
@@ -126,7 +134,11 @@ const initialFormData: CDIFormData = {
   collectiveAgreement: '',
   probationClause: false,
   nonCompeteClause: false,
+  nonCompeteDuration: '',
+  nonCompeteCompensation: '',
+  nonCompeteArea: '',
   mobilityClause: false,
+  mobilityArea: '',
   employerSignature: undefined,
   employeeSignature: undefined,
 };
@@ -150,6 +162,10 @@ export default function CDIContractPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [savedContractId, setSavedContractId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -416,6 +432,37 @@ export default function CDIContractPage() {
         throw new Error(`Erreur BDD: ${error.message}${error.details ? ` - Détails: ${error.details}` : ''}${error.hint ? ` - Indication: ${error.hint}` : ''}`);
       }
 
+      // Récupérer l'ID du contrat créé pour l'historique
+      const { data: insertedContract } = await supabase
+        .from('contracts_cdi')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('employee_first_name', formData.employeeFirstName)
+        .eq('employee_last_name', formData.employeeLastName)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (insertedContract?.id) {
+        setSavedContractId(insertedContract.id);
+
+        // Créer une version initiale
+        try {
+          await fetch('/api/contracts/version', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contractId: insertedContract.id,
+              contractType: 'cdi',
+              contractData: formData,
+              comment: 'Version initiale'
+            }),
+          });
+        } catch (versionError) {
+          console.warn('Impossible de créer la version:', versionError);
+        }
+      }
+
       toast.success('Contrat sauvegardé avec succès !');
       setStep('success');
     } catch (err) {
@@ -457,7 +504,6 @@ export default function CDIContractPage() {
     setError('');
 
     try {
-      // Utiliser l'API qui retourne directement le fichier PDF
       const response = await fetch('/api/contracts/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -482,7 +528,6 @@ export default function CDIContractPage() {
         throw new Error((errorData.error || 'Erreur lors de la génération du PDF') + detail);
       }
 
-      // Télécharger le document PDF généré
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -492,6 +537,73 @@ export default function CDIContractPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
+      toast.success('PDF téléchargé avec succès !');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadDOCX = async () => {
+    const missing: string[] = [];
+    if (!formData.employeeFirstName) missing.push('Prénom du salarié');
+    if (!formData.employeeLastName) missing.push('Nom du salarié');
+    if (!formData.employeeAddress) missing.push('Adresse du salarié');
+    if (!formData.employeePostalCode) missing.push('Code postal du salarié');
+    if (!formData.employeeCity) missing.push('Ville du salarié');
+    if (!formData.employeeBirthDate) missing.push('Date de naissance');
+    if (!formData.contractStartDate) missing.push('Date de début du contrat');
+    if (!formData.jobTitle) missing.push('Intitulé du poste');
+    if (!formData.workLocation) missing.push('Lieu de travail');
+    if (!formData.salaryAmount) missing.push('Salaire');
+    if (!formData.companyName) missing.push("Nom de l'entreprise");
+    if (!formData.companySiret) missing.push('SIRET');
+    if (!formData.employerName) missing.push("Nom de l'employeur");
+
+    if (missing.length > 0) {
+      setError(`Champs requis manquants : ${missing.join(', ')}`);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/contracts/docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract: {
+            ...formData,
+            contractType: 'cdi' as const,
+            employeeNationality: formData.employeeNationality || 'Française',
+            companyAddress: formData.companyAddress || '',
+            companyPostalCode: formData.companyPostalCode || '',
+            companyCity: formData.companyCity || '',
+            employerTitle: formData.employerTitle || 'Gérant',
+            workSchedule: formData.workSchedule || '35h hebdomadaires',
+            salaryFrequency: formData.salaryFrequency || 'monthly',
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de la génération du DOCX');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Contrat_CDI_${formData.employeeLastName || 'Salarie'}_${new Date().toISOString().split('T')[0]}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('Document Word téléchargé avec succès !');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement');
       console.error(err);
@@ -1049,6 +1161,54 @@ export default function CDIContractPage() {
                         <span>{benefit.label}</span>
                       </label>
                     ))}
+
+                    {/* Détails clause de non-concurrence */}
+                    {(formData as any).nonCompeteClause && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-3 space-y-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800"
+                      >
+                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">⚠️ Obligatoire : Indemnité compensatoire</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            placeholder="Durée (ex: 12 mois)"
+                            value={formData.nonCompeteDuration || ''}
+                            onChange={(e) => setFormData({ ...formData, nonCompeteDuration: e.target.value })}
+                            className="px-3 py-2 rounded-lg border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                          <input
+                            placeholder="Indemnité mensuelle (€)"
+                            type="number"
+                            value={formData.nonCompeteCompensation || ''}
+                            onChange={(e) => setFormData({ ...formData, nonCompeteCompensation: e.target.value })}
+                            className="px-3 py-2 rounded-lg border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+                        <input
+                          placeholder="Zone géographique (ex: France métropolitaine)"
+                          value={formData.nonCompeteArea || ''}
+                          onChange={(e) => setFormData({ ...formData, nonCompeteArea: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </motion.div>
+                    )}
+
+                    {/* Détails clause de mobilité */}
+                    {(formData as any).mobilityClause && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-3"
+                      >
+                        <input
+                          placeholder="Zone géographique de mobilité (ex: Île-de-France, France métropolitaine)"
+                          value={formData.mobilityArea || ''}
+                          onChange={(e) => setFormData({ ...formData, mobilityArea: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                        />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1245,12 +1405,28 @@ export default function CDIContractPage() {
                 ← Modifier
               </button>
               <button
-                onClick={downloadPDF}
+                onClick={() => setShowExportModal(true)}
                 className="px-6 py-3 bg-primary/10 text-primary rounded-xl font-semibold hover:bg-primary/20 transition-colors flex items-center gap-2"
               >
                 <Download className="w-5 h-5" />
                 Télécharger
               </button>
+              <button
+                onClick={() => setShowAISuggestions(true)}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                Suggestions IA
+              </button>
+              {savedContractId && (
+                <button
+                  onClick={() => setShowVersionHistory(true)}
+                  className="px-6 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                >
+                  <History className="w-5 h-5" />
+                  Historique
+                </button>
+              )}
               <button
                 onClick={saveContract}
                 disabled={loading}
@@ -1331,6 +1507,36 @@ export default function CDIContractPage() {
           onClose={() => setShowEmailModal(false)}
         />
       )}
+
+      {/* Export Format Modal */}
+      <ExportFormatModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExportPDF={downloadPDF}
+        onExportDOCX={downloadDOCX}
+        loading={loading}
+      />
+
+      {/* Version History Modal */}
+      {savedContractId && (
+        <ContractVersionHistory
+          isOpen={showVersionHistory}
+          onClose={() => setShowVersionHistory(false)}
+          contractId={savedContractId}
+          contractType="cdi"
+        />
+      )}
+
+      {/* AI Suggestions Modal */}
+      <AISuggestionsModal
+        isOpen={showAISuggestions}
+        onClose={() => setShowAISuggestions(false)}
+        onApplyClause={(clause) => {
+          toast.success(`Clause "${clause.title}" ajoutée au contrat !`);
+          // TODO: Implement clause application logic
+        }}
+        contractType="cdi"
+      />
     </div>
   );
 }

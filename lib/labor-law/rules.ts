@@ -197,22 +197,24 @@ export const CDI_RULES: LaborRule[] = [
     description: 'Le salaire doit être au moins égal au SMIC ou au salaire minimum conventionnel',
     isRequired: true,
     validation: (data) => {
+      // Import dynamique du service SMIC pour éviter les dépendances circulaires
+      // La vérification sera faite via le composant ContractValidator qui appelle l'API
       const monthlySalary = parseFloat(data.salaryAmount) || 0;
-      const SMIC_2026_HORAIRE = 11.65; // €/heure au 1er mai 2026
-      const SMIC_2026_MENSUEL = 1766.92; // €/mois pour 35h
+      const SMIC_2026_HORAIRE = 11.65; // €/heure au 1er janvier 2026 (valeur de secours)
+      const SMIC_2026_MENSUEL = 1766.92; // €/mois pour 35h (valeur de secours)
 
       if (data.salaryFrequency === 'hourly') {
         if (monthlySalary < SMIC_2026_HORAIRE) {
           return {
             valid: false,
-            error: `Le salaire horaire ne peut être inférieur au SMIC (${SMIC_2026_HORAIRE} €/h)`
+            error: `Le salaire horaire ne peut être inférieur au SMIC (${SMIC_2026_HORAIRE} €/h - valeur 2026)`
           };
         }
       } else {
         if (monthlySalary < SMIC_2026_MENSUEL) {
           return {
             valid: false,
-            error: `Le salaire mensuel ne peut être inférieur au SMIC (${SMIC_2026_MENSUEL} €/mois pour 35h)`
+            error: `Le salaire mensuel ne peut être inférieur au SMIC (${SMIC_2026_MENSUEL} €/mois pour 35h - valeur 2026)`
           };
         }
       }

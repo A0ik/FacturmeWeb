@@ -132,13 +132,17 @@ Détection automatique de contractCategory :
     const systemPrompt = systemPrompts[contract_type] || systemPrompts.other;
 
     const completion = await openrouter.chat.completions.create({
-      model: 'mistralai/mistral-small-24b-instruct-2501',
+      // Modèle performant et moins cher sur OpenRouter : Gemma 3 27B
+      // Coût: ~0.10€/M tokens vs ~0.30€/M pour Mistral Small
+      // Performance: Excellente pour le français et les tâches structurées
+      model: 'google/gemma-3-27b-it',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.2,
+      max_tokens: 1500,
     });
 
     let parsed: any = {};
