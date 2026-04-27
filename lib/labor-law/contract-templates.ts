@@ -240,7 +240,7 @@ function getStyles(accent: string): string {
 
     @page {
       size: A4;
-      margin: 35mm 25mm 40mm 25mm;
+      margin: 20mm 20mm 25mm 20mm;
     }
     @media print {
       html, body { height: auto; }
@@ -255,9 +255,9 @@ function getStyles(accent: string): string {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       max-width: 210mm;
       margin: 0 auto;
-      padding: 25mm 25mm 30mm;
-      font-size: 10.5pt;
-      line-height: 2;
+      padding: 10mm 15mm 15mm;
+      font-size: 10pt;
+      line-height: 1.5;
       color: #2D3748;
       background: #fff;
     }
@@ -267,49 +267,49 @@ function getStyles(accent: string): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 70px;
-      margin-bottom: 70px;
+      padding-bottom: 30px;
+      margin-bottom: 30px;
       border-bottom: 2px solid #E2E8F0;
     }
     .doc-header-company { flex: 1; }
     .doc-header-company .company-name {
-      font-size: 18pt;
+      font-size: 16pt;
       font-weight: 700;
       color: #1A202C;
       letter-spacing: 0.5px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .doc-header-company .company-details {
-      font-size: 10pt;
+      font-size: 9pt;
       color: #718096;
-      line-height: 2;
+      line-height: 1.5;
     }
     .doc-header-meta {
       text-align: right;
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #A0AEC0;
     }
     .doc-header-meta .doc-ref {
       display: inline-block;
       background: #F7FAFC;
       border: 1px solid #E2E8F0;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 9.5pt;
-      margin-bottom: 18px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 9pt;
+      margin-bottom: 10px;
       color: #4A5568;
       font-weight: 600;
     }
     .legal-ref {
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #718096;
       font-style: normal;
       text-align: center;
-      margin-bottom: 70px;
-      padding: 24px;
+      margin-bottom: 30px;
+      padding: 15px;
       background: #F7FAFC;
-      border-radius: 12px;
-      line-height: 1.8;
+      border-radius: 8px;
+      line-height: 1.5;
       border: 1px dashed #E2E8F0;
     }
 
@@ -317,32 +317,32 @@ function getStyles(accent: string): string {
     .main-title {
       text-align: center;
       font-family: 'Playfair Display', serif;
-      font-size: 24pt;
+      font-size: 20pt;
       font-weight: 600;
       color: #1A202C;
-      margin: 60px 0 20px;
-      padding: 35px 20px;
+      margin: 30px 0 15px;
+      padding: 20px 15px;
       background: #F7FAFC;
-      border-radius: 16px;
-      border-top: 4px solid \${accent};
-      line-height: 1.5;
+      border-radius: 10px;
+      border-top: 3px solid \${accent};
+      line-height: 1.4;
     }
     .sub-title {
       text-align: center;
-      font-size: 12pt;
+      font-size: 11pt;
       font-weight: 500;
       color: #4A5568;
-      margin-bottom: 40px;
-      line-height: 2;
+      margin-bottom: 20px;
+      line-height: 1.5;
     }
     .between-parties {
       text-align: center;
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 500;
       color: #718096;
-      margin-bottom: 60px;
-      padding: 30px;
-      border-radius: 12px;
+      margin-bottom: 30px;
+      padding: 15px;
+      border-radius: 8px;
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
@@ -350,73 +350,73 @@ function getStyles(accent: string): string {
     /* ── BLOC PARTIES ── */
     .parties-wrapper {
       border: 1px solid #E2E8F0;
-      margin-bottom: 70px;
+      margin-bottom: 30px;
       display: flex;
-      border-radius: 16px;
+      border-radius: 10px;
       overflow: hidden;
       background: #fff;
     }
     .party-col {
       flex: 1;
-      padding: 40px 35px;
+      padding: 20px;
     }
     .party-col:first-child {
       border-right: 1px solid #E2E8F0;
       background: #F7FAFC;
     }
     .party-col-title {
-      font-size: 10.5pt;
+      font-size: 9pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 1px;
       color: #A0AEC0;
-      margin-bottom: 35px;
+      margin-bottom: 15px;
     }
     .party-col .name-main {
-      font-size: 14pt;
+      font-size: 12pt;
       font-weight: 700;
       color: #1A202C;
-      margin-bottom: 25px;
-      line-height: 1.5;
+      margin-bottom: 12px;
+      line-height: 1.4;
     }
     .info-row {
-      font-size: 10.5pt;
+      font-size: 9pt;
       color: #4A5568;
-      margin-bottom: 16px;
-      line-height: 1.8;
+      margin-bottom: 8px;
+      line-height: 1.4;
     }
     .info-row .lbl {
       font-weight: 600;
       color: #2D3748;
-      margin-right: 8px;
+      margin-right: 6px;
     }
 
     /* ── TABLEAU RÉCAPITULATIF ── */
     .section-label {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 1px;
       color: \${accent};
-      margin-bottom: 30px;
-      margin-top: 70px;
-      padding-bottom: 15px;
+      margin-bottom: 15px;
+      margin-top: 25px;
+      padding-bottom: 8px;
       border-bottom: 2px solid #E2E8F0;
     }
     .recap-table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      margin-bottom: 70px;
-      font-size: 10.5pt;
-      border-radius: 12px;
+      margin-bottom: 30px;
+      font-size: 9pt;
+      border-radius: 8px;
       overflow: hidden;
       border: 1px solid #E2E8F0;
     }
     .recap-table th, .recap-table td {
-      padding: 20px 24px;
+      padding: 10px 14px;
       border-bottom: 1px solid #E2E8F0;
-      line-height: 1.8;
+      line-height: 1.4;
     }
     .recap-table tr:last-child th, .recap-table tr:last-child td {
       border-bottom: none;
@@ -436,44 +436,44 @@ function getStyles(accent: string): string {
     }
 
     /* ── ARTICLES ── */
-    .articles-section { margin-top: 60px; }
+    .articles-section { margin-top: 25px; }
     .article-block {
-      margin-bottom: 60px;
+      margin-bottom: 25px;
       page-break-inside: avoid;
     }
     .article-title {
       font-family: 'Playfair Display', serif;
-      font-size: 15pt;
+      font-size: 12pt;
       font-weight: 600;
       color: #1A202C;
-      margin-bottom: 25px;
+      margin-bottom: 10px;
     }
     .article-body {
-      font-size: 10.5pt;
+      font-size: 9pt;
       text-align: justify;
       color: #4A5568;
-      line-height: 2.2;
+      line-height: 1.6;
     }
-    .article-body p { margin-bottom: 24px; text-indent: 0; }
+    .article-body p { margin-bottom: 10px; text-indent: 0; }
     .article-body p:last-child { margin-bottom: 0; }
     .highlight-box {
       background: #F7FAFC;
-      border-left: 4px solid \${accent};
-      padding: 30px 35px;
-      margin: 35px 0;
-      border-radius: 0 12px 12px 0;
-      line-height: 2;
+      border-left: 3px solid \${accent};
+      padding: 12px 15px;
+      margin: 12px 0;
+      border-radius: 0 6px 6px 0;
+      line-height: 1.5;
     }
     .highlight-box strong { color: #1A202C; }
     .legal-note {
-      font-size: 9.5pt;
+      font-size: 8pt;
       color: #718096;
       font-style: normal;
-      margin-top: 30px;
-      padding: 24px 30px;
+      margin-top: 12px;
+      padding: 10px 12px;
       background: #FAFDFF;
-      border-radius: 8px;
-      line-height: 2;
+      border-radius: 6px;
+      line-height: 1.5;
       border: 1px solid #EDF2F7;
     }
 
@@ -481,16 +481,16 @@ function getStyles(accent: string): string {
     .benefits-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
-      margin-top: 30px;
-      margin-bottom: 20px;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 10px;
     }
     .benefit-badge {
       background: #fff;
       border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 14px 24px;
-      font-size: 10pt;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 9pt;
       color: #4A5568;
       font-weight: 500;
       box-shadow: 0 1px 3px rgba(0,0,0,0.02);
@@ -509,101 +509,101 @@ function getStyles(accent: string): string {
     }
     .signatures-section {
       page-break-inside: avoid;
-      padding-top: 60px;
-      margin-top: 50px;
+      padding-top: 30px;
+      margin-top: 25px;
     }
     .signatures-intro {
       text-align: center;
-      font-size: 12pt;
+      font-size: 10pt;
       color: #4A5568;
-      margin-bottom: 50px;
-      line-height: 2;
+      margin-bottom: 25px;
+      line-height: 1.5;
     }
     .fait-a {
       text-align: right;
-      font-size: 11pt;
+      font-size: 10pt;
       color: #4A5568;
-      margin-bottom: 70px;
-      line-height: 2;
-      padding: 20px 0;
+      margin-bottom: 30px;
+      line-height: 1.5;
+      padding: 10px 0;
       border-bottom: 1px solid #E2E8F0;
     }
     .sig-grid {
       display: flex;
-      gap: 100px;
-      margin-top: 40px;
+      gap: 50px;
+      margin-top: 20px;
     }
     .sig-block {
       flex: 1;
-      padding: 40px;
-      border-radius: 16px;
+      padding: 20px;
+      border-radius: 10px;
       background: #F7FAFC;
       border: 1px solid #E2E8F0;
       display: flex;
       flex-direction: column;
     }
     .sig-block-title {
-      font-size: 10.5pt;
+      font-size: 9pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 1px;
       color: #A0AEC0;
-      margin-bottom: 25px;
+      margin-bottom: 12px;
     }
     .sig-block-name {
-      font-size: 13pt;
+      font-size: 11pt;
       font-weight: 700;
       color: #1A202C;
-      margin-bottom: 12px;
-      line-height: 1.5;
+      margin-bottom: 8px;
+      line-height: 1.4;
     }
     .sig-block-sub {
-      font-size: 10.5pt;
+      font-size: 9pt;
       color: #718096;
-      margin-bottom: 50px;
-      line-height: 1.8;
+      margin-bottom: 25px;
+      line-height: 1.4;
     }
     .sig-area {
-      height: 200px;
-      margin-bottom: 30px;
+      height: 120px;
+      margin-bottom: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #fff;
-      border-radius: 12px;
+      border-radius: 8px;
       border: 2px dashed #CBD5E0;
-      padding: 20px;
+      padding: 10px;
     }
     .sig-area img {
-      max-height: 160px;
+      max-height: 100px;
       max-width: 100%;
       object-fit: contain;
     }
     .sig-area-label {
-      font-size: 10pt;
+      font-size: 9pt;
       color: #A0AEC0;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
     }
     .sig-mention {
-      font-size: 9.5pt;
+      font-size: 8pt;
       color: #A0AEC0;
       text-align: center;
-      line-height: 1.8;
+      line-height: 1.4;
       margin-top: auto;
     }
 
     /* ── PIED DE PAGE ── */
     .doc-footer {
-      margin-top: 150px;
-      padding-top: 40px;
+      margin-top: 40px;
+      padding-top: 15px;
       border-top: 1px solid #E2E8F0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 9.5pt;
+      font-size: 8pt;
       color: #A0AEC0;
-      line-height: 2;
+      line-height: 1.4;
     }
     .doc-footer strong { color: #718096; }
 
@@ -611,7 +611,7 @@ function getStyles(accent: string): string {
     .divider {
       border: none;
       border-top: 1px solid #E2E8F0;
-      margin: 100px 0;
+      margin: 30px 0;
     }
   `;
 }

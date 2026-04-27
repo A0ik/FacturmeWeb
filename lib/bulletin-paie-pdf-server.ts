@@ -211,39 +211,40 @@ function formatDate(dateStr: string): string {
 function calculerCotisations(data: BulletinPaieData): CotisationResult {
   const salaireBrut = Math.max(0, data.salaireBrut) || 0;
   const plafondSS = 3665; // PLAFOND SS 2026 mensuel
-  const smicMensuelBrut = 1766.92; // SMIC 2026 mensuel brut (35h)
+  const smicMensuelBrut = 1823.03; // SMIC 2026 mensuel brut (35h) - valeur officielle 2026
 
   // ── RÉDUCTION FILLON 2026 ────────────────────────────────────────────────────────
-  // Réforme 2026 : Calcul mensuel, paramètre T = 0.3194
+  // Réforme 2026 : Extension à 3 SMIC (contre 1.6 auparavant), nouveaux taux maximaux
   let reductionFillon = 0;
   const ratioSmic = salaireBrut / smicMensuelBrut;
 
-  if (ratioSmic < 1.6) {
-    // Coefficient = (T / 0.6) × (1.6 × SMIC / salaire brut - 1)
-    const T = 0.3194; // Taux maximum 2026
+  if (ratioSmic < 3.0) { // Nouveau plafond 2026 : 3 SMIC (au lieu de 1.6)
+    // Formule 2026 : Coefficient = (T / 0.6) × [(1,6 × SMIC / salaire brut) - 1]
+    // Taux maximum 2026 : 0.3956 (<50 salariés) ou 0.3996 (≥50 salariés)
+    const T = 0.3956; // Taux maximum 2026 (par défaut <50 salariés)
     const coefficient = Math.max(0, (T / 0.6) * (1.6 * smicMensuelBrut / salaireBrut - 1));
 
     // La réduction s'applique sur les cotisations patronales suivantes :
     // - Maladie (13.15%)
     // - Vieillesse plafonnée (8.55%)
-    // - Vieillesse déplafonnée (2.09%)
+    // - Vieillesse déplafonnée (2.11% en 2026, contre 2.09% en 2025)
     // - Allocations familiales (3.45%)
     // - Accidents du travail (taux moyen 2%)
-    // Total taux concerné : 29.24%
-    const tauxTotauxConernes = 0.1315 + 0.0855 + 0.0209 + 0.0345 + 0.02;
-    reductionFillon = salaireBrut * coefficient * (tauxTotauxConernes / 0.2924);
+    // Total taux concerné : 29.26% (en hausse de 0.02% pour vieillesse déplafonnée)
+    const tauxTotauxConernes = 0.1315 + 0.0855 + 0.0211 + 0.0345 + 0.02;
+    reductionFillon = salaireBrut * coefficient * (tauxTotauxConernes / 0.2926);
   }
 
   // ── RÉDUCTION COTISATIONS RETRAITE (Bas salaires) ───────────────────────────────
   // Exonération des cotisations retraite de base pour les salaires ≤ 1.2 SMIC
   let reductionRetraiteBase = 0;
   if (ratioSmic <= 1.2) {
-    // Exonération totale de la cotisation vieillesse déplafonnée patronale (2.09%)
-    reductionRetraiteBase = salaireBrut * 0.0209;
+    // Exonération totale de la cotisation vieillesse déplafonnée patronale (2.11% en 2026)
+    reductionRetraiteBase = salaireBrut * 0.0211;
   } else if (ratioSmic <= 1.3) {
     // Exonération dégressive entre 1.2 et 1.3 SMIC
     const decrementalRate = (1.3 - ratioSmic) / 0.1;
-    reductionRetraiteBase = salaireBrut * 0.0209 * decrementalRate;
+    reductionRetraiteBase = salaireBrut * 0.0211 * decrementalRate;
   }
 
   // ── COTISATIONS SALARIALES 2026 ─────────────────────────────────────────────────
@@ -251,7 +252,7 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
     { label: 'CSG/CRDS imposable', value: salaireBrut * 0.0240, taux: 2.40, base: salaireBrut * 0.9825 },
     { label: 'CSG/CRDS non imposable', value: salaireBrut * 0.0680, taux: 6.80, base: salaireBrut * 0.9825 },
     { label: 'Maladie', value: salaireBrut * 0.0700, taux: 7.00, base: salaireBrut },
-    { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0023, taux: 0.23, base: salaireBrut },
+    { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0023, taux: 0.23, base: salaireBrut }, // Taux 2026 inchangé
     { label: 'Vieillesse plafonnée', value: Math.min(salaireBrut, plafondSS) * 0.0693, taux: 6.93, base: Math.min(salaireBrut, plafondSS) },
   ];
 
@@ -287,7 +288,7 @@ function calculerCotisations(data: BulletinPaieData): CotisationResult {
   // ── COTISATIONS PATRONALES 2026 ─────────────────────────────────────────────────
   const patronales: CotisationLine[] = [
     { label: 'Maladie', value: salaireBrut * 0.1315, taux: 13.15, base: salaireBrut },
-    { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0209, taux: 2.09, base: salaireBrut },
+    { label: 'Vieillesse déplafonnée', value: salaireBrut * 0.0211, taux: 2.11, base: salaireBrut }, // Taux 2026 : hausse à 2.11%
     { label: 'Vieillesse plafonnée', value: Math.min(salaireBrut, plafondSS) * 0.0855, taux: 8.55, base: Math.min(salaireBrut, plafondSS) },
     { label: 'Allocations familiales', value: salaireBrut * 0.0345, taux: 3.45, base: salaireBrut },
     { label: 'Accidents du travail', value: salaireBrut * 0.0200, taux: 2.00, base: salaireBrut },
@@ -591,7 +592,7 @@ export async function generatePayslipPdfBuffer(data: BulletinPaieData): Promise<
       y -= 12;
     }
 
-    drawText(page, 'Taux de cotisation 2026 - SMIC mensuel: 1 766,92 €', margin, y, 7, helvReg, muted);
+    drawText(page, 'Taux de cotisation 2026 - SMIC mensuel: 1 823,03 € (12,02€/h)', margin, y, 7, helvReg, muted);
     y -= 10;
     drawText(page, 'Article R3243-2 du Code du travail: Ce bulletin est remis en ligne sur support électronique.', margin, y, 7, timesItalic, muted);
     y -= 24;

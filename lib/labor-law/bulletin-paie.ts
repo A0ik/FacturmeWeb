@@ -236,48 +236,48 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
 <meta charset="UTF-8">
 <title>Bulletin de paie ${moisAnnee} — ${data.prenom} ${data.nom}</title>
 <style>
-  @page { size: A4; margin: 5mm 10mm; }
+  @page { size: A4; margin: 4mm 8mm 4mm 8mm; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 8pt; color: #1a1a1a; background: #fff; }
-  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 4mm; }
+  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 7pt; color: #1a1a1a; background: #fff; }
+  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 2mm; }
 
   /* Header */
-  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid ${headerColor}; padding-bottom:8px; margin-bottom:6px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid ${headerColor}; padding-bottom:4px; margin-bottom:4px; }
   .header-left { flex:1; }
   .header-right { text-align:right; }
-  .company-name { font-size:12pt; font-weight:bold; color:${headerColor}; letter-spacing:0.5px; text-transform:uppercase; }
-  .bulletin-title { font-size:10pt; font-weight:bold; color:#fff; background:linear-gradient(135deg, ${headerColor}, ${headerColor}dd); padding:4px 12px; border-radius:6px; display:inline-block; box-shadow:0 2px 6px ${headerColor}40; }
+  .company-name { font-size:10pt; font-weight:bold; color:${headerColor}; letter-spacing:0.3px; text-transform:uppercase; }
+  .bulletin-title { font-size:8pt; font-weight:bold; color:#fff; background:linear-gradient(135deg, ${headerColor}, ${headerColor}dd); padding:3px 8px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px ${headerColor}40; }
 
   /* Blocs identité */
-  .id-bloc { display:flex; gap:8px; margin-bottom:8px; }
-  .id-box { flex:1; border:1px solid #e0e0e0; border-radius:8px; padding:6px 10px; font-size:7pt; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#fafafa; }
-  .id-box-title { font-size:7pt; font-weight:bold; color:${titleColor}; text-transform:uppercase; border-bottom:1px solid ${titleColor}40; margin-bottom:4px; padding-bottom:3px; letter-spacing:0.5px; }
-  .id-row { display:flex; justify-content:space-between; margin-bottom:2px; line-height:1.3; }
+  .id-bloc { display:flex; gap:5px; margin-bottom:5px; }
+  .id-box { flex:1; border:1px solid #e0e0e0; border-radius:5px; padding:4px 6px; font-size:6pt; box-shadow:0 1px 2px rgba(0,0,0,0.03); background:#fafafa; }
+  .id-box-title { font-size:6pt; font-weight:bold; color:${titleColor}; text-transform:uppercase; border-bottom:1px solid ${titleColor}40; margin-bottom:2px; padding-bottom:2px; letter-spacing:0.3px; }
+  .id-row { display:flex; justify-content:space-between; margin-bottom:1px; line-height:1.2; }
   .id-key { color:#666; font-weight:500; }
   .id-val { font-weight:600; color:#333; }
 
   /* Tableau cotisations */
-  .section-head { background:linear-gradient(135deg, ${sectionHeaderColor}, ${sectionHeaderColor}e0); color:#fff; font-size:7.5pt; font-weight:bold; padding:4px 10px; margin:4px 0 0 0; border-radius:4px; letter-spacing:0.3px; box-shadow:0 1px 4px ${sectionHeaderColor}30; }
-  table.cot { width:100%; border-collapse:collapse; font-size:7.5pt; border-radius:6px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-  table.cot th { background:linear-gradient(135deg, #f8f9fa, #f0f1f2); font-weight:bold; padding:5px 8px; border-bottom:1px solid #ccc; text-align:right; font-size:7pt; }
+  .section-head { background:linear-gradient(135deg, ${sectionHeaderColor}, ${sectionHeaderColor}e0); color:#fff; font-size:6.5pt; font-weight:bold; padding:2px 6px; margin:2px 0 0 0; border-radius:3px; letter-spacing:0.2px; box-shadow:0 1px 2px ${sectionHeaderColor}30; }
+  table.cot { width:100%; border-collapse:collapse; font-size:6.5pt; border-radius:4px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+  table.cot th { background:linear-gradient(135deg, #f8f9fa, #f0f1f2); font-weight:bold; padding:3px 5px; border-bottom:1px solid #ccc; text-align:right; font-size:6pt; }
   table.cot th:first-child { text-align:left; }
-  table.cot td { padding:4px 8px; border-bottom:1px solid #e8e8e8; }
+  table.cot td { padding:2px 5px; border-bottom:1px solid #e8e8e8; }
 
   /* Bloc NET */
-  .net-box { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, ${netBoxColor}, ${netBoxColor}e0); color:#fff; border-radius:8px; padding:8px 14px; margin-top:6px; box-shadow:0 3px 8px ${netBoxColor}40; }
-  .net-label { font-size:10pt; font-weight:bold; letter-spacing:0.3px; }
-  .net-amount { font-size:14pt; font-weight:bold; text-shadow:0 1px 2px rgba(0,0,0,0.1); }
+  .net-box { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, ${netBoxColor}, ${netBoxColor}e0); color:#fff; border-radius:6px; padding:5px 10px; margin-top:4px; box-shadow:0 2px 4px ${netBoxColor}40; }
+  .net-label { font-size:8pt; font-weight:bold; letter-spacing:0.2px; }
+  .net-amount { font-size:12pt; font-weight:bold; text-shadow:0 1px 1px rgba(0,0,0,0.1); }
 
   /* Pied */
-  .footer-bloc { display:flex; gap:8px; margin-top:8px; font-size:7pt; color:#555; }
-  .footer-box { flex:1; border:1px solid #e0e0e0; border-radius:6px; padding:5px 8px; background:#fafafa; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-  .footer-box-title { font-weight:bold; color:${titleColor}; margin-bottom:4px; font-size:7pt; text-transform:uppercase; letter-spacing:0.3px; border-bottom:1px solid ${titleColor}30; padding-bottom:2px; }
-  .cp-row { display:flex; justify-content:space-between; margin-bottom:2px; line-height:1.2; }
-  .mention { font-size:6pt; color:#888; margin-top:6px; border-top:1px solid #ddd; padding-top:4px; font-style:italic; text-align:center; }
+  .footer-bloc { display:flex; gap:5px; margin-top:5px; font-size:6pt; color:#555; }
+  .footer-box { flex:1; border:1px solid #e0e0e0; border-radius:4px; padding:3px 5px; background:#fafafa; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+  .footer-box-title { font-weight:bold; color:${titleColor}; margin-bottom:2px; font-size:6pt; text-transform:uppercase; letter-spacing:0.2px; border-bottom:1px solid ${titleColor}30; padding-bottom:1px; }
+  .cp-row { display:flex; justify-content:space-between; margin-bottom:1px; line-height:1.1; }
+  .mention { font-size:5pt; color:#888; margin-top:3px; border-top:1px solid #ddd; padding-top:2px; font-style:italic; text-align:center; }
 </style>
 </head>
 <body>

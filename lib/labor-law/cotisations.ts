@@ -82,9 +82,9 @@ const TAUX_2026 = {
   }
 };
 
-// SMIC 2026 - Taux horaire officiel
-const SMIC_HORAIRE_2026 = 11.65; // €/heure
-const SMIC_MENSUEL_2026 = 1766.92; // €/mois pour 35h (base 151.67h)
+// SMIC 2026 - Taux horaire officiel (au 1er janvier 2026)
+const SMIC_HORAIRE_2026 = 12.02; // €/heure (taux officiel 2026)
+const SMIC_MENSUEL_2026 = 1823.03; // €/mois pour 35h (base 151.67h) - SMIC brut 2026
 
 // Calcul des cotisations
 export function calculerCotisations(data: CotisationData): CotisationResult {
@@ -190,19 +190,21 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
   // Coût employeur (avant réduction Fillon)
   const coutEmployerAvantReduction = salaireBrut + totalPatronal;
 
-  // === RÉDUCTION FILLON (2025-2026) ===
-  // Devenue réduction générale des cotisations
+  // === RÉDUCTION FILLON 2026 (RGDU - Réduction Générale Dégressive Unique) ===
+  // Réforme 2026 : Extension à 3 SMIC (contre 1.6 auparavant)
   const calculerReductionFillon = (salaireBrut: number, nombreSalaries: number = 1): number => {
-    if (salaireBrut >= SMIC_MENSUEL_2026 * 1.6) return 0; // Pas de réduction au-dessus de 1.6 SMIC
+    if (salaireBrut >= SMIC_MENSUEL_2026 * 3.0) return 0; // Pas de réduction au-dessus de 3 SMIC (nouveau plafond 2026)
 
     const smicMensuel = SMIC_MENSUEL_2026;
-    const coefficient = (salaireBrut / smicMensuel) * 1.6 - 1;
 
-    // Taux maximum de réduction
-    const tauxMax = nombreSalaries < 50 ? 0.3195 : 0.3195;
+    // Formule 2026 : Coefficient = (T/0,6) × [(1,6 × SMIC / salaire brut) - 1]
+    const coefficient = Math.max(0, (0.6 / 0.6) * ((1.6 * smicMensuel / salaireBrut) - 1));
 
-    // La réduction est plafonnée
-    const reduction = salaireBrut * Math.max(0, Math.min(coefficient / 0.6, tauxMax));
+    // Taux maximum de réduction 2026
+    const tauxMax = nombreSalaries < 50 ? 0.3956 : 0.3996; // 39,56% ou 39,96% selon effectif
+
+    // La réduction est plafonnée au taux max
+    const reduction = salaireBrut * Math.min(coefficient, tauxMax);
 
     return reduction;
   };
@@ -303,13 +305,13 @@ export function calculerCotisationsAlternance(salaireBrut: number, type: 'appren
 
 // SMIC 2026
 export const SMIC_2026 = {
-  horaire: 11.65, // €/heure (taux officiel 2025-2026)
-  mensuel_35h: 1766.92, // €/mois pour 35h hebdomadaires (151.67h)
-  mensuel_39h: 1969.15, // €/mois pour 39h (4h supp majorées à 110%)
-  annuel: 21148.92, // €/an (1766.92 × 12)
+  horaire: 12.02, // €/heure (taux officiel 2026)
+  mensuel_35h: 1823.03, // €/mois pour 35h hebdomadaires (151.67h)
+  mensuel_39h: 2030.04, // €/mois pour 39h (4h supp majorées à 110%)
+  annuel: 21876.36, // €/an (1823.03 × 12)
 };
 
-// Fonction pour calculer la réduction Fillon séparément
+// Fonction pour calculer la réduction Fillon séparément (2026)
 export function calculerReductionFillon(
   salaireBrut: number,
   nombreSalaries: number = 50,
@@ -326,22 +328,25 @@ export function calculerReductionFillon(
     smicMensuel = smicMensuel * (heuresHebdo / 35);
   }
 
-  // Vérifier si éligible (< 1.6 SMIC)
-  if (salaireBrut >= smicMensuel * 1.6) {
-    return { montant: 0, coefficient: 0, details: 'Salaire ≥ 1.6 SMIC (non éligible)' };
+  // Vérifier si éligible (< 3 SMIC - nouveau plafond 2026)
+  if (salaireBrut >= smicMensuel * 3.0) {
+    return { montant: 0, coefficient: 0, details: 'Salaire ≥ 3 SMIC (non éligible - nouveau plafond 2026)' };
   }
 
-  // Calcul du coefficient
+  // Formule 2026 : Coefficient = (T/0,6) × [(1,6 × SMIC / salaire brut) - 1]
   const ratio = salaireBrut / smicMensuel;
-  const coefficient = Math.min((ratio * 1.6 - 1) / 0.6, nombreSalaries < 50 ? 0.3195 : 0.3195);
+  const coefficient = Math.max(0, (0.6 / 0.6) * ((1.6 * smicMensuel / salaireBrut) - 1));
 
-  // Montant de la réduction
-  const montant = salaireBrut * Math.max(0, coefficient);
+  // Taux maximum 2026 selon effectif
+  const tauxMax = nombreSalaries < 50 ? 0.3956 : 0.3996; // 39,56% ou 39,96%
+
+  // Montant de la réduction (plafonné au taux max)
+  const montant = salaireBrut * Math.min(coefficient, tauxMax);
 
   return {
     montant,
-    coefficient,
-    details: `Ratio: ${ratio.toFixed(3)}, Coefficient: ${coefficient.toFixed(4)}`
+    coefficient: Math.min(coefficient, tauxMax),
+    details: `Ratio: ${ratio.toFixed(3)} SMIC, Coefficient: ${Math.min(coefficient, tauxMax).toFixed(4)}, Taux max: ${(tauxMax * 100).toFixed(2)}%`
   };
 }
 
