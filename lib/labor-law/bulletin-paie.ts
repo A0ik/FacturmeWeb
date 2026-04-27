@@ -191,6 +191,16 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
 
   const display = getCotisationsDisplay(cotisations);
 
+  // Vérifier si le salaire dépasse le plafond SS pour les tranches
+  const plafondSS = 3666; // Plafond SS 2026
+  const basePlafonnée = Math.min(totalBrut, plafondSS);
+  const baseDéplafonnée = totalBrut;
+  const tauxVieillessePlafonnée = 6.93;
+  const tauxVieillesseDéplafonnée = 0.40;
+  const vieillessePlafonnéeMontant = basePlafonnée * tauxVieillessePlafonnée / 100;
+  const vieillesseDéplafonnéeMontant = baseDéplafonnée * tauxVieillesseDéplafonnée / 100;
+  const totalVieillesseSalariale = vieillessePlafonnéeMontant + vieillesseDéplafonnéeMontant;
+
   const netAvantImpot = totalBrut - cotisations.salariales.total
     + (data.indemnitesTransport ?? 0)
     + (data.indemniteDeplacementVehicule ?? 0)
@@ -352,7 +362,12 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       <th style="width:18%">Part patronale</th>
     </tr></thead>
     <tbody>
-      ${display.salariales.map(c => row(c.label, fmtE(totalBrut), typeof c.taux === 'number' ? c.taux.toFixed(2) + '%' : (c.taux ?? ''), fmtE(c.value), '')).join('')}
+      ${row('Vieillesse plafonnée', fmtE(basePlafonnée), `${tauxVieillessePlafonnée.toFixed(2)}%`, fmtE(vieillessePlafonnéeMontant), '')}
+      ${row('Vieillesse déplafonnée', fmtE(baseDéplafonnée), `${tauxVieillesseDéplafonnée.toFixed(2)}%`, fmtE(vieillesseDéplafonnéeMontant), '')}
+      ${data.statut === 'cadre' ? row('Retraite cadres AGIRC-ARRCO (T1)', fmtE(Math.min(totalBrut, plafondSS)), '0,86%', fmtE(cotisations.salariales.retraite_cadres), '') : ''}
+      ${row('CSG déductible', fmtE(totalBrut * 0.9825), '6,80%', fmtE(cotisations.salariales.csg_deductible), '')}
+      ${row('CSG non-déductible', fmtE(totalBrut * 0.9825), '2,40%', fmtE(cotisations.salariales.csg_non_deductible), '')}
+      ${row('CRDS', fmtE(totalBrut * 0.9825), '0,50%', fmtE(cotisations.salariales.crds), '')}
       ${data.mutuellePartSalarie ? row('Mutuelle — part salarié', '', '', fmtE(data.mutuellePartSalarie), '') : ''}
       ${data.prevoyancePartSalarie ? row('Prévoyance — part salarié', '', '', fmtE(data.prevoyancePartSalarie), '') : ''}
       ${row('TOTAL COTISATIONS', '', '', fmtE(cotisations.salariales.total + (data.mutuellePartSalarie ?? 0) + (data.prevoyancePartSalarie ?? 0)), '', true, true)}
@@ -370,10 +385,25 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       <th style="width:18%">Montant</th>
     </tr></thead>
     <tbody>
-      ${display.patronales.map(c => row(c.label, fmtE(totalBrut), typeof c.taux === 'number' ? c.taux.toFixed(2) + '%' : (c.taux ?? ''), '', fmtE(c.value))).join('')}
+      ${row('Maladie', fmtE(totalBrut), '13,00%', '', fmtE(cotisations.patronales.maladie))}
+      ${row('Vieillesse plafonnée', fmtE(basePlafonnée), '8,55%', '', fmtE(basePlafonnée * 8.55 / 100))}
+      ${row('Vieillesse déplafonnée', fmtE(baseDéplafonnée), '2,00%', '', fmtE(baseDéplafonnée * 2.00 / 100))}
+      ${row('Allocations familiales', fmtE(totalBrut), '3,45%', '', fmtE(cotisations.patronales.allocations_familiales))}
+      ${row('Accident du travail', fmtE(totalBrut), '0,70%', '', fmtE(cotisations.patronales.accident_du_travail))}
+      ${row('Solidarité autonomie', fmtE(totalBrut), '0,30%', '', fmtE(cotisations.patronales.solidarite_autonomie))}
+      ${row('FNAL', fmtE(totalBrut), '0,10%', '', fmtE(cotisations.patronales.fnal))}
+      ${row('Chômage', fmtE(Math.min(totalBrut, 4 * plafondSS)), '4,05%', '', fmtE(cotisations.patronales.chomage))}
+      ${data.statut === 'cadre' ? row('Retraite cadres AGIRC-ARRCO T1', fmtE(Math.min(totalBrut, plafondSS)), '1,29%', '', fmtE(Math.min(totalBrut, plafondSS) * 1.29 / 100)) : ''}
+      ${data.statut === 'cadre' && totalBrut > plafondSS ? row('Retraite cadres AGIRC-ARRCO T2', fmtE(Math.min(Math.max(0, totalBrut - plafondSS), 7 * plafondSS)), '11,49%', '', fmtE(Math.min(Math.max(0, totalBrut - plafondSS), 7 * plafondSS) * 11.49 / 100)) : ''}
+      ${row('AGS', fmtE(totalBrut), '0,15%', '', fmtE(cotisations.patronales.ags))}
+      ${row('Formation professionnelle', fmtE(totalBrut), '0,55%', '', fmtE(cotisations.patronales.formation))}
+      ${data.statut === 'cadre' ? row('Prévoyance cadres', fmtE(totalBrut), '1,50%', '', fmtE(cotisations.patronales.prevoyance)) : ''}
+      ${row('Complémentaire santé', fmtE(totalBrut), '0,60%', '', fmtE(cotisations.patronales.supplementaire_sante))}
+      ${row('Transport', fmtE(totalBrut), '0,50%', '', fmtE(cotisations.patronales.transport))}
+      ${cotisations.patronales.reduction_fillon > 0 ? row('Réduction Fillon (ex-Réduction générale)', fmtE(totalBrut), 'Variable', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon) + '</span>') : ''}
       ${data.mutuellePartEmployeur ? row('Mutuelle — part employeur', '', '', '', fmtE(data.mutuellePartEmployeur)) : ''}
       ${data.prevoyancePartEmployeur ? row('Prévoyance — part employeur', '', '', '', fmtE(data.prevoyancePartEmployeur)) : ''}
-      ${row('COÛT TOTAL EMPLOYEUR', '', '', '', fmtE(cotisations.patronales.total + (data.mutuellePartEmployeur ?? 0) + (data.prevoyancePartEmployeur ?? 0) + totalBrut), true, true)}
+      ${row('COÛT TOTAL EMPLOYEUR', '', '', '', fmtE(cotisations.coutEmployer + (data.mutuellePartEmployeur ?? 0) + (data.prevoyancePartEmployeur ?? 0)), true, true)}
     </tbody>
   </table>
 
@@ -413,6 +443,8 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       <div class="cp-row"><span>Salaire brut</span><span>${fmtE(totalBrut)}</span></div>
       <div class="cp-row"><span>Cotisations salariales</span><span style="color:#c0392b;">− ${fmtE(cotisations.salariales.total)}</span></div>
       <div class="cp-row"><span>Net avant impôt</span><span><strong>${fmtE(Math.max(0, netAvantImpot))}</strong></span></div>
+      <div class="cp-row"><span>Coût employeur</span><span>${fmtE(cotisations.coutEmployer)}</span></div>
+      ${cotisations.patronales.reduction_fillon > 0 ? `<div class="cp-row" style="color:#27ae60;"><span>Dont réduction Fillon</span><span>− ${fmtE(cotisations.patronales.reduction_fillon)}</span></div>` : ''}
     </div>
     <div class="footer-box">
       <div class="footer-box-title">PAS & Cumuls</div>

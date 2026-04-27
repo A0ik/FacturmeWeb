@@ -181,19 +181,76 @@ SELECT * FROM pg_policies WHERE tablename LIKE 'contracts_%';
 
 ---
 
-## ⚠️ 7. RESTE À FAIRE
+## ✅ 7. BULLETIN DE PAIE - TAUX DE RETRAITE ET RÉDUCTION FILLON
 
-### Template PDF
+### Modifications dans `[lib/labor-law/bulletin-paie.ts]`
+
+#### Taux de retraite détaillés (CORRIGÉS)
+**Cotisations salariales :**
+- **Vieillesse plafonnée** : 6.93% (sur la base plafonnée SS)
+- **Vieillesse déplafonnée** : 0.40% (sur le salaire brut total)
+- **Retraite cadres AGIRC-ARRCO T1** : 0.86% (pour les cadres)
+
+**Cotisations patronales :**
+- **Vieillesse plafonnée** : 8.55% (sur la base plafonnée SS)
+- **Vieillesse déplafonnée** : 2.00% (sur le salaire brut total)
+- **Retraite cadres AGIRC-ARRCO T1** : 1.29% (tranche 1, jusqu'au plafond SS)
+- **Retraite cadres AGIRC-ARRCO T2** : 11.49% (tranche 2, de 1 à 8x le plafond SS)
+
+#### Réduction Fillon (AJOUTÉE)
+- Affichée dans la section "Cotisations patronales"
+- Montant déduit en **vert** (ex: `-150.00 €`)
+- Apparaît dans le récapitulatif du mois
+- Formule : `(Salaire/SMIC × 1.6 - 1) / 0.6` (plafonné à 31.95%)
+
+#### CSG/CRDS détaillée
+- **CSG déductible** : 6.80% (sur 98.25% du brut)
+- **CSG non-déductible** : 2.40% (sur 98.25% du brut)
+- **CRDS** : 0.50% (sur 98.25% du brut)
+
+#### Affichage amélioré
+- Séparation claire entre base plafonnée et base déplafonnée
+- Taux exacts affichés pour chaque cotisation
+- Coût employeur final avec réduction Fillon déduite
+
+---
+
+## ✅ 8. TEMPLATE PDF - DESIGN NOIR PROFESSIONNEL
+
+### Modifications dans `[lib/contract-pdf-server.ts]`
+
+#### Corrections apportées
+- **Marges augmentées** : 55px au lieu de 48px (évite la superposition)
+- **Blocs signatures agrandis** : 135px de hauteur
+- **Articles VII et VIII ajoutés** :
+  - **Article VII** : Maladie et incapacité temporaire
+  - **Article VIII** : Formation professionnelle
+- **Espacements entre sections** : Augmentés pour plus de clarté
+
+#### Articles complets conformes au Code du travail
+- Article préalable (Préambule)
+- Article I : Engagement et période d'essai (L.1221-26, L.1242-2)
+- Article II : Lieu de travail et horaires (L.3121-1, L.3123-1)
+- Article III : Rémunération (L.3221-2)
+- Article IV : Congés payés et absences (L.3141-1)
+- Article V : Obligations du salarié
+- Article VI : Confidentialité
+- Article VII : Maladie (L.1226-1)
+- Article VIII : Formation professionnelle (L.6321-1)
+- Articles IX/X/XI : Rupture selon type de contrat
+- Article final : Dispositions diverses
+
+---
+
+## ⚠️ 9. RESTE À FAIRE
+
+### Template PDF personnalisé
 📁 Fichier de référence: `CDI_ISHAK_AHMED_BS_STRUCTURE_02-02-2026.pdf`
 
-**Pour l'intégrer**:
-1. Analyser la structure du PDF existant
-2. Extraire les couleurs et la mise en page
-3. Modifier `lib/contract-pdf-server.ts` pour utiliser le nouveau template
-4. Intégrer les signatures aux bons emplacements
-
-### Estimation salaire net
-Déjà basée sur les taux 2026 dans `cotisations.ts` ✅
+Le template actuel est fonctionnel et conforme légalement. Pour le personnaliser exactement comme le PDF de référence :
+1. Analyser les couleurs spécifiques du PDF (dégradés, accents)
+2. Ajuster les positions exactes des champs
+3. Intégrer le logo de l'entreprise si fourni
 
 ---
 
@@ -202,6 +259,8 @@ Déjà basée sur les taux 2026 dans `cotisations.ts` ✅
 | Fichier | Modifications |
 |---------|---------------|
 | `lib/labor-law/cotisations.ts` | Taux 2026 + Fillon |
+| `lib/labor-law/bulletin-paie.ts` | Taux retraite détaillés + Fillon |
+| `lib/contract-pdf-server.ts` | Template PDF design noir + marges + articles VII/VIII |
 | `components/ui/MagnificentDatePicker.tsx` | Saisie directe + dates passées |
 | `app/api/process-text-contract/route.ts` | Prompts améliorés |
 | `app/api/process-voice-contract/route.ts` | Prompts améliorés |
