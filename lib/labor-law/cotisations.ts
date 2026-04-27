@@ -8,6 +8,12 @@ export interface CotisationData {
   tempsPartiel?: boolean;
   heureSupplementaire?: number;
   region?: 'alsace_moselle' | 'normal';
+  // Taux d'accident du travail personnalisé (en %)
+  tauxAccidentTravail?: number;
+  // Séparation de la réduction Fillon
+  separationFillonUrssafRetraite?: boolean;
+  // Convention collective pour calculs spécifiques
+  conventionCollectiveId?: string;
 }
 
 export interface CotisationResult {
@@ -29,6 +35,9 @@ export interface CotisationResult {
     total: number;
     reduction_fillon: number; // Réduction générale des cotisations (ex-Fillon)
     reduction_fillon_taux: number; // Taux appliqué (coefficient)
+    // Séparation Fillon (si activée)
+    reduction_fillon_urssaf?: number; // Part URSSAF
+    reduction_fillon_retraite?: number; // Part Retraite
   };
   salariales: {
     maladie: number;
@@ -89,7 +98,7 @@ const SMIC_MENSUEL_2026 = 1823.03; // €/mois pour 35h (base 151.67h) - SMIC br
 
 // Calcul des cotisations
 export function calculerCotisations(data: CotisationData): CotisationResult {
-  const { salaireBrut, salaireBrutAnnuel, statut } = data;
+  const { salaireBrut, salaireBrutAnnuel, statut, tauxAccidentTravail, separationFillonUrssafRetraite } = data;
   const plafondMensuel = TAUX_2026.plafonds.mensuel_ss;
 
   // === COTISATIONS PATRONALES ===
@@ -103,8 +112,9 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
   // Allocations familiales (sur salaire brut)
   const allocationsFamiliales = salaireBrut * (TAUX_2026.patronales.allocations_familiales / 100);
 
-  // Accident du travail
-  const accidentDuTravail = salaireBrut * (TAUX_2026.patronales.accident_du_travail / 100);
+  // Accident du travail (taux personnalisé ou défaut)
+  const tauxAT = tauxAccidentTravail ?? TAUX_2026.patronales.accident_du_travail;
+  const accidentDuTravail = salaireBrut * (tauxAT / 100);
 
   // Solidarité autonomie
   const solidariteAutonomie = salaireBrut * (TAUX_2026.patronales.solidarite_autonomie / 100);
@@ -215,6 +225,16 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
   const reductionFillon = fillonResult.montant;
   const reductionFillonTaux = fillonResult.coefficient;
 
+  // Séparation de la réduction Fillon (si demandé)
+  let reductionFillonUrssaf: number | undefined = undefined;
+  let reductionFillonRetraite: number | undefined = undefined;
+
+  if (separationFillonUrssafRetraite && reductionFillon > 0) {
+    // Par défaut : 85.9% pour l'URSSAF, 14.1% pour la retraite
+    reductionFillonUrssaf = reductionFillon * 0.859;
+    reductionFillonRetraite = reductionFillon * 0.141;
+  }
+
   // Coût employeur final (avec réduction Fillon)
   const coutEmployer = coutEmployerAvantReduction - reductionFillon;
 
@@ -237,6 +257,8 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
       total: totalPatronal,
       reduction_fillon: reductionFillon,
       reduction_fillon_taux: reductionFillonTaux,
+      reduction_fillon_urssaf: reductionFillonUrssaf,
+      reduction_fillon_retraite: reductionFillonRetraite,
     },
     salariales: {
       maladie: maladieSalariale,

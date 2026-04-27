@@ -24,6 +24,7 @@ export interface BulletinPaieData {
   statut: 'cadre' | 'non_cadre' | 'alternance';
   classification: string;
   conventionCollective: string;
+  conventionCollectiveId?: string; // ID pour config automatique (ex: 'restaurants')
   coef: number;
 
   // Rémunération
@@ -72,6 +73,18 @@ export interface BulletinPaieData {
   prevoyancePartSalarie?: number;
   ticketRestaurantNombre?: number;
   ticketRestaurantMontantEmployeur?: number;
+
+  // Paniers repas (pour restaurateurs, etc.)
+  paniersRepasNombre?: number;
+  paniersRepasMontantEmployeur?: number; // Part employeur par panier
+  paniersRepasMontantSalarie?: number; // Part salarié par panier
+  paniersRepasTotal?: number; // Montant total des paniers repas
+
+  // Taux d'accident du travail personnalisé
+  tauxAccidentTravail?: number; // en % (ex: 1.20 pour 1.20%)
+
+  // Séparation de la réduction Fillon
+  separationFillonUrssafRetraite?: boolean;
 
   // Indemnités & remboursements
   indemnitesTransport?: number;
@@ -187,6 +200,9 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
     salaireBrutAnnuel: data.salaireBrutAnnuel,
     statut: data.statut === 'alternance' ? 'non_cadre' : data.statut,
     tempsPartiel: data.tempsPartiel,
+    tauxAccidentTravail: data.tauxAccidentTravail,
+    separationFillonUrssafRetraite: data.separationFillonUrssafRetraite,
+    conventionCollectiveId: data.conventionCollectiveId,
   });
 
   const display = getCotisationsDisplay(cotisations);
@@ -389,7 +405,7 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       ${row('Vieillesse plafonnée', fmtE(basePlafonnée), '8,55%', '', fmtE(basePlafonnée * 8.55 / 100))}
       ${row('Vieillesse déplafonnée', fmtE(baseDéplafonnée), '2,00%', '', fmtE(baseDéplafonnée * 2.00 / 100))}
       ${row('Allocations familiales', fmtE(totalBrut), '3,45%', '', fmtE(cotisations.patronales.allocations_familiales))}
-      ${row('Accident du travail', fmtE(totalBrut), '0,70%', '', fmtE(cotisations.patronales.accident_du_travail))}
+      ${row('Accident du travail', fmtE(totalBrut), (data.tauxAccidentTravail ?? 0.70).toFixed(2).replace('.', ',') + '%', '', fmtE(cotisations.patronales.accident_du_travail))}
       ${row('Solidarité autonomie', fmtE(totalBrut), '0,30%', '', fmtE(cotisations.patronales.solidarite_autonomie))}
       ${row('FNAL', fmtE(totalBrut), '0,10%', '', fmtE(cotisations.patronales.fnal))}
       ${row('Chômage', fmtE(Math.min(totalBrut, 4 * plafondSS)), '4,05%', '', fmtE(cotisations.patronales.chomage))}
@@ -400,14 +416,16 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
       ${data.statut === 'cadre' ? row('Prévoyance cadres', fmtE(totalBrut), '1,50%', '', fmtE(cotisations.patronales.prevoyance)) : ''}
       ${row('Complémentaire santé', fmtE(totalBrut), '0,60%', '', fmtE(cotisations.patronales.supplementaire_sante))}
       ${row('Transport', fmtE(totalBrut), '0,50%', '', fmtE(cotisations.patronales.transport))}
-      ${cotisations.patronales.reduction_fillon > 0 ? row('Réduction Fillon 2026', fmtE(totalBrut), (cotisations.patronales.reduction_fillon_taux * 100).toFixed(2) + '%', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon) + '</span>') : ''}
+      ${cotisations.patronales.reduction_fillon > 0 && !data.separationFillonUrssafRetraite ? row('Réduction Fillon 2026', fmtE(totalBrut), (cotisations.patronales.reduction_fillon_taux * 100).toFixed(2) + '%', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon) + '</span>') : ''}
+      ${cotisations.patronales.reduction_fillon > 0 && data.separationFillonUrssafRetraite ? row('Réduction Fillon URSSAF', fmtE(totalBrut), (cotisations.patronales.reduction_fillon_taux * 85.9).toFixed(2) + '%', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon_urssaf ?? 0) + '</span>') : ''}
+      ${cotisations.patronales.reduction_fillon > 0 && data.separationFillonUrssafRetraite ? row('Réduction Fillon Retraite', fmtE(totalBrut), (cotisations.patronales.reduction_fillon_taux * 14.1).toFixed(2) + '%', '', '<span style="color:#27ae60;">-' + fmtE(cotisations.patronales.reduction_fillon_retraite ?? 0) + '</span>') : ''}
       ${data.mutuellePartEmployeur ? row('Mutuelle — part employeur', '', '', '', fmtE(data.mutuellePartEmployeur)) : ''}
       ${data.prevoyancePartEmployeur ? row('Prévoyance — part employeur', '', '', '', fmtE(data.prevoyancePartEmployeur)) : ''}
       ${row('COÛT TOTAL EMPLOYEUR', '', '', '', fmtE(cotisations.coutEmployer + (data.mutuellePartEmployeur ?? 0) + (data.prevoyancePartEmployeur ?? 0)), true, true)}
     </tbody>
   </table>
 
-  ${(data.indemnitesTransport || data.indemniteDeplacementVehicule || data.ticketRestaurantNombre || data.autresIndemnites || data.indemnitesJournalieresSS || data.maintienSalaireMaladie) ? `
+  ${(data.indemnitesTransport || data.indemniteDeplacementVehicule || data.ticketRestaurantNombre || data.paniersRepasNombre || data.autresIndemnites || data.indemnitesJournalieresSS || data.maintienSalaireMaladie) ? `
   <div class="section-head">INDEMNITÉS & REMBOURSEMENTS</div>
   <table class="cot"><thead><tr>
     <th style="text-align:left;width:50%">Libellé</th><th style="width:25%">—</th><th style="width:25%">Montant</th>
@@ -415,6 +433,7 @@ export function genererBulletinPaieHTML(data: BulletinPaieData): string {
     ${data.indemnitesTransport ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Remboursement transport</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemnitesTransport)}</td></tr>` : ''}
     ${data.indemniteDeplacementVehicule ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Indemnité kilométrique</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemniteDeplacementVehicule)}</td></tr>` : ''}
     ${data.ticketRestaurantNombre ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Tickets restaurant (${data.ticketRestaurantNombre} × ${fmtE(data.ticketRestaurantMontantEmployeur ?? 0)} part empl.)</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE((data.ticketRestaurantNombre) * (data.ticketRestaurantMontantEmployeur ?? 0))}</td></tr>` : ''}
+    ${data.paniersRepasNombre ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Paniers repas (${data.paniersRepasNombre} × ${fmtE(data.paniersRepasMontantEmployeur ?? 0)} part empl.)</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.paniersRepasTotal ?? (data.paniersRepasNombre * (data.paniersRepasMontantEmployeur ?? 0)))}</td></tr>` : ''}
     ${data.indemnitesJournalieresSS ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">IJ Sécurité Sociale</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.indemnitesJournalieresSS)}</td></tr>` : ''}
     ${data.maintienSalaireMaladie ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Maintien salaire maladie (employeur)</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.maintienSalaireMaladie)}</td></tr>` : ''}
     ${data.autresIndemnites ? `<tr><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;">Autres indemnités</td><td></td><td style="padding:4px 8px;border-bottom:1px solid #e8e8e8;text-align:right;color:#27ae60;">${fmtE(data.autresIndemnites)}</td></tr>` : ''}

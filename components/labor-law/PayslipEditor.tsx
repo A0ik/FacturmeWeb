@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Download, Sparkles, Loader2, AlertCircle,
   User, Building2, Euro, Calendar, FileText, ChevronDown, ChevronUp,
-  Heart, Gift, Plane, Activity, Clock, Truck
+  Heart, Gift, Plane, Activity, Clock, Truck, Utensils, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BulletinPaieData } from '@/lib/labor-law/bulletin-paie';
 import { genererBulletinPaieHTML } from '@/lib/labor-law/bulletin-paie';
+import { getConventionConfig, CONVENTION_LABELS, type ConventionType, getTauxATOptions } from '@/lib/labor-law/conventions-collectives';
 
 // ─── Module-level components (prevent remount on parent re-render = fixes focus bug) ───
 
@@ -276,6 +277,139 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
             </div>
           </PayslipSection>
 
+          <PayslipSection id="convention" title="Convention Collective & Config" icon={Settings} openSection={openSection} onToggle={handleToggle}>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Convention Collective</label>
+                <select
+                  value={(data as any).conventionCollectiveId || 'default'}
+                  onChange={(e) => {
+                    const conventionId = e.target.value as ConventionType;
+                    update('conventionCollectiveId' as any, conventionId);
+                    const config = getConventionConfig(conventionId);
+                    // Ne PAS écraser le taux AT si l'utilisateur en a déjà défini un
+                    if (!(data as any).tauxAccidentTravail || (data as any).tauxAccidentTravail === 0.70) {
+                      update('tauxAccidentTravail' as any, config.tauxAccidentTravail);
+                    }
+                    // Appliquer automatiquement la séparation Fillon (optionnel)
+                    update('separationFillonUrssafRetraite' as any, config.reductionFillon?.separationUrssafRetraite || false);
+                    // Mettre à jour le nom de la convention
+                    update('conventionCollective', config.nom);
+                  }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-slate-800 focus:border-primary/50 outline-none"
+                >
+                  {Object.entries(CONVENTION_LABELS).map(([id, label]) => (
+                    <option key={id} value={id}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                    <span>Taux AT personnalisé (%)</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-normal">Modifiable</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="10"
+                      value={(data as any).tauxAccidentTravail ?? 0.70}
+                      onChange={(e) => update('tauxAccidentTravail' as any, parseFloat(e.target.value) || 0.70)}
+                      className="w-full px-3 py-2 text-sm rounded-xl border-2 border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-200/30 outline-none transition-all font-semibold"
+                    />
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Valeur actuelle: <strong>{((data as any).tauxAccidentTravail ?? 0.70).toFixed(2)}%</strong>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    💡 Taux moyen: 0.70% | Restaurants: 1.20% | BTP: 2.50%
+                  </div>
+                </div>
+                <div className="col-span-2 mt-2">
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-primary hover:text-primary/80 font-medium mb-2">
+                      📖 Voir tous les taux AT par secteur
+                    </summary>
+                    <div className="grid grid-cols-2 gap-2 mt-2 p-2 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
+                      {getTauxATOptions().map((option) => (
+                        <button
+                          key={option.valeur}
+                          type="button"
+                          onClick={() => update('tauxAccidentTravail' as any, option.valeur)}
+                          className={`text-left p-2 rounded-lg transition-all ${
+                            (data as any).tauxAccidentTravail === option.valeur
+                              ? 'bg-primary text-white'
+                              : 'bg-white dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600'
+                          }`}
+                        >
+                          <div className="font-semibold">{option.valeur.toFixed(2)}%</div>
+                          <div className="text-xs opacity-80">{option.description}</div>
+                          <div className="text-xs opacity-60">Ex: {option.exemple}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Séparer Fillon URSSAF/Retraite</label>
+                  <div className="flex items-center gap-3 pt-2">
+                    <input
+                      type="checkbox"
+                      checked={!!(data as any).separationFillonUrssafRetraite}
+                      onChange={(e) => update('separationFillonUrssafRetraite' as any, e.target.checked)}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Activer la séparation</span>
+                  </div>
+                  {(data as any).separationFillonUrssafRetraite && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      URSSAF: 85.9% | Retraite: 14.1%
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Paniers repas (visible si restaurants ou personnalisé) */}
+              {(data as any).conventionCollectiveId === 'restaurants' || (data as any).paniersRepasNombre ? (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Utensils className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-semibold text-amber-900 dark:text-amber-100 text-sm">Paniers Repas</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <PayslipField
+                      label="Nombre de paniers"
+                      value={(data as any).paniersRepasNombre ?? ''}
+                      onChange={(v) => update('paniersRepasNombre' as any, parseFloat(v) || undefined)}
+                      type="number"
+                    />
+                    <PayslipField
+                      label="Montant employeur/panier (€)"
+                      value={(data as any).paniersRepasMontantEmployeur ?? ''}
+                      onChange={(v) => {
+                        const val = parseFloat(v) || undefined;
+                        update('paniersRepasMontantEmployeur' as any, val);
+                        // Recalculer le total
+                        const nombre = (data as any).paniersRepasNombre || 0;
+                        if (val && nombre) {
+                          update('paniersRepasTotal' as any, val * nombre);
+                        }
+                      }}
+                      type="number"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                    Total: {((data as any).paniersRepasTotal || 0).toFixed(2)} €
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </PayslipSection>
+
           <PayslipSection id="heures" title="Heures & Présence" icon={Clock} openSection={openSection} onToggle={handleToggle}>
             <div className="grid grid-cols-2 gap-3">
               <PayslipField label="Heures supp. à 25% (h)" value={data.heuresSupp25 ?? ''} onChange={(v) => update('heuresSupp25', parseFloat(v) || undefined)} type="number" />
@@ -328,10 +462,33 @@ export function PayslipEditor({ initialData, onClose }: PayslipEditorProps) {
               <PayslipField label="Prévoyance — Part employeur (€)" value={data.prevoyancePartEmployeur ?? ''} onChange={(v) => update('prevoyancePartEmployeur', parseFloat(v) || undefined)} type="number" />
               <PayslipField label="Prévoyance — Part salarié (€)" value={data.prevoyancePartSalarie ?? ''} onChange={(v) => update('prevoyancePartSalarie', parseFloat(v) || undefined)} type="number" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <PayslipField label="Tickets restaurant (nb)" value={data.ticketRestaurantNombre ?? ''} onChange={(v) => update('ticketRestaurantNombre', parseFloat(v) || undefined)} type="number" />
-              <PayslipField label="TR — Part employeur (€/ticket)" value={data.ticketRestaurantMontantEmployeur ?? ''} onChange={(v) => update('ticketRestaurantMontantEmployeur', parseFloat(v) || undefined)} type="number" />
+            <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Tickets Restaurant</div>
+              <div className="grid grid-cols-2 gap-3">
+                <PayslipField label="Tickets restaurant (nb)" value={data.ticketRestaurantNombre ?? ''} onChange={(v) => update('ticketRestaurantNombre', parseFloat(v) || undefined)} type="number" />
+                <PayslipField label="TR — Part employeur (€/ticket)" value={data.ticketRestaurantMontantEmployeur ?? ''} onChange={(v) => update('ticketRestaurantMontantEmployeur', parseFloat(v) || undefined)} type="number" />
+              </div>
             </div>
+            {(data as any).paniersRepasNombre && (
+              <div className="border-t border-gray-200 dark:border-white/10 pt-3 mt-3">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-2">
+                  <Utensils className="w-4 h-4" />
+                  Paniers Repas
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <PayslipField label="Nombre" value={(data as any).paniersRepasNombre ?? ''} onChange={(v) => update('paniersRepasNombre' as any, parseFloat(v) || undefined)} type="number" />
+                  <PayslipField label="Part employeur/panier (€)" value={(data as any).paniersRepasMontantEmployeur ?? ''} onChange={(v) => {
+                    const val = parseFloat(v) || undefined;
+                    update('paniersRepasMontantEmployeur' as any, val);
+                    const nombre = (data as any).paniersRepasNombre || 0;
+                    if (val && nombre) {
+                      update('paniersRepasTotal' as any, val * nombre);
+                    }
+                  }} type="number" step="0.01" />
+                  <PayslipField label="Total (€)" value={(data as any).paniersRepasTotal ?? ''} readOnly type="number" />
+                </div>
+              </div>
+            )}
           </PayslipSection>
 
           <PayslipSection id="indemnites" title="Frais & Indemnités" icon={Truck} openSection={openSection} onToggle={handleToggle}>
