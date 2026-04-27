@@ -271,6 +271,7 @@ export function calculerCotisationsAlternance(salaireBrut: number, type: 'appren
         penibilite: 0,
         transport: 0,
         total: salaireBrut * 0.0166,
+        reduction_fillon: 0,
       },
       salariales: {
         maladie: 0,
@@ -279,11 +280,15 @@ export function calculerCotisationsAlternance(salaireBrut: number, type: 'appren
         chomage: 0,
         ags: 0,
         csg_crds: 0,
+        csg_deductible: 0,
+        csg_non_deductible: 0,
+        crds: 0,
         total: 0,
       },
       salaireNet: salaireBrut,
       salaireNetImposable: salaireBrut,
       coutEmployer: salaireBrut * 1.0166,
+      coutEmployerAvantReduction: salaireBrut * 1.0166,
     };
     return cotisations;
   }

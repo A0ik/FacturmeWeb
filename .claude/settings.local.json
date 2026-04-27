@@ -118,7 +118,8 @@
       "mcp__claude_ai_Supabase__list_migrations",
       "Bash(npx eslint *)",
       "Bash(echo \"Lint check completed with status: $?\")",
-      "Bash(node -e \"require\\('./lib/labor-law/contract-templates.ts'\\)\")"
+      "Bash(node -e \"require\\('./lib/labor-law/contract-templates.ts'\\)\")",
+      "Bash(pkill -f \"next lint\")"
     ]
   },
   "enableAllProjectMcpServers": true,
