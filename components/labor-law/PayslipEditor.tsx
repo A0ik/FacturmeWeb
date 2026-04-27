@@ -15,9 +15,9 @@ import { getConventionConfig, CONVENTION_LABELS, type ConventionType, getTauxATO
 // ─── Module-level components (prevent remount on parent re-render = fixes focus bug) ───
 
 const PayslipField = React.memo(function PayslipField({
-  label, value, onChange, type = 'text', readOnly = false,
+  label, value, onChange, type = 'text', readOnly = false, step,
 }: {
-  label: string; value: string | number; onChange?: (v: string) => void; type?: string; readOnly?: boolean;
+  label: string; value: string | number; onChange?: (v: string) => void; type?: string; readOnly?: boolean; step?: string;
 }) {
   const safeValue = typeof value === 'number' && isNaN(value) ? '' : value;
   return (
@@ -28,6 +28,7 @@ const PayslipField = React.memo(function PayslipField({
         value={safeValue}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         readOnly={readOnly}
+        step={step}
         className={`w-full px-3 py-2 text-sm rounded-xl border-2 outline-none transition-all
           ${readOnly
             ? 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-white/5 text-gray-500 cursor-not-allowed'
