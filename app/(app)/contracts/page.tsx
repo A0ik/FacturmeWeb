@@ -3,346 +3,211 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  FileText,
-  Plus,
-  ArrowRight,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Filter,
-  Search,
-  Calendar,
-  User,
-  Building2,
-  Eye,
-  Download,
-  Trash2,
-  FileEdit
+  FileText, Plus, Search, Filter, FileCheck, Clock, AlertCircle,
+  CheckCircle, FileEdit, ArrowRight, Trash2, Copy, Loader2
 } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase';
+import { useContractStore } from '@/stores/contractStore';
 import { useAuthStore } from '@/stores/authStore';
+import { ContractSummary, ContractType, ContractStatus } from '@/types';
+import { ContractCard } from '@/components/contracts/ContractCard';
+import { toast } from 'sonner';
 import Link from 'next/link';
 
-interface ContractSummary {
-  id: string;
-  type: 'cdd' | 'cdi' | 'other';
-  employeeName: string;
-  companyName: string;
-  startDate: string;
-  endDate?: string;
-  status: 'draft' | 'pending' | 'signed' | 'active' | 'ended';
-  createdAt: string;
-}
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'draft', label: 'Brouillons' },
+  { value: 'pending_signature', label: 'En attente' },
+  { value: 'signed', label: 'Signés' },
+  { value: 'active', label: 'Actifs' },
+  { value: 'ended', label: 'Terminés' },
+];
+
+const TYPE_FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tous types' },
+  { value: 'cdi', label: 'CDI' },
+  { value: 'cdd', label: 'CDD' },
+  { value: 'other', label: 'Autres' },
+];
 
 export default function ContractsPage() {
   const { profile } = useAuthStore();
-  const [contracts, setContracts] = useState<ContractSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { contracts, stats, loading, fetchContracts, deleteContract, duplicateContract } = useContractStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadContracts();
-  }, []);
+  useEffect(() => { fetchContracts(); }, []);
 
-  const loadContracts = async () => {
-    setLoading(true);
+  const filtered = contracts.filter((c) => {
+    if (statusFilter !== 'all' && c.status !== statusFilter) return false;
+    if (typeFilter !== 'all' && c.contract_type !== typeFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return c.employee_name.toLowerCase().includes(q) ||
+             c.company_name.toLowerCase().includes(q) ||
+             (c.contract_number || '').toLowerCase().includes(q) ||
+             c.job_title.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const handleDelete = async (id: string, type: ContractType) => {
+    if (!confirm('Supprimer ce contrat ?')) return;
     try {
-      const supabase = getSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Charger les contrats CDD
-      const { data: cddData } = await supabase
-        .from('contracts_cdd')
-        .select('id, employee_first_name, employee_last_name, company_name, contract_start_date, contract_end_date, document_status, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      // Charger les contrats CDI
-      const { data: cdiData } = await supabase
-        .from('contracts_cdi')
-        .select('id, employee_first_name, employee_last_name, company_name, contract_start_date, document_status, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      // Charger les autres contrats
-      const { data: otherData } = await supabase
-        .from('contracts_other')
-        .select('id, employee_first_name, employee_last_name, company_name, start_date, end_date, document_status, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      const allContracts: ContractSummary[] = [];
-
-      // Transformer les données CDD
-      cddData?.forEach((c: any) => {
-        allContracts.push({
-          id: c.id,
-          type: 'cdd',
-          employeeName: `${c.employee_first_name} ${c.employee_last_name}`,
-          companyName: c.company_name,
-          startDate: c.contract_start_date,
-          endDate: c.contract_end_date,
-          status: c.document_status,
-          createdAt: c.created_at
-        });
-      });
-
-      // Transformer les données CDI
-      cdiData?.forEach((c: any) => {
-        allContracts.push({
-          id: c.id,
-          type: 'cdi',
-          employeeName: `${c.employee_first_name} ${c.employee_last_name}`,
-          companyName: c.company_name,
-          startDate: c.contract_start_date,
-          status: c.document_status,
-          createdAt: c.created_at
-        });
-      });
-
-      // Transformer les autres contrats
-      otherData?.forEach((c: any) => {
-        allContracts.push({
-          id: c.id,
-          type: 'other',
-          employeeName: `${c.employee_first_name} ${c.employee_last_name}`,
-          companyName: c.company_name,
-          startDate: c.start_date,
-          endDate: c.end_date,
-          status: c.document_status,
-          createdAt: c.created_at
-        });
-      });
-
-      setContracts(allContracts);
-    } catch (error) {
-      console.error('Erreur lors du chargement des contrats:', error);
-    } finally {
-      setLoading(false);
+      await deleteContract(id, type);
+      toast.success('Contrat supprimé');
+    } catch (e) {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
-  const filteredContracts = contracts.filter(contract => {
-    const matchesSearch = contract.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         contract.companyName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const contractTypeLabels: Record<string, string> = {
-    cdd: 'CDD',
-    cdi: 'CDI',
-    other: 'Autre'
+  const handleDuplicate = async (id: string, type: ContractType) => {
+    try {
+      await duplicateContract(id, type, profile);
+      toast.success('Contrat dupliqué');
+    } catch (e) {
+      toast.error('Erreur lors de la duplication');
+    }
   };
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-    pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
-    signed: { label: 'Signé', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-    active: { label: 'Actif', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-    ended: { label: 'Terminé', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
+  const handleBulkDelete = async () => {
+    if (!confirm(`Supprimer ${selectedIds.size} contrat(s) ?`)) return;
+    try {
+      for (const id of selectedIds) {
+        const c = contracts.find(c => c.id === id);
+        if (c) await deleteContract(id, c.contract_type);
+      }
+      setSelectedIds(new Set());
+      toast.success('Contrats supprimés');
+    } catch {
+      toast.error('Erreur lors de la suppression');
+    }
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Contrats de travail
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Gérez tous vos contrats de travail au même endroit
-          </p>
+    <div className="w-full space-y-6">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Contrats</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez vos contrats de travail conformes 2026</p>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/contracts/new/cdi" className="px-4 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm">
+            <Plus className="w-4 h-4" />CDI
+          </Link>
+          <Link href="/contracts/new/cdd" className="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm">
+            <Plus className="w-4 h-4" />CDD
+          </Link>
+          <Link href="/contracts/new/other" className="px-4 py-2.5 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm">
+            <Plus className="w-4 h-4" />Autre
+          </Link>
+        </div>
+      </motion.div>
+
+      {/* Stats */}
+      {stats && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total', value: stats.total, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+            { label: 'Brouillons', value: stats.drafts, icon: FileEdit, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' },
+            { label: 'En attente', value: stats.pendingSignature, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+            { label: 'Actifs', value: stats.active + stats.signed, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30' },
+          ].map((stat, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-sm p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.bg}`}>
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                  <p className="text-xs text-gray-500">{stat.label}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
+      )}
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Link href="/contracts/cdd">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white cursor-pointer shadow-lg"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <Plus className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold mb-1">Nouveau CDD</h3>
-              <p className="text-sm text-white/80">Créer un contrat à durée déterminée</p>
-            </motion.div>
-          </Link>
-
-          <Link href="/contracts/cdi">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white cursor-pointer shadow-lg"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <Plus className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold mb-1">Nouveau CDI</h3>
-              <p className="text-sm text-white/80">Créer un contrat à durée indéterminée</p>
-            </motion.div>
-          </Link>
-
-          <Link href="/contracts/other">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 text-white cursor-pointer shadow-lg"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <Plus className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold mb-1">Autre contrat</h3>
-              <p className="text-sm text-white/80">Stage, freelance, alternance...</p>
-            </motion.div>
-          </Link>
+      {/* Filters */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher par nom, entreprise, numéro..."
+            className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/60 dark:bg-slate-900/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none text-sm"
+          />
         </div>
+        <div className="flex gap-2">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/60 dark:bg-slate-900/60 text-sm outline-none focus:border-primary/50">
+            {STATUS_FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/60 dark:bg-slate-900/60 text-sm outline-none focus:border-primary/50">
+            {TYPE_FILTERS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+        </div>
+      </motion.div>
 
-        {/* Filters */}
-        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Rechercher un contrat (salarié, entreprise...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-              />
-            </div>
-            <div className="relative">
-              <Filter className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-xl border-2 border-gray-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm appearance-none"
-              >
-                <option value="all">Tous les statuts</option>
-                <option value="draft">Brouillons</option>
-                <option value="pending">En attente</option>
-                <option value="signed">Signés</option>
-                <option value="active">Actifs</option>
-                <option value="ended">Terminés</option>
-              </select>
-            </div>
+      {/* Bulk Actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/20">
+          <span className="text-sm font-medium">{selectedIds.size} sélectionné(s)</span>
+          <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">Supprimer</button>
+          <button onClick={() => setSelectedIds(new Set())} className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Annuler</button>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && filtered.length === 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+          <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Aucun contrat</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Créez votre premier contrat de travail conforme 2026</p>
+          <div className="flex justify-center gap-3">
+            <Link href="/contracts/new/cdi" className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2">
+              <Plus className="w-5 h-5" />CDI
+            </Link>
+            <Link href="/contracts/new/cdd" className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
+              <Plus className="w-5 h-5" />CDD
+            </Link>
           </div>
-        </div>
+        </motion.div>
+      )}
 
-        {/* Contracts List */}
-        <div className="space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      {/* Contract List */}
+      {!loading && filtered.length > 0 && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((contract) => (
+            <div key={contract.id} className="relative">
+              <div className="absolute top-3 left-3 z-10">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(contract.id)}
+                  onChange={(e) => {
+                    setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      e.target.checked ? next.add(contract.id) : next.delete(contract.id);
+                      return next;
+                    });
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              </div>
+              <ContractCard contract={contract} onDelete={handleDelete} onDuplicate={handleDuplicate} />
             </div>
-          ) : filteredContracts.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg p-12 text-center"
-            >
-              <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Aucun contrat trouvé
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {searchQuery || statusFilter !== 'all'
-                  ? 'Essayez de modifier vos filtres de recherche'
-                  : 'Commencez par créer votre premier contrat'}
-              </p>
-              {!searchQuery && statusFilter === 'all' && (
-                <div className="flex justify-center gap-4">
-                  <Link href="/contracts/cdd">
-                    <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
-                      Créer un CDD
-                    </button>
-                  </Link>
-                  <Link href="/contracts/cdi">
-                    <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
-                      Créer un CDI
-                    </button>
-                  </Link>
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            filteredContracts.map((contract, index) => (
-              <motion.div
-                key={contract.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/10 shadow-lg p-6 hover:shadow-xl transition-shadow"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        contract.type === 'cdd' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        contract.type === 'cdi' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                        'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                      }`}>
-                        {contractTypeLabels[contract.type]}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusLabels[contract.status]?.color}`}>
-                        {statusLabels[contract.status]?.label}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                      {contract.employeeName}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                      <Building2 className="w-4 h-4" />
-                      {contract.companyName}
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        Début: {new Date(contract.startDate).toLocaleDateString('fr-FR')}
-                      </span>
-                      {contract.endDate && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          Fin: {new Date(contract.endDate).toLocaleDateString('fr-FR')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-gray-400">
-                      <Eye className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-gray-400">
-                      <Download className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-gray-400">
-                      <FileEdit className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-red-600 dark:text-red-400">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))
-          )}
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -376,3 +376,203 @@ export const MERCHANT_PROVIDERS: Record<MerchantProvider, { name: string; icon: 
   microsoft: { name: 'Microsoft 365', icon: '🔷', color: 'bg-blue-600' },
   other: { name: 'Autre fournisseur', icon: '🏢', color: 'bg-gray-500' },
 };
+
+// ============================
+// CONTRATS DE TRAVAIL
+// ============================
+
+export type ContractType = 'cdi' | 'cdd' | 'other';
+export type ContractCategory = 'apprentissage' | 'professionnalisation' | 'cui_cie' | 'cui_cae' | 'portage' | 'interim' | 'domicile' | 'stage' | 'freelance' | 'other';
+export type ContractStatus = 'draft' | 'pending_signature' | 'signed' | 'active' | 'ended' | 'terminated' | 'cancelled';
+export type SalaryFrequency = 'monthly' | 'hourly' | 'weekly' | 'flat_rate';
+
+export interface ContractBase {
+  id: string;
+  user_id: string;
+  contract_number: string;
+  contract_type: ContractType;
+  document_status: ContractStatus;
+
+  employee_first_name: string;
+  employee_last_name: string;
+  employee_address: string;
+  employee_postal_code: string;
+  employee_city: string;
+  employee_email?: string;
+  employee_phone?: string;
+  employee_birth_date: string;
+  employee_social_security?: string;
+  employee_nationality: string;
+  employee_qualification?: string;
+
+  company_name: string;
+  company_address: string;
+  company_postal_code: string;
+  company_city: string;
+  company_siret: string;
+  employer_name: string;
+  employer_title: string;
+
+  job_title: string;
+  work_location: string;
+  work_schedule: string;
+  salary_amount: number;
+  salary_frequency: SalaryFrequency;
+
+  has_transport: boolean;
+  has_meal: boolean;
+  has_health: boolean;
+  has_other: boolean;
+  other_benefits?: string;
+
+  contract_start_date: string;
+  trial_period_days?: number;
+
+  contract_html?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContractCDI extends ContractBase {
+  contract_type: 'cdi';
+  contract_classification?: string;
+  working_hours?: string;
+  collective_agreement?: string;
+  probation_clause: boolean;
+  non_compete_clause: boolean;
+  non_compete_duration?: string;
+  non_compete_compensation?: string;
+  non_compete_area?: string;
+  mobility_clause: boolean;
+  mobility_area?: string;
+}
+
+export interface ContractCDD extends ContractBase {
+  contract_type: 'cdd';
+  contract_end_date: string;
+  contract_reason: string;
+  replaced_employee_name?: string;
+  collective_agreement?: string;
+  probation_clause: boolean;
+  non_compete_clause: boolean;
+  mobility_clause: boolean;
+}
+
+export interface ContractOther extends ContractBase {
+  contract_type: 'other';
+  contract_category: ContractCategory;
+  contract_title?: string;
+  duration_weeks?: string;
+  end_date?: string;
+  tutor_name?: string;
+  school_name?: string;
+  speciality?: string;
+  objectives?: string;
+  tasks?: string;
+  working_hours?: string;
+  collective_agreement?: string;
+  statut?: string;
+  salary_frequency: SalaryFrequency;
+}
+
+export type Contract = ContractCDI | ContractCDD | ContractOther;
+
+export function isCDI(c: Contract): c is ContractCDI { return c.contract_type === 'cdi'; }
+export function isCDD(c: Contract): c is ContractCDD { return c.contract_type === 'cdd'; }
+export function isOther(c: Contract): c is ContractOther { return c.contract_type === 'other'; }
+
+export interface ContractSummary {
+  id: string;
+  contract_number: string;
+  contract_type: ContractType;
+  contract_category?: ContractCategory;
+  employee_name: string;
+  company_name: string;
+  job_title: string;
+  start_date: string;
+  end_date?: string;
+  status: ContractStatus;
+  salary_amount: number;
+  salary_frequency: SalaryFrequency;
+  created_at: string;
+}
+
+export interface ContractDashboardStats {
+  total: number;
+  drafts: number;
+  pendingSignature: number;
+  signed: number;
+  active: number;
+  ended: number;
+  byType: Record<ContractType, number>;
+}
+
+export interface ContractFormData {
+  contract_type: ContractType;
+  contract_category?: ContractCategory;
+  contract_number?: string;
+
+  employee_first_name: string;
+  employee_last_name: string;
+  employee_address: string;
+  employee_postal_code: string;
+  employee_city: string;
+  employee_email?: string;
+  employee_phone?: string;
+  employee_birth_date: string;
+  employee_social_security?: string;
+  employee_nationality: string;
+  employee_qualification?: string;
+
+  company_name: string;
+  company_address: string;
+  company_postal_code: string;
+  company_city: string;
+  company_siret: string;
+  employer_name: string;
+  employer_title: string;
+
+  job_title: string;
+  work_location: string;
+  work_schedule: string;
+  salary_amount: string;
+  salary_frequency: SalaryFrequency;
+
+  has_transport: boolean;
+  has_meal: boolean;
+  has_health: boolean;
+  has_other: boolean;
+  other_benefits?: string;
+
+  contract_start_date: string;
+  trial_period_days?: string;
+
+  contract_end_date?: string;
+  contract_reason?: string;
+  replaced_employee_name?: string;
+
+  contract_classification?: string;
+  working_hours?: string;
+  collective_agreement?: string;
+  probation_clause?: boolean;
+  non_compete_clause?: boolean;
+  non_compete_duration?: string;
+  non_compete_compensation?: string;
+  non_compete_area?: string;
+  mobility_clause?: boolean;
+  mobility_area?: string;
+
+  contract_title?: string;
+  duration_weeks?: string;
+  tutor_name?: string;
+  school_name?: string;
+  speciality?: string;
+  objectives?: string;
+  tasks?: string;
+  statut?: string;
+
+  employer_signature?: string;
+  employee_signature?: string;
+  employer_signature_date?: string;
+  employee_signature_date?: string;
+}
