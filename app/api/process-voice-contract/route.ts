@@ -44,12 +44,24 @@ export async function POST(req: NextRequest) {
       cdd: `Tu es un assistant expert en contrats de travail français, spécialisé dans les CDD (Contrat à Durée Déterminée).
 L'utilisateur dicte des informations pour un contrat CDD. Extrais et retourne UNIQUEMENT du JSON valide.
 
+CONSIGNES SPÉCIALES:
+- Numéro de Sécurité sociale: écoute bien les chiffres dictés, peut être en groupes (1-85-01-23...)
+- Nationalité: écoute "Français", "Marocain", "Algérien", "Tunisien", etc.
+- Dates: convertis toutes les dates en format YYYY-MM-DD (ex: "15 janvier 2026" → "2026-01-15")
+- Pour les dates relatives ("dans 2 semaines", "le mois prochain"), calcule la date approximative
+
 Format attendu (null si non mentionné) :
 {
   "employeeFirstName": "string ou null",
   "employeeLastName": "string ou null",
   "employeeEmail": "string ou null",
   "employeePhone": "string ou null",
+  "employeeAddress": "string ou null",
+  "employeePostalCode": "string ou null",
+  "employeeCity": "string ou null",
+  "employeeBirthDate": "string ou null (format YYYY-MM-DD)",
+  "employeeSocialSecurity": "string ou null (15 chiffres, sans espaces)",
+  "employeeNationality": "string ou null (Française, Marocaine, etc.)",
   "contractStartDate": "string ou null (format YYYY-MM-DD)",
   "contractEndDate": "string ou null (format YYYY-MM-DD)",
   "trialPeriodDays": "string ou null",
@@ -65,14 +77,17 @@ Format attendu (null si non mentionné) :
   "employerName": "string ou null"
 }
 
-Exemple : "Je veux embauche Marie Dupont comme développeuse web à Paris pour remplacer Jean durant 6 mois à 3000 euros par mois"
+Exemple : "Je veux embaucher Marie Dupont, de nationalité française, née le 15 mars 1990, numéro de sécurité sociale 2 85 01 234 567 89, comme développeuse web à Paris. Le contrat commence le 1er février 2026 pour 6 mois à 3000 euros par mois."
 → {
   "employeeFirstName": "Marie",
   "employeeLastName": "Dupont",
+  "employeeNationality": "Française",
+  "employeeBirthDate": "1990-03-15",
+  "employeeSocialSecurity": "2850123456789",
   "jobTitle": "Développeuse web",
   "workLocation": "Paris",
-  "contractReason": "remplacement",
-  "replacedEmployeeName": "Jean",
+  "contractStartDate": "2026-02-01",
+  "contractEndDate": "2026-08-01",
   "salaryAmount": "3000",
   "salaryFrequency": "monthly"
 }`,
@@ -80,12 +95,24 @@ Exemple : "Je veux embauche Marie Dupont comme développeuse web à Paris pour r
       cdi: `Tu es un assistant expert en contrats de travail français, spécialisé dans les CDI (Contrat à Durée Indéterminée).
 L'utilisateur dicte des informations pour un contrat CDI. Extrais et retourne UNIQUEMENT du JSON valide.
 
+CONSIGNES SPÉCIALES:
+- Numéro de Sécurité sociale: écoute bien les chiffres dictés, peut être en groupes (1-85-01-23...)
+- Nationalité: écoute "Français", "Marocain", "Algérien", "Tunisien", etc.
+- Dates: convertis toutes les dates en format YYYY-MM-DD (ex: "15 janvier 2026" → "2026-01-15")
+- Pour les dates relatives ("dans 2 semaines", "le mois prochain"), calcule la date approximative
+
 Format attendu (null si non mentionné) :
 {
   "employeeFirstName": "string ou null",
   "employeeLastName": "string ou null",
   "employeeEmail": "string ou null",
   "employeePhone": "string ou null",
+  "employeeAddress": "string ou null",
+  "employeePostalCode": "string ou null",
+  "employeeCity": "string ou null",
+  "employeeBirthDate": "string ou null (format YYYY-MM-DD)",
+  "employeeSocialSecurity": "string ou null (15 chiffres, sans espaces)",
+  "employeeNationality": "string ou null (Française, Marocaine, etc.)",
   "contractStartDate": "string ou null (format YYYY-MM-DD)",
   "trialPeriodDays": "string ou null",
   "jobTitle": "string ou null",

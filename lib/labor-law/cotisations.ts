@@ -27,6 +27,7 @@ export interface CotisationResult {
     penibilite: number;
     transport: number;
     total: number;
+    reduction_fillon: number; // Réduction générale des cotisations (ex-Fillon)
   };
   salariales: {
     maladie: number;
@@ -35,46 +36,55 @@ export interface CotisationResult {
     chomage: number;
     ags: number;
     csg_crds: number;
+    csg_deductible: number;
+    csg_non_deductible: number;
+    crds: number;
     total: number;
   };
   salaireNet: number;
   salaireNetImposable: number;
   coutEmployer: number;
+  coutEmployerAvantReduction: number;
 }
 
-// Taux de cotisations 2026 (en %)
+// Taux de cotisations 2026 (en %) - Sources officielles URSSAF/Code de la Sécurité sociale
 const TAUX_2026 = {
   patronales: {
-    maladie: 13.00,
-    vieillesse: 10.00, // Taux plafonné
-    allocations_familiales: 5.25,
-    accident_du_travail: 0.70, // Taux moyen
+    maladie: 13.00, // Maladie-Maternité-Invalidité-Décès
+    vieillesse: 10.55, // Vieillesse plafonnée (8.55%) + déplafonnée (2.00%)
+    allocations_familiales: 3.45, // Allocations familiales (taux 2025-2026)
+    accident_du_travail: 0.70, // Taux moyen (variable selon risque, 0.4% à 3.2%)
     solidarite_autonomie: 0.30,
-    fnal: 0.10, // Fond National d'Aide au Logement
-    chomage: 4.05, // Taux moyen
-    retraite_cadres: 1.29, // AGIRC pour cadres
-    ags: 0.15, // Association pour la Gestion de la Structure des Finances
-    formation: 0.55, // Taux minimum
-    prevoyance: 1.50, // Taux minimum
-    supplementaire_sante: 0.60, // Taux minimum
-    penibilite: 0.10, // Pour les salariés exposés
+    fnal: 0.10, // Fond National d'Aide au Logement (< 50 salariés) ou 0.50% (≥ 50)
+    chomage: 4.05, // Assurance chômage (taux 2025-2026)
+    retraite_cadres: 1.29, // AGIRC-ARRCO pour cadres (tranche 1)
+    ags: 0.15, // Association pour la Gestion du Structure des Finances
+    formation: 0.55, // Taxe d'apprentissage etc. (taux minimum)
+    prevoyance: 1.50, // Prévoyance obligatoire pour cadres
+    supplementaire_sante: 0.60, // Complémentaire santé (minimum)
+    penibilite: 0.10, // Pour les salariés exposés (2ème-4ème facteurs)
   },
   salariales: {
-    maladie: 0.00, // Suppression de la cotisation salariale d'assurance maladie
-    vieillesse: 6.90, // Taux plafonné à 6.90%, déplafonné à 0.40%
-    vieillesse_deplafonnee: 0.40,
-    retraite_cadres: 0.86, // AGIRC pour cadres
-    chomage: 0.00, // Suppression de la cotisation salariale chômage
+    maladie: 0.00, // Supprimée depuis 1998
+    vieillesse: 6.93, // Vieillesse plafonnée (6.93%)
+    vieillesse_deplafonnee: 0.40, // Vieillesse déplafonnée (0.40%)
+    retraite_cadres: 0.86, // AGIRC-ARRCO cadres tranche 1
+    chomage: 0.00, // Cotisation salariale chômage supprimée depuis 2019
     ags: 0.00, // AGS est exclusivement patronale
-    csg: 9.20, // CSG (6.8% déductible, 2.40% non déductible sur 98.25% du brut)
-    crds: 0.50, // CRDS sur 98.25% du brut
+    csg: 9.20, // CSG totale (6.80% déductible + 2.40% non déductible)
+    crds: 0.50, // CRDS (0.50% non déductible)
   },
   plafonds: {
-    mensuel_ss: 3666, // Plafond SS mensuel 2026
+    mensuel_ss: 3666, // Plafond SS mensuel 2026 (estimation basée sur 2025)
     annuel_ss: 43992, // Plafond SS annuel 2026
     cadre: 8 * 3666, // 8x le plafond SS pour les cadres
+    tranche2: 8 * 3666, // Tranche 2 AGIRC-ARRCO
   }
 };
+
+// SMIC 2026 - Taux horaire officiel
+const SMIC_HORAIRE_2026 = 11.65; // €/heure
+const SMIC_MENSUEL_2026 = 1766.92; // €/mois pour 35h (base 151.67h)
 
 // Calcul des cotisations
 export function calculerCotisations(data: CotisationData): CotisationResult {
@@ -159,11 +169,12 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
   // AGS (Uniquement patronale)
   const agsSalarial = salaireBrut * (TAUX_2026.salariales.ags / 100);
 
-  // CSG + CRDS (sur 98.25% du salaire brut)
+  // CSG + CRDS (sur 98.25% du salaire brut) - 2025/2026
   const baseCSG = salaireBrut * 0.9825;
-  const csg = baseCSG * (TAUX_2026.salariales.csg / 100);
-  const crds = baseCSG * (TAUX_2026.salariales.crds / 100);
-  const csgCrds = csg + crds;
+  const csgDeductible = baseCSG * 6.80 / 100; // 6.80% déductible
+  const csgNonDeductible = baseCSG * 2.40 / 100; // 2.40% non déductible
+  const crds = baseCSG * 0.50 / 100; // 0.50% CRDS non déductible
+  const csgCrds = csgDeductible + csgNonDeductible + crds;
 
   // Total salarial
   const totalSalarial = maladieSalariale + vieillesseSalariale + vieillesseDeplafonneeSalariale + retraiteCadresSalariale +
@@ -173,12 +184,33 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
 
   const salaireNet = salaireBrut - totalSalarial;
 
-  // Salaire net imposable (sans la CSG déductible)
-  const csgDeductible = csg * 0.6421; // 6.4% de CSG est déductible
+  // Salaire net imposable (sans la CSG déductible, donc on l'ajoute)
   const salaireNetImposable = salaireBrut - totalSalarial + csgDeductible;
 
-  // Coût employeur
-  const coutEmployer = salaireBrut + totalPatronal;
+  // Coût employeur (avant réduction Fillon)
+  const coutEmployerAvantReduction = salaireBrut + totalPatronal;
+
+  // === RÉDUCTION FILLON (2025-2026) ===
+  // Devenue réduction générale des cotisations
+  const calculerReductionFillon = (salaireBrut: number, nombreSalaries: number = 1): number => {
+    if (salaireBrut >= SMIC_MENSUEL_2026 * 1.6) return 0; // Pas de réduction au-dessus de 1.6 SMIC
+
+    const smicMensuel = SMIC_MENSUEL_2026;
+    const coefficient = (salaireBrut / smicMensuel) * 1.6 - 1;
+
+    // Taux maximum de réduction
+    const tauxMax = nombreSalaries < 50 ? 0.3195 : 0.3195;
+
+    // La réduction est plafonnée
+    const reduction = salaireBrut * Math.max(0, Math.min(coefficient / 0.6, tauxMax));
+
+    return reduction;
+  };
+
+  const reductionFillon = calculerReductionFillon(salaireBrut);
+
+  // Coût employeur final (avec réduction Fillon)
+  const coutEmployer = coutEmployerAvantReduction - reductionFillon;
 
   return {
     patronales: {
@@ -197,6 +229,7 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
       penibilite,
       transport,
       total: totalPatronal,
+      reduction_fillon: reductionFillon,
     },
     salariales: {
       maladie: maladieSalariale,
@@ -205,11 +238,15 @@ export function calculerCotisations(data: CotisationData): CotisationResult {
       chomage: chomageSalarial,
       ags: agsSalarial,
       csg_crds: csgCrds,
+      csg_deductible: csgDeductible,
+      csg_non_deductible: csgNonDeductible,
+      crds: crds,
       total: totalSalarial,
     },
     salaireNet,
     salaireNetImposable,
     coutEmployer,
+    coutEmployerAvantReduction,
   };
 }
 
@@ -261,11 +298,47 @@ export function calculerCotisationsAlternance(salaireBrut: number, type: 'appren
 
 // SMIC 2026
 export const SMIC_2026 = {
-  horaire: 11.65, // €/heure
-  mensuel_35h: 1766.92, // €/mois pour 35h hebdomadaires
+  horaire: 11.65, // €/heure (taux officiel 2025-2026)
+  mensuel_35h: 1766.92, // €/mois pour 35h hebdomadaires (151.67h)
   mensuel_39h: 1969.15, // €/mois pour 39h (4h supp majorées à 110%)
-  annuel: 21003.04, // €/an
+  annuel: 21148.92, // €/an (1766.92 × 12)
 };
+
+// Fonction pour calculer la réduction Fillon séparément
+export function calculerReductionFillon(
+  salaireBrut: number,
+  nombreSalaries: number = 50,
+  tempsPartiel: boolean = false,
+  heuresHebdo: number = 35
+): { montant: number; coefficient: number; details: string } {
+  if (salaireBrut <= 0) {
+    return { montant: 0, coefficient: 0, details: 'Salaire nul ou négatif' };
+  }
+
+  // Ajustement du SMIC pour temps partiel
+  let smicMensuel = SMIC_2026.mensuel_35h;
+  if (tempsPartiel) {
+    smicMensuel = smicMensuel * (heuresHebdo / 35);
+  }
+
+  // Vérifier si éligible (< 1.6 SMIC)
+  if (salaireBrut >= smicMensuel * 1.6) {
+    return { montant: 0, coefficient: 0, details: 'Salaire ≥ 1.6 SMIC (non éligible)' };
+  }
+
+  // Calcul du coefficient
+  const ratio = salaireBrut / smicMensuel;
+  const coefficient = Math.min((ratio * 1.6 - 1) / 0.6, nombreSalaries < 50 ? 0.3195 : 0.3195);
+
+  // Montant de la réduction
+  const montant = salaireBrut * Math.max(0, coefficient);
+
+  return {
+    montant,
+    coefficient,
+    details: `Ratio: ${ratio.toFixed(3)}, Coefficient: ${coefficient.toFixed(4)}`
+  };
+}
 
 // Salaires minimums par âge pour apprentissage
 export const SALAIRE_APPRENTIAGE = {

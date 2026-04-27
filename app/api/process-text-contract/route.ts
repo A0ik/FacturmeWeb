@@ -23,6 +23,20 @@ export async function POST(req: NextRequest) {
       cdd: `Tu es un assistant expert en contrats de travail français, spécialisé dans les CDD.
 À partir du texte fourni, extrait les informations pertinentes pour un contrat CDD.
 
+IMPORTANT - Numéro de Sécurité sociale:
+- Cherche les formats: 15 chiffres, X XX XX XX XXX XXX XX, ou avec clés (2 chiffres à la fin)
+- Peut être écrit: NIR, numéro Sécu, sécurité sociale, SS
+- Exemples: 185012345678912, 1 85 01 23 456 789 12, 18501234567891234 (avec clé)
+
+IMPORTANT - Nationalité:
+- Cherche: nationalité, de nationalité, Français(e), Française, étranger, etc.
+- Valeurs courantes: Française, Marocaine, Algérienne, Tunisienne, Italienne, Espagnole, Portugaise, etc.
+
+IMPORTANT - Dates de contrat:
+- Cherche: date de début, date de fin, début du contrat, fin du contrat, durée
+- Formats acceptés: JJ/MM/AAAA, JJ-MM-AAAA, en toutes lettres, "à compter du", "jusqu'au"
+- Convertis toujours au format YYYY-MM-DD
+
 Format JSON attendu (null si non trouvé) :
 {
   "employeeFirstName": "string ou null",
@@ -33,7 +47,7 @@ Format JSON attendu (null si non trouvé) :
   "employeePostalCode": "string ou null",
   "employeeCity": "string ou null",
   "employeeBirthDate": "string ou null (YYYY-MM-DD)",
-  "employeeSocialSecurity": "string ou null",
+  "employeeSocialSecurity": "string ou null (15 chiffres, sans espaces ni tirets)",
   "employeeNationality": "string ou null",
   "contractStartDate": "string ou null (YYYY-MM-DD)",
   "contractEndDate": "string ou null (YYYY-MM-DD)",
@@ -57,6 +71,20 @@ Format JSON attendu (null si non trouvé) :
       cdi: `Tu es un assistant expert en contrats de travail français, spécialisé dans les CDI.
 À partir du texte fourni, extrait les informations pertinentes pour un contrat CDI.
 
+IMPORTANT - Numéro de Sécurité sociale:
+- Cherche les formats: 15 chiffres, X XX XX XX XXX XXX XX, ou avec clés (2 chiffres à la fin)
+- Peut être écrit: NIR, numéro Sécu, sécurité sociale, SS
+- Exemples: 185012345678912, 1 85 01 23 456 789 12, 18501234567891234 (avec clé)
+
+IMPORTANT - Nationalité:
+- Cherche: nationalité, de nationalité, Français(e), Française, étranger, etc.
+- Valeurs courantes: Française, Marocaine, Algérienne, Tunisienne, Italienne, Espagnole, Portugaise, etc.
+
+IMPORTANT - Dates de contrat:
+- Cherche: date de début, début du contrat, prise de fonction, à compter du
+- Formats acceptés: JJ/MM/AAAA, JJ-MM-AAAA, en toutes lettres
+- Convertis toujours au format YYYY-MM-DD
+
 Format JSON attendu (null si non trouvé) :
 {
   "employeeFirstName": "string ou null",
@@ -67,7 +95,7 @@ Format JSON attendu (null si non trouvé) :
   "employeePostalCode": "string ou null",
   "employeeCity": "string ou null",
   "employeeBirthDate": "string ou null (YYYY-MM-DD)",
-  "employeeSocialSecurity": "string ou null",
+  "employeeSocialSecurity": "string ou null (15 chiffres, sans espaces ni tirets)",
   "employeeNationality": "string ou null",
   "employeeQualification": "string ou null",
   "contractStartDate": "string ou null (YYYY-MM-DD)",

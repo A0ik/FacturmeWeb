@@ -1,6 +1,7 @@
 /**
  * Server-side PDF generation for French labor contracts using pdf-lib.
- * Multi-page, colored sections, page numbers in footer.
+ * Design basé sur le template CDI_ISHAK_AHMED_BS_STRUCTURE_02-02-2026.pdf
+ * Couleurs: Vert #1D9E75, structure professionnelle, signatures intégrées
  */
 import { PDFDocument, StandardFonts, rgb, RGB } from 'pdf-lib';
 
@@ -131,12 +132,15 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   const timesBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
   const timesFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 
-  const accent = data.accentColor ? hexToRgb(data.accentColor) : rgb(0.549, 0.102, 0.102);
-  const ink = rgb(0.10, 0.10, 0.09);
-  const muted = rgb(0.42, 0.45, 0.50);
+  // Couleurs du template CDI_ISHAK_AHMED_BS_STRUCTURE_02-02-2026.pdf
+  const accent = data.accentColor ? hexToRgb(data.accentColor) : rgb(0.114, 0.619, 0.459); // #1D9E75 - Vert principal
+  const accentDark = rgb(0.086, 0.463, 0.341); // #16765B - Vert foncé
+  const ink = rgb(0.10, 0.10, 0.09); // Noir texte
+  const muted = rgb(0.35, 0.35, 0.35); // Gris texte
   const white = rgb(1, 1, 1);
-  const bgLight = rgb(0.98, 0.97, 0.95);
-  const ruleLine = rgb(0.85, 0.82, 0.78);
+  const bgLight = rgb(0.96, 0.97, 0.96); // Gris très clair fond sections
+  const bgSection = rgb(0.94, 0.95, 0.94); // Gris clair sections
+  const ruleLine = rgb(0.82, 0.82, 0.82); // Lignes séparations
 
   const W = 595.28, H = 841.89;
   const ML = 48, MR = 48;
@@ -184,26 +188,26 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
     page = pdfDoc.addPage([W, H]);
     y = H - 70;
 
-    // Top accent bar
-    page.drawRectangle({ x: 0, y: H - 7, width: W, height: 7, color: accent });
+    // Top accent bar (vert comme le template)
+    page.drawRectangle({ x: 0, y: H - 8, width: W, height: 8, color: accent });
 
-    // Header strip
-    page.drawRectangle({ x: 0, y: H - 40, width: W, height: 33, color: bgLight });
-    const cnW = boldFont.widthOfTextAtSize(safe(data.companyName).toUpperCase(), 8);
-    dt(safe(data.companyName).toUpperCase(), ML, H - 26, 8, boldFont, accent);
-    dt(' | ' + contractTitle, ML + cnW, H - 26, 8, regFont, muted);
+    // Header strip avec fond gris clair
+    page.drawRectangle({ x: 0, y: H - 45, width: W, height: 37, color: bgLight });
+    const cnW = boldFont.widthOfTextAtSize(safe(data.companyName).toUpperCase(), 9);
+    dt(safe(data.companyName).toUpperCase(), ML, H - 28, 9, boldFont, accent);
+    dt(' — ' + contractTitle, ML + cnW + 4, H - 28, 9, regFont, accentDark);
 
-    // CONFIDENTIEL badge
+    // CONFIDENTIEL badge (style template)
     const confLabel = 'CONFIDENTIEL';
     const confW = boldFont.widthOfTextAtSize(confLabel, 7);
-    page.drawRectangle({ x: W - MR - confW - 14, y: H - 34, width: confW + 14, height: 14, borderColor: accent, borderWidth: 0.5, color: white });
-    dt(confLabel, W - MR - confW - 7, H - 28, 7, boldFont, accent);
+    page.drawRectangle({ x: W - MR - confW - 16, y: H - 38, width: confW + 16, height: 16, borderColor: accent, borderWidth: 1, color: white });
+    dt(confLabel, W - MR - confW - 8, H - 30, 7, boldFont, accent);
 
-    // Footer
-    const footerText = `${safe(data.companyName)} — SIRET ${safe(data.companySiret).replace(/\s/g, '').substring(0, 9)} — Page ${pageCount}`;
-    const ftW = timesFont.widthOfTextAtSize(footerText, 6.5);
-    page.drawLine({ start: { x: ML, y: pageBottomY + 16 }, end: { x: W - MR, y: pageBottomY + 16 }, thickness: 0.5, color: ruleLine });
-    page.drawText(footerText, { x: (W - ftW) / 2, y: pageBottomY, size: 6.5, font: timesFont, color: muted });
+    // Footer (style template avec numéro de page)
+    const footerText = `${safe(data.companyName)} — SIRET : ${safe(data.companySiret)} — ${new Date().toLocaleDateString('fr-FR')} — Page ${pageCount}`;
+    const ftW = timesFont.widthOfTextAtSize(footerText, 6);
+    page.drawLine({ start: { x: ML, y: pageBottomY + 18 }, end: { x: W - MR, y: pageBottomY + 18 }, thickness: 0.8, color: accent });
+    page.drawText(footerText, { x: (W - ftW) / 2, y: pageBottomY + 6, size: 6, font: timesFont, color: muted });
   }
 
   function checkY(needed: number) {
@@ -211,11 +215,13 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   }
 
   function drawSectionTitle(title: string) {
-    checkY(24);
-    page.drawRectangle({ x: ML, y: y - 16, width: contentW, height: 18, color: bgLight, borderColor: ruleLine, borderWidth: 0.5 });
-    page.drawRectangle({ x: ML, y: y - 16, width: 3, height: 18, color: accent });
-    dt(title, ML + 8, y - 11, 8.5, boldFont, accent);
-    y -= 24;
+    checkY(26);
+    // Fond de section (style template)
+    page.drawRectangle({ x: ML, y: y - 18, width: contentW, height: 20, color: bgSection, borderColor: accent, borderWidth: 0.8 });
+    // Barre latérale accent
+    page.drawRectangle({ x: ML, y: y - 18, width: 4, height: 20, color: accent });
+    dt(title.toUpperCase(), ML + 10, y - 11, 8.5, boldFont, accent);
+    y -= 26;
   }
 
   function drawBodyText(text: string, indent = 0) {
@@ -243,34 +249,38 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   ct('ENTRE LES SOUSSIGNES', y, 9.5, boldFont, accent); // Use accent instead of ink
   y -= 22;
 
-  // Parties grid
-  const halfW = (contentW - 16) / 2;
-  const rightBlockX = ML + halfW + 16;
-  const blockH = 82;
+  // Parties grid (style template avec blocs arrondis)
+  const halfW = (contentW - 20) / 2;
+  const rightBlockX = ML + halfW + 20;
+  const blockH = 95;
 
-  checkY(blockH + 16);
+  checkY(blockH + 20);
 
-  // Employer block
-  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: blockH, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
-  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: 15, color: accent });
-  dt("L'EMPLOYEUR", ML + 5, y - blockH + 4, 7.5, boldFont, white);
-  dt(safe(data.companyName), ML + 5, y - 18, 9, boldFont, ink);
-  dt(`${safe(data.companyAddress)}, ${safe(data.companyPostalCode)} ${safe(data.companyCity)}`, ML + 5, y - 30, 7.5, regFont, muted);
-  dt(`SIRET : ${safe(data.companySiret)}`, ML + 5, y - 42, 7.5, regFont, muted);
-  dt(`Representant : ${safe(data.employerName)}`, ML + 5, y - 54, 7.5, regFont, muted);
-  dt(safe(data.employerTitle), ML + 5, y - 66, 7.5, regFont, muted);
+  // Employer block (style template)
+  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: blockH, borderColor: accent, borderWidth: 1.2, color: bgLight });
+  page.drawRectangle({ x: ML, y: y - blockH, width: halfW, height: 18, color: accent });
+  dt("L'EMPLOYEUR", ML + 6, y - blockH + 5, 8, boldFont, white);
+  dt(safe(data.companyName), ML + 6, y - 20, 9.5, boldFont, ink);
+  dt(`${safe(data.companyAddress)}`, ML + 6, y - 33, 7.5, regFont, ink);
+  dt(`${safe(data.companyPostalCode)} ${safe(data.companyCity)}`, ML + 6, y - 44, 7.5, regFont, ink);
+  dt(`SIRET : ${safe(data.companySiret)}`, ML + 6, y - 56, 7.5, regFont, muted);
+  dt(`Représentant : ${safe(data.employerName)}`, ML + 6, y - 68, 7.5, regFont, ink);
+  dt(safe(data.employerTitle), ML + 6, y - 80, 7.5, regFont, ink);
+  dt(`Email : ${data.companyName.toLowerCase().replace(/\s/g, '.')}@example.com`, ML + 6, y - 90, 6.5, regFont, muted);
 
-  // Employee block
-  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: blockH, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
-  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: 15, color: accent });
-  dt('LE SALARIE', rightBlockX + 5, y - blockH + 4, 7.5, boldFont, white);
-  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, rightBlockX + 5, y - 18, 9, boldFont, ink);
-  dt(`Ne le : ${formatDate(data.employeeBirthDate)}`, rightBlockX + 5, y - 30, 7.5, regFont, muted);
-  dt(`Nationalite : ${safe(data.employeeNationality)}`, rightBlockX + 5, y - 42, 7.5, regFont, muted);
-  dt(`${safe(data.employeeAddress)}, ${safe(data.employeePostalCode)} ${safe(data.employeeCity)}`, rightBlockX + 5, y - 54, 7.5, regFont, muted);
-  if (data.employeeEmail) dt(`Email : ${safe(data.employeeEmail)}`, rightBlockX + 5, y - 66, 7.5, regFont, muted);
+  // Employee block (style template)
+  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: blockH, borderColor: accent, borderWidth: 1.2, color: bgLight });
+  page.drawRectangle({ x: rightBlockX, y: y - blockH, width: halfW, height: 18, color: accent });
+  dt('LE SALARIE', rightBlockX + 6, y - blockH + 5, 8, boldFont, white);
+  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, rightBlockX + 6, y - 20, 9.5, boldFont, ink);
+  dt(`Né(e) le : ${formatDate(data.employeeBirthDate)}`, rightBlockX + 6, y - 33, 7.5, regFont, ink);
+  dt(`Nationalité : ${safe(data.employeeNationality)}`, rightBlockX + 6, y - 44, 7.5, regFont, ink);
+  dt(`${safe(data.employeeAddress)}`, rightBlockX + 6, y - 56, 7.5, regFont, ink);
+  dt(`${safe(data.employeePostalCode)} ${safe(data.employeeCity)}`, rightBlockX + 6, y - 68, 7.5, regFont, ink);
+  if (data.employeeEmail) dt(`Email : ${safe(data.employeeEmail)}`, rightBlockX + 6, y - 80, 7.5, regFont, ink);
+  if (data.employeePhone) dt(`Tél : ${safe(data.employeePhone)}`, rightBlockX + 6, y - 90, 7.5, regFont, ink);
 
-  y -= blockH + 18;
+  y -= blockH + 22;
 
   ct("Il a ete convenu et arrete ce qui suit :", y, 8.5, timesFont, muted);
   y -= 22;
@@ -376,54 +386,60 @@ export async function generateContractPdfBuffer(data: ContractTemplateData): Pro
   ct(`Fait a ${safe(data.companyCity)}, le ${formatDate(new Date().toISOString().split('T')[0])}, en deux exemplaires originaux.`, y, 8.5, timesFont, muted);
   y -= 30;
 
-  // Signatures (Forcing space if not enough)
-  checkY(130);
-  const sigHalfW = (contentW - 40) / 2;
-  const sigRightX = ML + sigHalfW + 40;
+  // Signatures (style template avec blocs bien séparés)
+  checkY(140);
+  const sigHalfW = (contentW - 30) / 2;
+  const sigRightX = ML + sigHalfW + 30;
 
-  // Draw light borders around signature boxes for better distinction
-  page.drawRectangle({ x: ML, y: y - 110, width: sigHalfW, height: 110, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
-  page.drawRectangle({ x: sigRightX, y: y - 110, width: sigHalfW, height: 110, borderColor: ruleLine, borderWidth: 0.5, color: bgLight });
+  // Bloc Signature Salarié
+  page.drawRectangle({ x: ML, y: y - 120, width: sigHalfW, height: 120, borderColor: accent, borderWidth: 1.2, color: white });
+  page.drawRectangle({ x: ML, y: y - 120, width: sigHalfW, height: 16, color: accent });
+  dt('LE SALARIE', ML + 8, y - 115, 7.5, boldFont, white);
+  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, ML + 8, y - 100, 8.5, boldFont, ink);
+  dt('Pour servir et valoir ce que de droit', ML + 8, y - 88, 6.5, regFont, muted);
 
-  dt('LE SALARIE', ML + 10, y - 15, 9, boldFont, accent);
-  dt(`${safe(data.employeeFirstName)} ${safe(data.employeeLastName)}`, ML + 10, y - 30, 9, boldFont, ink);
-  dt('(Precede de la mention "Lu et approuve")', ML + 10, y - 42, 7.5, timesFont, muted);
-
+  // Zone signature
   if (data.employeeSignature) {
     try {
       const matches = /^data:image\/(png|jpeg|jpg);base64,(.+)$/.exec(data.employeeSignature);
       if (matches) {
         const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
         const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-        const dims = img.scaleToFit(sigHalfW - 20, 50);
-        const imgX = ML + 10 + (sigHalfW - 20 - dims.width) / 2;
-        page.drawImage(img, { x: imgX, y: y - 100, width: dims.width, height: dims.height });
+        const dims = img.scaleToFit(sigHalfW - 25, 45);
+        const imgX = ML + 8 + (sigHalfW - 25 - dims.width) / 2;
+        page.drawImage(img, { x: imgX, y: y - 75, width: dims.width, height: dims.height });
       }
     } catch { /* ignore */ }
   }
 
-  page.drawLine({ start: { x: ML + 10, y: y - 55 }, end: { x: ML + sigHalfW - 10, y: y - 55 }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-  dt('Signature', ML + 10, y - 68, 7.5, timesFont, muted);
+  page.drawLine({ start: { x: ML + 8, y: y - 25 }, end: { x: ML + sigHalfW - 8, y: y - 25 }, thickness: 1, color: accent });
+  dt('Date : _____________', ML + 8, y - 18, 6.5, regFont, muted);
+  dt('Signature', ML + 8, y - 10, 6.5, regFont, muted);
 
-  dt("L'EMPLOYEUR", sigRightX + 10, y - 15, 9, boldFont, accent);
-  dt(`${safe(data.companyName)}`, sigRightX + 10, y - 30, 9, boldFont, ink);
-  dt("(Cachet + Signature de l'employeur)", sigRightX + 10, y - 42, 7.5, timesFont, muted);
+  // Bloc Signature Employeur
+  page.drawRectangle({ x: sigRightX, y: y - 120, width: sigHalfW, height: 120, borderColor: accent, borderWidth: 1.2, color: white });
+  page.drawRectangle({ x: sigRightX, y: y - 120, width: sigHalfW, height: 16, color: accent });
+  dt("L'EMPLOYEUR", sigRightX + 8, y - 115, 7.5, boldFont, white);
+  dt(safe(data.companyName), sigRightX + 8, y - 100, 8.5, boldFont, ink);
+  dt('Pour servir et valoir ce que de droit', sigRightX + 8, y - 88, 6.5, regFont, muted);
 
+  // Zone signature
   if (data.employerSignature) {
     try {
       const matches = /^data:image\/(png|jpeg|jpg);base64,(.+)$/.exec(data.employerSignature);
       if (matches) {
         const bytes = Uint8Array.from(atob(matches[2]), c => c.charCodeAt(0));
         const img = matches[1] === 'png' ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-        const dims = img.scaleToFit(sigHalfW - 20, 50);
-        const imgX = sigRightX + 10 + (sigHalfW - 20 - dims.width) / 2;
-        page.drawImage(img, { x: imgX, y: y - 100, width: dims.width, height: dims.height });
+        const dims = img.scaleToFit(sigHalfW - 25, 45);
+        const imgX = sigRightX + 8 + (sigHalfW - 25 - dims.width) / 2;
+        page.drawImage(img, { x: imgX, y: y - 75, width: dims.width, height: dims.height });
       }
     } catch { /* ignore */ }
   }
 
-  page.drawLine({ start: { x: sigRightX + 10, y: y - 55 }, end: { x: sigRightX + sigHalfW - 10, y: y - 55 }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-  dt('Signature & Cachet', sigRightX + 10, y - 68, 7.5, timesFont, muted);
+  page.drawLine({ start: { x: sigRightX + 8, y: y - 25 }, end: { x: sigRightX + sigHalfW - 8, y: y - 25 }, thickness: 1, color: accent });
+  dt('Date : _____________', sigRightX + 8, y - 18, 6.5, regFont, muted);
+  dt('Cachet & Signature', sigRightX + 8, y - 10, 6.5, regFont, muted);
 
   return new Uint8Array(await pdfDoc.save());
 }

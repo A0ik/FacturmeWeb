@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Loader2, AlertCircle, Check, Plus, Building2, Lightbulb, AlertTriangle } from 'lucide-react';
+import { Sparkles, X, Loader2, AlertCircle, Check, Plus, Building2, Lightbulb, AlertTriangle, Laptop, HardHat, Utensils, Stethoscope, ShoppingCart, Factory, ClipboardList, MapPin } from 'lucide-react';
 
 interface SuggestedClause {
   title: string;
@@ -21,14 +21,14 @@ interface AISuggestionsModalProps {
 }
 
 const SECTORS = [
-  { value: 'informatique', label: 'Informatique / Tech', icon: '💻' },
-  { value: 'btp', label: 'BTP / Construction', icon: '🏗️' },
-  { value: 'horeca', label: 'Horeca / Restauration', icon: '🍽️' },
-  { value: 'sante', label: 'Santé / Médical', icon: '🏥' },
-  { value: 'commerce', label: 'Commerce / Distribution', icon: '🛒' },
-  { value: 'industrie', label: 'Industrie', icon: '🏭' },
-  { value: 'services', label: 'Services', icon: '📋' },
-  { value: 'autre', label: 'Autre', icon: '📌' },
+  { value: 'informatique', label: 'Informatique / Tech', icon: Laptop, color: 'text-blue-600' },
+  { value: 'btp', label: 'BTP / Construction', icon: HardHat, color: 'text-yellow-600' },
+  { value: 'horeca', label: 'Horeca / Restauration', icon: Utensils, color: 'text-orange-600' },
+  { value: 'sante', label: 'Santé / Médical', icon: Stethoscope, color: 'text-red-600' },
+  { value: 'commerce', label: 'Commerce / Distribution', icon: ShoppingCart, color: 'text-green-600' },
+  { value: 'industrie', label: 'Industrie', icon: Factory, color: 'text-gray-600' },
+  { value: 'services', label: 'Services', icon: ClipboardList, color: 'text-purple-600' },
+  { value: 'autre', label: 'Autre', icon: MapPin, color: 'text-slate-600' },
 ];
 
 export function AISuggestionsModal({ isOpen, onClose, onApplyClause, contractType }: AISuggestionsModalProps) {
@@ -144,20 +144,25 @@ export function AISuggestionsModal({ isOpen, onClose, onApplyClause, contractTyp
                         Secteur d'activité
                       </label>
                       <div className="grid grid-cols-2 gap-2">
-                        {SECTORS.map((sector) => (
-                          <button
-                            key={sector.value}
-                            onClick={() => setSelectedSector(sector.value)}
-                            className={`p-3 rounded-xl border-2 transition-all text-left ${
-                              selectedSector === sector.value
-                                ? 'border-primary bg-primary/10 dark:bg-primary/20'
-                                : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                            }`}
-                          >
-                            <span className="text-xl mr-2">{sector.icon}</span>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">{sector.label}</span>
-                          </button>
-                        ))}
+                        {SECTORS.map((sector) => {
+                          const IconComponent = sector.icon;
+                          return (
+                            <button
+                              key={sector.value}
+                              onClick={() => setSelectedSector(sector.value)}
+                              className={`p-3 rounded-xl border-2 transition-all text-left flex items-center gap-2 ${
+                                selectedSector === sector.value
+                                  ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                                  : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                              }`}
+                            >
+                              <div className={`w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 ${sector.color}`}>
+                                <IconComponent className="w-4 h-4" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{sector.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 

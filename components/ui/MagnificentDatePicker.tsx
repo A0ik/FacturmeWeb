@@ -14,6 +14,8 @@ interface MagnificentDatePickerProps {
   minDate?: string;
   maxDate?: string;
   required?: boolean;
+  disablePastDates?: boolean; // Nouveau prop pour masquer les dates passées
+  allowTextInput?: boolean; // Nouveau prop pour permettre la saisie directe
 }
 
 type ViewMode = 'days' | 'months' | 'years';
@@ -34,14 +36,29 @@ export function MagnificentDatePicker({
   minDate,
   maxDate,
   required = false,
+  disablePastDates = false,
+  allowTextInput = true,
 }: MagnificentDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('days');
+  const [textInput, setTextInput] = useState('');
+  const [inputError, setInputError] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedDate = value ? new Date(value + 'T00:00:00') : null;
+
+  // Définir minDate automatiquement si disablePastDates est true
+  const effectiveMinDate = useMemo(() => {
+    if (minDate) return minDate;
+    if (disablePastDates) {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    }
+    return undefined;
+  }, [minDate, disablePastDates]);
 
   // Réinitialiser la vue quand on ouvre
   useEffect(() => {
@@ -109,15 +126,93 @@ export function MagnificentDatePicker({
   const isDateEnabled = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
 
-    if (minDate && dateStr < minDate) return false;
+    if (effectiveMinDate && dateStr < effectiveMinDate) return false;
     if (maxDate && dateStr > maxDate) return false;
 
     return true;
   };
 
+  // Fonction pour parser la saisie directe JJ/MM/AAAA
+  const parseDateInput = (input: string): Date | null => {
+    // Format JJ/MM/AAAA ou JJ/MM/AA ou JJ-MM-AAAA
+    const regex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/;
+    const match = input.match(regex);
+
+    if (!match) return null;
+
+    let [, day, month, year] = match;
+
+    // Convertir en nombres
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    let y = parseInt(year, 10);
+
+    // Gérer les années à 2 chiffres (AA -> 20AA)
+    if (y < 100) {
+      y += 2000;
+    }
+
+    // Valider la date
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > 2100) {
+      return null;
+    }
+
+    return new Date(y, m - 1, d);
+  };
+
+  // Fonction pour formater la date en JJ/MM/AAAA
+  const formatDateForInput = (date: Date): string => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}/${m}/${y}`;
+  };
+
+  // Gestion de la saisie directe
+  const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    setTextInput(input);
+    setInputError('');
+
+    // Détecter le format JJ/MM/AAAA
+    if (input.length >= 8) {
+      const parsedDate = parseDateInput(input);
+
+      if (parsedDate) {
+        // Vérifier si la date est dans les limites
+        if (!isDateEnabled(parsedDate)) {
+          setInputError('Date non autorisée');
+          return;
+        }
+
+        // Mettre à jour la date sélectionnée
+        const dateStr = parsedDate.toISOString().split('T')[0];
+        onChange(dateStr);
+        setTextInput(formatDateForInput(parsedDate));
+        setIsOpen(false);
+      } else {
+        setInputError('Format invalide (JJ/MM/AAAA)');
+      }
+    }
+  };
+
+  // Gestion de la touche Entrée pour valider la saisie
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const parsedDate = parseDateInput(textInput);
+      if (parsedDate && isDateEnabled(parsedDate)) {
+        const dateStr = parsedDate.toISOString().split('T')[0];
+        onChange(dateStr);
+        setIsOpen(false);
+      } else if (textInput.length > 0) {
+        setInputError('Format invalide (JJ/MM/AAAA)');
+      }
+    }
+  };
+
   const isYearEnabled = (year: number) => {
-    if (minDate) {
-      const minY = new Date(minDate + 'T00:00:00').getFullYear();
+    if (effectiveMinDate) {
+      const minY = new Date(effectiveMinDate + 'T00:00:00').getFullYear();
       if (year < minY) return false;
     }
     if (maxDate) {
@@ -128,8 +223,8 @@ export function MagnificentDatePicker({
   };
 
   const isMonthEnabled = (year: number, month: number) => {
-    if (minDate) {
-      const minD = new Date(minDate + 'T00:00:00');
+    if (effectiveMinDate) {
+      const minD = new Date(effectiveMinDate + 'T00:00:00');
       if (year < minD.getFullYear()) return false;
       if (year === minD.getFullYear() && month < minD.getMonth()) return false;
     }
@@ -265,13 +360,8 @@ export function MagnificentDatePicker({
         </label>
       )}
 
-      {/* Trigger Button */}
-      <motion.button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
+      {/* Trigger Button avec saisie directe */}
+      <div
         className={cn(
           'w-full relative flex items-center gap-3 px-4 py-3.5 rounded-xl border-2',
           'bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm',
@@ -286,26 +376,52 @@ export function MagnificentDatePicker({
           <CalendarIcon className="w-5 h-5 text-primary" />
         </div>
 
-        <div className="flex-1 text-left">
-          {selectedDate ? (
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-              {formatDateDisplay(selectedDate)}
-            </span>
-          ) : (
-            <span className="text-sm text-gray-400 dark:text-gray-500">{placeholder}</span>
-          )}
-        </div>
+        {allowTextInput ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={textInput || (selectedDate ? formatDateForInput(selectedDate) : '')}
+            onChange={handleTextInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsOpen(true)}
+            placeholder={placeholder}
+            className={cn(
+              'flex-1 bg-transparent outline-none text-sm font-semibold',
+              'text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+            )}
+          />
+        ) : (
+          <div
+            className="flex-1 text-left cursor-pointer"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {selectedDate ? (
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {formatDateDisplay(selectedDate)}
+              </span>
+            ) : (
+              <span className="text-sm text-gray-400 dark:text-gray-500">{placeholder}</span>
+            )}
+          </div>
+        )}
 
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-gray-400"
+        {inputError && (
+          <span className="text-xs text-red-500 whitespace-nowrap">{inputError}</span>
+        )}
+
+        <motion.button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
-        </motion.div>
-      </motion.button>
+        </motion.button>
+      </div>
 
       {/* Calendar Popup */}
       <AnimatePresence>
